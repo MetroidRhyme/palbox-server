@@ -41,19 +41,29 @@ proxies the paldb.cc map tiles + spawn data (which need a server-side `Referer`)
 
 ## Configure the repo
 
-1. Copy `config.example.ps1` -> `config.ps1` and set `$PagesProject` + `$R2Bucket`.
-2. Edit `site_src/_worker.js`'s identity block (ships with placeholders):
-   ```js
-   const ALLOWED_HOSTS = ['palbox.yourdomain.com'];
-   const ADMINS = ['you@yourdomain.com'];            // see everyone
-   const EMAIL_TO_GUID = { 'friend@example.com': '0123...32hex...' };  // email -> player save GUID
-   const TEAM_DOMAIN = 'your-team.cloudflareaccess.com';
-   const ACCESS_AUD  = 'your-64-hex-aud-tag';
-   ```
-   The 32-hex GUID is the player's save folder name under `Pal\Saved\SaveGames\0\<world>\Players`
-   (uppercase). A player must have logged into the server at least once to exist.
-   > **Fail-closed:** if `TEAM_DOMAIN`/`ACCESS_AUD` are wrong, JWT verification fails and *everyone*
-   > (including admin) sees empty data. A bug here is an outage, not a leak.
+Copy `config.example.ps1` -> `config.ps1` and set `$PagesProject` + `$R2Bucket`. That's it for
+the repo -- the Worker's identity is **not** in any file; it comes from Pages environment variables.
+
+## Worker identity (Cloudflare Pages environment variables)
+
+The Worker reads who's-who from the environment, so no emails/GUIDs live in the repo. Set these on
+the Pages project -> **Settings -> Environment variables -> Production** (values are JSON):
+
+| Variable | Example value |
+|---|---|
+| `ALLOWED_HOSTS` | `["palbox.yourdomain.com"]` |
+| `ADMINS` | `["you@yourdomain.com"]` (these emails see every player) |
+| `EMAIL_TO_GUID` | `{"friend@example.com":"0123456789ABCDEF0123456789ABCDEF"}` |
+| `TEAM_DOMAIN` | `your-team.cloudflareaccess.com` |
+| `ACCESS_AUD` | `your-64-hex-aud-tag` |
+
+The 32-hex GUID is the player's save folder name under `Pal\Saved\SaveGames\0\<world>\Players`
+(uppercase); a player must have logged into the server at least once to exist. Environment-variable
+changes take effect on the **next deploy** (`deploy_public_site.ps1 -Force`).
+
+> **Fail-closed:** if `TEAM_DOMAIN`/`ACCESS_AUD` are wrong or unset, JWT verification fails and
+> *everyone* (including admin) sees empty data. A bug here is an outage, not a leak -- roll back via
+> Pages -> Deployments.
 
 ## Deploy + sync (two distinct operations)
 

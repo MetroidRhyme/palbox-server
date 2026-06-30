@@ -94,40 +94,42 @@ async function handleSpawn(url, ctx) {
   });
 }
 
-// Only the Access-gated custom domain may serve data. Cloudflare Access cannot
-// protect the bare *.pages.dev URL, so without this guard the data would be public
-// at a guessable address. Requests to any other host get a 403. To allow another
-// host (e.g. a second domain), add it here.
-const ALLOWED_HOSTS = ['palbox.example.com']; // <-- your Access-gated custom domain
-
-// ── Per-user data scoping ──────────────────────────────────────────────────────
-// Cloudflare Access authenticates every request and passes the identity in the
-// Cf-Access-Jwt-Assertion JWT. We map the email -> a player guid (or admin) and
-// serve only that player's data. Cloudflare strips client-supplied Cf-Access-*
-// headers at the edge, so trusting this header is safe here.
-//   - To add a player: add 'their-login-email': '<32-hex guid>' to EMAIL_TO_GUID.
-//   - To make someone admin (sees everyone): add their email to ADMINS.
-// The 32-hex guid is the player's save GUID (the folder name under .../Players, uppercase).
-const ADMINS = ['admin@example.com'];           // <-- emails that see every player's data
-const EMAIL_TO_GUID = {
-  // 'player@example.com': '0123456789ABCDEF0123456789ABCDEF',
-};
-
-// Cloudflare Access JWT verification (defense in depth).
-// We do NOT merely trust the Cf-Access-Jwt-Assertion header / decode it unsigned --
-// instead we cryptographically verify it (RS256 signature against the team's public
-// keys) and check the audience + issuer + expiry. This removes all reliance on the
-// edge stripping client-supplied Cf-Access-* headers: even a forged header on a path
-// that somehow escaped the Access policy would fail verification and yield no scope.
-// ACCESS_AUD is THIS application's Audience tag; only tokens minted for this app pass.
-// TEAM_DOMAIN: Cloudflare Zero Trust -> Settings -> Custom Pages / team domain (the
-//   <team>.cloudflareaccess.com value). ACCESS_AUD: Zero Trust -> Access -> Applications ->
-//   your app -> Overview -> Application Audience (AUD) Tag (64-hex). Both are required for
-//   JWT verification; if either is wrong, EVERYONE (incl. admin) sees empty data (fail-closed).
-const TEAM_DOMAIN = 'your-team.cloudflareaccess.com';
-const ACCESS_AUD = 'YOUR_ACCESS_APPLICATION_AUD_TAG';
-const ACCESS_ISS = 'https://' + TEAM_DOMAIN;
-const CERTS_URL = ACCESS_ISS + '/cdn-cgi/access/certs';
+// ── Identity / Access config (from Cloudflare Pages environment variables) ──────
+// Set these as Pages -> Settings -> Environment variables (Production). Keeping them in
+// the environment (not in this file) means no secrets/PII live in the repo, so this Worker
+// is byte-for-byte the one you deploy.
+//   ALLOWED_HOSTS  = ["palbox.yourdomain.com"]                  (JSON array, or comma list)
+//   ADMINS         = ["you@yourdomain.com"]                     (JSON array; these see everyone)
+//   EMAIL_TO_GUID  = {"player@example.com":"<32-hex save GUID>"}(JSON object; email -> player)
+//   TEAM_DOMAIN    = your-team.cloudflareaccess.com             (Zero Trust team domain)
+//   ACCESS_AUD     = <64-hex>                                   (your Access app's AUD tag)
+//
+// Access JWT verification (defense in depth): we cryptographically verify the
+// Cf-Access-Jwt-Assertion (RS256 against the team JWKS) and check issuer/audience/expiry, so a
+// forged header on any path that escaped the Access policy still yields no scope. If
+// TEAM_DOMAIN/ACCESS_AUD are wrong or missing, verification fails CLOSED (everyone, incl. admin,
+// sees empty data) -- an outage, not a leak.
+function _jsonEnv(v, fallback) {
+  if (v == null || v === '') return fallback;
+  try { return JSON.parse(v); } catch (e) {
+    // tolerate a bare comma-separated list for the array-typed vars
+    if (Array.isArray(fallback)) return String(v).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    return fallback;
+  }
+}
+function getIdentity(env) {
+  const team = String(env.TEAM_DOMAIN || '').trim();
+  const iss = 'https://' + team;
+  return {
+    allowedHosts: _jsonEnv(env.ALLOWED_HOSTS, []),
+    admins: _jsonEnv(env.ADMINS, []).map(function (s) { return String(s).toLowerCase(); }),
+    emailToGuid: _jsonEnv(env.EMAIL_TO_GUID, {}),
+    teamDomain: team,
+    aud: String(env.ACCESS_AUD || '').trim(),
+    iss: iss,
+    certsUrl: iss + '/cdn-cgi/access/certs'
+  };
+}
 
 // base64url -> bytes / string (JWT uses base64url, atob expects standard base64).
 function b64urlToBytes(s) {
@@ -145,12 +147,12 @@ function b64urlToString(s) {
 
 // Fetch the Access signing keys (JWKS). Edge-cached so we don't hit the certs
 // endpoint per request; returns null if it is unreachable (-> fail closed upstream).
-async function getAccessKeys(ctx) {
+async function getAccessKeys(ctx, id) {
   const cache = caches.default;
-  const cacheKey = new Request(CERTS_URL, { method: 'GET' });
+  const cacheKey = new Request(id.certsUrl, { method: 'GET' });
   let resp = await cache.match(cacheKey);
   if (!resp) {
-    const upstream = await fetch(CERTS_URL);
+    const upstream = await fetch(id.certsUrl);
     if (!upstream.ok) return null;
     resp = new Response(await upstream.text(), {
       status: 200,
@@ -164,8 +166,8 @@ async function getAccessKeys(ctx) {
 }
 
 // Verify a Cloudflare Access JWT and return its claims, or null if anything fails.
-async function verifyAccessJwt(token, ctx) {
-  if (!token) return null;
+async function verifyAccessJwt(token, ctx, id) {
+  if (!token || !id.teamDomain || !id.aud) return null;
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const head = parts[0], body = parts[1], sig = parts[2];
@@ -179,13 +181,13 @@ async function verifyAccessJwt(token, ctx) {
 
   // Claim checks BEFORE the crypto: issuer, audience (this app only), time bounds.
   const now = Math.floor(Date.now() / 1000);
-  if (payload.iss !== ACCESS_ISS) return null;
+  if (payload.iss !== id.iss) return null;
   const auds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-  if (auds.indexOf(ACCESS_AUD) === -1) return null;
+  if (auds.indexOf(id.aud) === -1) return null;
   if (typeof payload.exp === 'number' && now >= payload.exp) return null;
   if (typeof payload.nbf === 'number' && now < payload.nbf - 60) return null;
 
-  const keys = await getAccessKeys(ctx);
+  const keys = await getAccessKeys(ctx, id);
   if (!keys) return null;
   const jwk = keys.find(function (k) { return k.kid === header.kid; });
   if (!jwk) return null;
@@ -207,12 +209,13 @@ async function verifyAccessJwt(token, ctx) {
 // Returns 'all' (admin), a guid string (scoped), or null (deny / show nothing).
 // Identity comes ONLY from a cryptographically verified token -- a missing or invalid
 // token, or an authenticated-but-unmapped email, all resolve to null (empty data).
-async function resolveScope(request, ctx) {
-  const payload = await verifyAccessJwt(request.headers.get('Cf-Access-Jwt-Assertion'), ctx);
+async function resolveScope(request, env, ctx) {
+  const id = getIdentity(env);
+  const payload = await verifyAccessJwt(request.headers.get('Cf-Access-Jwt-Assertion'), ctx, id);
   if (!payload || !payload.email) return null;
   const email = String(payload.email).toLowerCase();
-  if (ADMINS.includes(email)) return 'all';
-  return EMAIL_TO_GUID[email] || null;
+  if (id.admins.includes(email)) return 'all';
+  return id.emailToGuid[email] || null;
 }
 
 // Serve a JSON object from the R2 data bucket (env.DATA binding) by key. Returns the
@@ -259,7 +262,7 @@ function prefsKey(email) {
   return 'prefs/' + String(email).toLowerCase().replace(/[^a-z0-9._@+-]/g, '_') + '.json';
 }
 async function handlePrefs(request, env, ctx) {
-  const payload = await verifyAccessJwt(request.headers.get('Cf-Access-Jwt-Assertion'), ctx);
+  const payload = await verifyAccessJwt(request.headers.get('Cf-Access-Jwt-Assertion'), ctx, getIdentity(env));
   if (!payload || !payload.email) return noStore(json({}, 200));  // unauthenticated -> empty prefs
   const key = prefsKey(payload.email);
   if (request.method === 'GET') {
@@ -280,8 +283,9 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    if (!ALLOWED_HOSTS.includes(url.hostname)) {
-      return new Response('This site is private. Access it at https://' + ALLOWED_HOSTS[0], {
+    const allowedHosts = getIdentity(env).allowedHosts;
+    if (!allowedHosts.includes(url.hostname)) {
+      return new Response('This site is private.' + (allowedHosts[0] ? (' Access it at https://' + allowedHosts[0]) : ''), {
         status: 403,
         headers: { 'Content-Type': 'text/plain' }
       });
@@ -296,7 +300,7 @@ export default {
     // Per-user UI preferences (read/write, keyed by the verified Access email).
     if (path === '/api/prefs') return handlePrefs(request, env, ctx);
 
-    const scope = await resolveScope(request, ctx);  // 'all' | <guid> | null
+    const scope = await resolveScope(request, env, ctx);  // 'all' | <guid> | null
 
     // The physical scoped/admin data locations are internal only. Match
     // case-insensitively so a request like /data/ALL/... can't slip past the guard.

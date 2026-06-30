@@ -18,3 +18,7 @@ $R2Bucket = 'your-r2-bucket'
 # NOTE: the Cloudflare API token + account id are read from ENVIRONMENT VARIABLES
 # (CLOUDFLARE_API_TOKEN with Pages:Edit + Workers R2 Storage:Edit, and CLOUDFLARE_ACCOUNT_ID)
 # and are never stored in any file. Set them once as user environment variables. See docs.
+#
+# The Worker's identity (admin emails, email->GUID map, Access team domain + AUD, allowed host)
+# is NOT here either -- it comes from Cloudflare Pages environment variables. See
+# docs/04-public-site.md ("Worker identity").
