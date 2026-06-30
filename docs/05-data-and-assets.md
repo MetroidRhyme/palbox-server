@@ -25,6 +25,7 @@ effigy map. Regenerate them with:
 ```powershell
 python .\gen_pal_names.py          # internal->display names (from palcalc db.json) -> pal_names.json
 python .\gen_pal_assets.py         # Pal portrait PNGs + effigies.json (from palcalc + palworld-save-pal)
+python .\gen_pal_icons.py          # work + element icons (from paldb.cc) -> pal_icons\
 python .\build_pal_species.py      # element/work/skills/base-stats per Pal (from paldb.cc) -> pal_species.json
 python .\build_pal_skills.py       # active-skill power/cooldown/element/desc (paldb.cc) -> pal_skills.json
 python .\build_pal_passives.py     # passive effect text + rating (paldb.cc) -> pal_passives.json
@@ -50,18 +51,16 @@ So the first time, run the dashboard once and generate the shell **before** the 
 (`build_pal_skills.py` / `build_pal_passives.py` scrape single paldb pages and don't need the
 Pal list, so their order is flexible.)
 
-## Icons (the one manual asset step)
+## Icons (fully scripted)
 
-The work/element/passive suitability icons (`pal_icons\`, ~31 small webp/png) do **not** have a
-fetch script -- they were collected by hand from:
+`gen_pal_icons.py` fetches the work icons (`work_00`..`work_12`) and element icons
+(`elem_00`..`elem_08`) from paldb.cc into `pal_icons\` (server-side, with the required
+`Referer` header -- the CDN blocks hotlinking). The 9 passive-frame PNGs
+(`passive_frame` / `passive_triangle` / `passive_pos_1-4` / `passive_neg_1-3`) are static UI
+chrome that never changes, so they are **committed** in `pal_icons\` -- no download needed.
 
-- **paldb.cc** for the work icons (`work_00`..`work_12`) and element icons (`elem_00`..`elem_08`)
-  (download server-side with a `Referer: https://paldb.cc/` header -- the CDN blocks hotlinking),
-- **palworld.wiki.gg** for the passive rank frames/arrows (`passive_*`).
-
-Put them in `pal_icons\`; `gen_public_site.ps1` copies them into `public\icons\`. The dashboard
-serves them from `/icons/`. This is the only asset that isn't fully scripted -- a small one-time
-chore. (Contributions of a `gen_pal_icons.py` welcome.)
+`gen_public_site.ps1` copies everything in `pal_icons\` into `public\icons\`; the dashboard
+serves them from `/icons/`. No manual steps.
 
 ## Why "code only"?
 
