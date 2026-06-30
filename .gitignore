@@ -38,6 +38,7 @@ effigies.json
 # This repo is meant to live in the PalWorld server root. Ignore the whole game install.
 Engine/
 Pal/
+Mods/
 _CommonRedist/
 steamapps/
 Manifest_*.txt
@@ -45,6 +46,7 @@ steam_appid.txt
 *.exe
 *.dll
 PalServer*
+steamcmd/
 
 # ===== OS / editor =====
 Thumbs.db
