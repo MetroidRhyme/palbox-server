@@ -25,7 +25,7 @@ effigy map. Regenerate them with:
 ```powershell
 python .\gen_pal_names.py          # internal->display names (from palcalc db.json) -> pal_names.json
 python .\gen_pal_assets.py         # Pal portrait PNGs + effigies.json (from palcalc + palworld-save-pal)
-python .\gen_pal_icons.py          # work + element icons (from paldb.cc) -> pal_icons\
+python .\gen_pal_icons.py          # work + element icons (paldb.cc) + procedurally-drawn passive chrome (needs Pillow) -> pal_icons\
 python .\build_pal_species.py      # element/work/skills/base-stats per Pal (from paldb.cc) -> pal_species.json
 python .\build_pal_skills.py       # active-skill power/cooldown/element/desc (paldb.cc) -> pal_skills.json
 python .\build_pal_passives.py     # passive effect text + rating (paldb.cc) -> pal_passives.json
@@ -55,15 +55,27 @@ Pal list, so their order is flexible.)
 
 `gen_pal_icons.py` fetches the work icons (`work_00`..`work_12`) and element icons
 (`elem_00`..`elem_08`) from paldb.cc into `pal_icons\` (server-side, with the required
-`Referer` header -- the CDN blocks hotlinking). The 9 passive-frame PNGs
-(`passive_frame` / `passive_triangle` / `passive_pos_1-4` / `passive_neg_1-3`) are static UI
-chrome that never changes, so they are **committed** in `pal_icons\` -- no download needed.
+`Referer` header -- the CDN blocks hotlinking). The 9 passive-pill PNGs
+(`passive_frame` / `passive_triangle` / `passive_pos_1-4` / `passive_neg_1-3`) are **drawn
+procedurally** by the same script (`build_passives()`, needs Pillow) -- a beveled 9-slice frame,
+a gray triangle-tessellation strip, and stacked chevron rank-arrows that the passive-pill CSS
+tints at runtime. They are authored primitives, so no third-party art is committed. Everything in
+`pal_icons\` is git-ignored (regenerated).
 
 `gen_public_site.ps1` copies everything in `pal_icons\` into `public\icons\`; the dashboard
 serves them from `/icons/`. No manual steps.
 
 ## Why "code only"?
 
-Pal portraits and icons are game-derived art (Pocketpair), and the data tables are third-party
-scrapes. Rather than redistribute them, this repo ships the scripts so each user fetches them
-themselves, keeping the repo small and clean.
+Pal portraits are game-derived art (Pocketpair) and the data tables are third-party scrapes.
+Rather than redistribute them, this repo ships the scripts so each user fetches them themselves,
+keeping the repo small and clean. (The passive-pill chrome is no exception -- it's drawn from
+scratch by `gen_pal_icons.py`, not extracted from anywhere.)
+
+## Respect the source sites
+
+The scrapers fetch from third-party services (paldb.cc, the palcalc db, palworld-save-pal) at
+**your** discretion when you run them. Please respect each site's Terms of Service and rate limits:
+run the scrapers sparingly (they're idempotent, so a one-time bootstrap is normally all you need),
+and don't hammer them. The fetched data/art is the property of its respective owners and is not
+redistributed by this repo.

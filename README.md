@@ -33,7 +33,7 @@ The public site costs **$0** (Cloudflare free tier). The Manager pushes fresh da
 ## Prerequisites
 
 - **Windows 10/11** (the dashboard runs under Windows PowerShell 5.1).
-- **Python 3.9+** on PATH (for the save readers + scrapers).
+- **Python 3.9+** on PATH (for the save readers + scrapers); `pip install Pillow` for the icon generator.
 - **Node.js + Wrangler** (`npm i -g wrangler`) — only for the public site.
 - A **Cloudflare account** with a domain on Cloudflare — only for the public site.
 - Disk space for the game server (SteamCMD pulls it).
@@ -75,6 +75,8 @@ This project fetches data and art from third parties at your discretion (not red
 - Pal portraits: [tylercamp/palcalc](https://github.com/tylercamp/palcalc)
 - Species / skills / passives / spawn / map tiles: [paldb.cc](https://paldb.cc)
 - Effigy locations: [oMaN-Rod/palworld-save-pal](https://github.com/oMaN-Rod/palworld-save-pal)
-- Passive frame art: [palworld.wiki.gg](https://palworld.wiki.gg)
+
+The passive-pill styling is inspired by [palworld.wiki.gg](https://palworld.wiki.gg), but the
+passive-frame/arrow icons are drawn from scratch by `gen_pal_icons.py` (no art is redistributed).
 
 PalWorld is a trademark of Pocketpair, Inc. This is an unofficial fan tool. See [LICENSE](LICENSE) (covers the authored scripts only).
