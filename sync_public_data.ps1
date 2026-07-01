@@ -37,6 +37,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# This script runs detached and hidden (launched by the Manager's Trigger-PublicDeploy
+# via Start-Process -WindowStyle Hidden with no stdio redirection), so an unhandled error
+# previously vanished completely -- no console, no log, nothing -- and the public site's
+# data could go stale indefinitely with zero visible signal. Log every failure here so it
+# can be diagnosed instead of silently repeating every poll forever.
+$LogFile = Join-Path $Root 'sync_public_data.log'
+trap {
+  $entry = "[{0:yyyy-MM-dd HH:mm:ss}] FAILED: {1}`n{2}`n{3}`n" -f (Get-Date), $_.Exception.Message, $_.InvocationInfo.PositionMessage, $_.ScriptStackTrace
+  try { Add-Content -LiteralPath $LogFile -Value $entry -Encoding UTF8 } catch {}
+  Write-Host $entry
+  exit 1
+}
+
 # Site-specific names come from a local, git-ignored config.ps1 (copy config.example.ps1).
 $__cfg = Join-Path $PSScriptRoot 'config.ps1'
 if (Test-Path $__cfg) { . $__cfg; if ($R2Bucket) { $Bucket = $R2Bucket } }
@@ -78,8 +91,15 @@ function Get-State {
   return [pscustomobject]@{ levelStamp = ''; files = @{} }
 }
 function Save-State($s) {
+  # Write via temp file + rename (atomic on the same volume) rather than Set-Content
+  # directly to $StateFile -- this runs on every uploaded file (see the per-file Save-State
+  # call below), so a mid-write interruption (e.g. the nightly maintenance window killing
+  # the game server, disk hiccup, etc.) landing exactly here would otherwise leave truncated/
+  # corrupt JSON that every subsequent sync attempt has to parse.
   $obj = [ordered]@{ levelStamp = $s.levelStamp; files = $s.files }
-  ($obj | ConvertTo-Json -Compress) | Set-Content -LiteralPath $StateFile -Encoding UTF8
+  $tmp = "$StateFile.tmp"
+  ($obj | ConvertTo-Json -Compress) | Set-Content -LiteralPath $tmp -Encoding UTF8
+  Move-Item -LiteralPath $tmp -Destination $StateFile -Force
 }
 
 # ── Locate the active world's Level.sav and stamp it ───────────────────────────

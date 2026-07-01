@@ -2144,11 +2144,8 @@ function clearEggFilters(){
   document.getElementById('ef-work-min').value='1';
   document.getElementById('ef-pass-exact').checked=false;
   ['eggs-alpha','eggs-lucky'].forEach(function(id){document.getElementById(id).checked=false;});
-  // Also reset the toolbar owner/location/search controls -- they're real filters too
-  // (a stale value there can zero the list with no advanced-panel chip lit up to explain
-  // why, since they aren't part of efState).
-  document.getElementById('eggs-owner').value='';
-  document.getElementById('eggs-location').value='';
+  // Owner/location are deliberate standing choices (e.g. "always show my player"), not
+  // stray filter state, so Clear leaves them alone -- only the search box resets.
   document.getElementById('eggs-search').value='';
   Array.prototype.forEach.call(document.querySelectorAll('#ef-types .pf-chip,#ef-work .pf-chip'),function(c){c.classList.remove('on');});
   Array.prototype.forEach.call(document.getElementById('ef-gender').children,function(b){b.classList.toggle('on',b.getAttribute('data-g')==='');});
@@ -2168,11 +2165,8 @@ function updateEggFilterCount(){
   ['ef-iv-hp','ef-iv-atk','ef-iv-def'].forEach(function(id){if(document.getElementById(id).value!=='')n++;});
   if(document.getElementById('eggs-alpha').checked)n++;
   if(document.getElementById('eggs-lucky').checked)n++;
-  // Toolbar owner/location/search are filters too -- count them so a stuck value (e.g.
-  // restored from a stale cross-device pref) shows up in the badge/Clear button instead
-  // of silently zeroing the list with no visible explanation.
-  if(document.getElementById('eggs-owner').value!=='')n++;
-  if(document.getElementById('eggs-location').value!=='')n++;
+  // Owner/location aren't counted -- they're standing choices Clear doesn't touch (see
+  // clearEggFilters). Search is counted since Clear does reset it.
   if((document.getElementById('eggs-search').value||'').trim()!=='')n++;
   var badge=document.getElementById('eggs-filter-count');
   if(n){badge.textContent=n;badge.style.display='';}else{badge.style.display='none';}
@@ -2830,10 +2824,8 @@ function clearPalFilters(){
   document.getElementById('pf-pass-exact').checked=false;
   ['pals-alpha','pals-lucky'].forEach(function(id){document.getElementById(id).checked=false;});
   document.getElementById('pf-cond').value='';
-  // Also reset the toolbar player/location/search controls -- see the matching comment
-  // in clearEggFilters for why these need to be part of "clear" too.
-  document.getElementById('pals-player').value='';
-  document.getElementById('pals-location').value='';
+  // Player/location are deliberate standing choices, not stray filter state -- see the
+  // matching comment in clearEggFilters. Only the search box resets.
   document.getElementById('pals-search').value='';
   Array.prototype.forEach.call(document.querySelectorAll('#pf-types .pf-chip,#pf-work .pf-chip'),function(c){c.classList.remove('on');});
   Array.prototype.forEach.call(document.getElementById('pf-gender').children,function(b){b.classList.toggle('on',b.getAttribute('data-g')==='');});
@@ -2855,10 +2847,8 @@ function updateFilterCount(){
   if(document.getElementById('pals-alpha').checked)n++;
   if(document.getElementById('pals-lucky').checked)n++;
   if(document.getElementById('pf-cond').value!=='')n++;
-  // See updateEggFilterCount: count the toolbar player/location/search too, so a stuck
-  // value restored from prefs is visible in the badge instead of silently zeroing the list.
-  if(document.getElementById('pals-player').value!=='')n++;
-  if(document.getElementById('pals-location').value!=='')n++;
+  // Player/location aren't counted -- standing choices Clear doesn't touch. Search is
+  // counted since Clear does reset it.
   if((document.getElementById('pals-search').value||'').trim()!=='')n++;
   var badge=document.getElementById('pals-filter-count');
   if(n){badge.textContent=n;badge.style.display='';}else{badge.style.display='none';}
