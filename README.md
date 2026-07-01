@@ -42,6 +42,8 @@ The public site costs **$0** (Cloudflare free tier). The Manager pushes fresh da
 
 1. **Server:** put this repo's files in your server folder, then
    `& .\Install-PalWorldServer.ps1` (SteamCMD installs PalWorld here) -> [docs/01-server-setup.md](docs/01-server-setup.md).
+   On a brand-new machine, run `Install-PalWorldServer.desktop-bootstrap.ps1` once first for the
+   OS-level prerequisites (DirectX, VC++ 2022, firewall rules, power plan) -> [docs/01](docs/01-server-setup.md#first-time-machine-bootstrap-extra-one-off-setup).
 2. **Configure** `Pal\Saved\Config\WindowsServer\PalWorldSettings.ini` (server name, passwords, rates) -> [docs/01](docs/01-server-setup.md).
 3. **Launch:** `& .\Start-PalWorldServer.ps1`.
 4. **Dashboard:** `& .\PalWorldServerManager.ps1` -> open http://localhost:8213 -> [docs/02-dashboard.md](docs/02-dashboard.md).

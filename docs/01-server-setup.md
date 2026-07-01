@@ -12,6 +12,23 @@ All scripts locate themselves with `$PSScriptRoot`, so there are **no hardcoded 
 This downloads SteamCMD into `steamcmd\` and installs the **PalWorld Dedicated Server** (Steam
 app `2394010`, anonymous login) into this folder. Re-running it applies game updates.
 
+### First-time machine bootstrap (extra one-off setup)
+
+`Install-PalWorldServer.ps1` above only handles SteamCMD + the game files. When standing up a
+**brand-new machine**, a few one-time OS-level prerequisites are also needed. These are captured
+in the archived **`Install-PalWorldServer.desktop-bootstrap.ps1`** (the original script that first
+provisioned this box), which additionally:
+
+- installs the **DirectX End-User Runtime** (`d3dx9_43.dll`);
+- installs the **Visual C++ 2022 x64 redistributable** (required by Unreal Engine 5);
+- creates the inbound **Windows Firewall** rules (`8211/UDP` game, `27015/UDP` Steam query);
+- sets the active **power plan** to High Performance.
+
+Run it once on a fresh machine (it is idempotent -- each step checks and skips if already done).
+After that, the plain `Install-PalWorldServer.ps1` is all you need for game updates. The archived
+script uses hardcoded paths (`C:\SteamCMD`, `C:\PalWorldServer`) rather than `$PSScriptRoot`, so
+adjust those if your install lives elsewhere.
+
 ## Configure
 
 Gameplay settings live in **one file**:
