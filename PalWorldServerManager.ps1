@@ -5396,21 +5396,53 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     # Bundled work/element suitability icons (downloaded from paldb, whose
                     # CDN blocks hotlinking). The public site serves these statically; here
                     # we serve our local copies so the admin dashboard matches.
+                    #
+                    # Cache-Control here previously had NO validator (no ETag/Last-Modified) on
+                    # top of a blind 24h max-age -- so once a browser cached an icon URL, it
+                    # wouldn't even ask the server again for a full day, with zero way to detect
+                    # a changed file. That's bad enough on its own, but these <img> tags are
+                    # loading="lazy" and sit inside the pal-detail popup, which isn't opened
+                    # during the initial page load -- so Chrome's hard-reload cache bypass
+                    # (which only covers resources loaded as part of that initial navigation)
+                    # never touches them either. Net effect: a regenerated icon (e.g. when the
+                    # elem_*.webp assets were swapped from plain squares to the wider banner
+                    # art) could silently keep showing the OLD image in an existing browser
+                    # profile for up to 24h with no hard-refresh able to fix it. Fix: shorten
+                    # max-age so staleness is bounded to minutes instead of a day, and add a
+                    # Last-Modified validator + If-Modified-Since/304 handling so repeat checks
+                    # after that are cheap when the file hasn't actually changed.
                     $res.KeepAlive = $false
                     $iconBytes = $null
+                    $iconMtime = $null
                     try {
                         $fname = [System.IO.Path]::GetFileName($path)   # strips any traversal
                         # work_/elem_ suitability icons (webp) + passive rank icons/frame (png).
                         if ($fname -match '^[A-Za-z0-9_]+\.(webp|png)$') {
                             $file = Join-Path "$ServerDir\pal_icons" $fname
-                            if (Test-Path -LiteralPath $file) { $iconBytes = [System.IO.File]::ReadAllBytes($file) }
+                            if (Test-Path -LiteralPath $file) {
+                                $iconMtime = [System.IO.File]::GetLastWriteTimeUtc($file)
+                                $lastModStr = $iconMtime.ToString('R')
+                                $ims = $req.Headers['If-Modified-Since']
+                                $imsDate = [datetime]::MinValue
+                                if ($ims -and [datetime]::TryParse($ims, [ref]$imsDate)) {
+                                    if ($iconMtime -le $imsDate.ToUniversalTime().AddSeconds(1)) {
+                                        $res.StatusCode = 304
+                                        $res.AddHeader('Cache-Control', 'public, max-age=300')
+                                        $res.AddHeader('Last-Modified', $lastModStr)
+                                        $res.OutputStream.Close()
+                                        break
+                                    }
+                                }
+                                $iconBytes = [System.IO.File]::ReadAllBytes($file)
+                            }
                         }
                     } catch {}
                     if ($iconBytes) {
                         try {
                             $res.StatusCode = 200
                             $res.ContentType = if ([System.IO.Path]::GetExtension($fname).ToLower() -eq '.png') { 'image/png' } else { 'image/webp' }
-                            $res.AddHeader('Cache-Control', 'public, max-age=86400')
+                            $res.AddHeader('Cache-Control', 'public, max-age=300')
+                            if ($iconMtime) { $res.AddHeader('Last-Modified', $iconMtime.ToString('R')) }
                             $res.ContentLength64 = $iconBytes.Length
                             $res.OutputStream.Write($iconBytes, 0, $iconBytes.Length)
                         } catch {}
