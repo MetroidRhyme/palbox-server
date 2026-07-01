@@ -1241,8 +1241,8 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         <button class="btn-icon" onclick="closePalMap()">&#10005;</button>
       </div>
     </div>
-    <div style="position:relative;">
-      <div id="pal-leaflet-map" style="height:520px;"></div>
+    <div style="position:relative;flex:1 1 auto;min-height:240px;">
+      <div id="pal-leaflet-map" style="position:absolute;inset:0;height:100%;"></div>
       <div id="pal-map-empty" style="display:none;position:absolute;inset:0;z-index:1000;align-items:center;justify-content:center;background:var(--surface);color:var(--border);font-size:150px;font-weight:800;line-height:1;">?</div>
     </div>
   </div>
