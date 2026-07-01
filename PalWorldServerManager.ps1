@@ -4281,7 +4281,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
 .ppill{position:relative;display:inline-grid;grid-template-columns:minmax(0,1fr);align-items:center;justify-content:space-between;background-size:cover;font-size:13px;font-weight:700;line-height:1.3;}
 .ppill .pp-name{grid-column:1;grid-row:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 30px 3px 11px;color:#fff;}
 .ppill .pp-ico{grid-column:1;grid-row:1;position:absolute;right:6px;width:1lh;height:1lh;background-position:center;background-repeat:no-repeat;background-size:100% calc(100% - 5px);}
-.ppill::after{grid-column:1;grid-row:1;pointer-events:none;content:"";position:relative;display:inline-flex;width:100%;height:100%;border-image-source:url(icons/passive_frame.png);border-image-slice:6 fill;border-image-width:6px;}
+.ppill::after{grid-column:1;grid-row:1;pointer-events:none;content:"";position:relative;display:inline-flex;width:100%;height:100%;border-image-source:url(icons/passive_frame.png);border-image-slice:6 fill;border-image-width:1px 1px 1px 6px;}
 .pp-neu,.pp-pos1,.pp-pos2,.pp-neg1,.pp-neg2,.pp-neg3{background:#262e2e;}
 .pp-pos3{background-image:linear-gradient(#ffdd0020,#ffdd0020),linear-gradient(#11111188,#111111ff),url(icons/passive_triangle.png);}
 .pp-pos4{background-image:linear-gradient(to right,#59bb653d,#4543d17a),linear-gradient(#11111188,#111111ff),url(icons/passive_triangle.png);}
@@ -4300,7 +4300,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
    the pill's height than the 2px text padding leaves room for, overlapping the name. */
 .pal-card .pm-pgrid,.egg-card .pm-pgrid{gap:5px;}
 .pal-card .ppill,.egg-card .ppill{font-size:11px;}
-.pal-card .ppill::after,.egg-card .ppill::after{border-image-width:3px;}
+.pal-card .ppill::after,.egg-card .ppill::after{border-image-width:1px 1px 1px 3px;}
 /* On the dashboard cards, wrap long passive names instead of truncating with "..."
    so the grid keeps its column count (egg + pal cards alike). */
 .pal-card .ppill .pp-name,.egg-card .ppill .pp-name{padding:3px 22px 3px 9px;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2;}
