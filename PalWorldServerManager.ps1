@@ -3481,8 +3481,12 @@ function collectPrefs(){
   var players={};
   if(PREFS&&PREFS.players){ players.paldeck=PREFS.players.paldeck; players.effigy=PREFS.players.effigy; }
   if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew};
-  if(prefsApplied.pals){ try{ o.pals={crit:currentPalCrit(),sort:_gv('pals-sort'),loc:_gv('pals-location'),player:_gv('pals-player')}; }catch(e){} }
-  if(prefsApplied.eggs){ try{ o.eggs={crit:currentEggCrit(),owner:_gv('eggs-owner'),loc:_gv('eggs-location'),sort:_gv('eggs-sort')}; }catch(e){} }
+  // Skip persisting while a watch is mid-edit-preview (palEditId/eggEditId set): the filter
+  // controls hold that watch's criteria for live preview only, not the user's real standing
+  // filter, and must not overwrite it just because a render happened to fire (e.g. clicking a
+  // watch chip to inspect it, then leaving without hitting Update or Cancel edit).
+  if(prefsApplied.pals&&!palEditId){ try{ o.pals={crit:currentPalCrit(),sort:_gv('pals-sort'),loc:_gv('pals-location'),player:_gv('pals-player')}; }catch(e){} }
+  if(prefsApplied.eggs&&!eggEditId){ try{ o.eggs={crit:currentEggCrit(),owner:_gv('eggs-owner'),loc:_gv('eggs-location'),sort:_gv('eggs-sort')}; }catch(e){} }
   if(prefsApplied.paldeck) players.paldeck=_gv('paldeck-player');
   if(prefsApplied.effigy) players.effigy=_gv('effigy-player');
   o.players=players;
@@ -4279,12 +4283,15 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
 .pp-pos3 > *,.pp-pos3::after{filter:brightness(0) saturate(100%) invert(80%) sepia(83%) saturate(2225%) hue-rotate(350deg) brightness(95%) contrast(113%);}
 .pp-pos4 > *,.pp-pos4::after{filter:brightness(0) saturate(100%) invert(80%) sepia(13%) saturate(1347%) hue-rotate(109deg) brightness(107%) contrast(103%);}
 .pp-neg1 > .pp-ico,.pp-neg2 > .pp-ico,.pp-neg3 > .pp-ico,.pp-neg1::after,.pp-neg2::after,.pp-neg3::after{filter:brightness(0) saturate(100%) invert(28%) sepia(91%) saturate(1562%) hue-rotate(335deg) brightness(90%) contrast(94%);}
-/* Compact passive pills on the dashboard cards (popup keeps the larger size). */
+/* Compact passive pills on the dashboard cards (popup keeps the larger size). The
+   frame border is also thinned here -- at 6px (the popup's width) it eats more of
+   the pill's height than the 2px text padding leaves room for, overlapping the name. */
 .pal-card .pm-pgrid,.egg-card .pm-pgrid{gap:5px;}
 .pal-card .ppill,.egg-card .ppill{font-size:11px;}
+.pal-card .ppill::after,.egg-card .ppill::after{border-image-width:3px;}
 /* On the dashboard cards, wrap long passive names instead of truncating with "..."
    so the grid keeps its column count (egg + pal cards alike). */
-.pal-card .ppill .pp-name,.egg-card .ppill .pp-name{padding:2px 22px 2px 9px;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2;}
+.pal-card .ppill .pp-name,.egg-card .ppill .pp-name{padding:3px 22px 3px 9px;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2;}
 .pm-close{position:absolute;top:-4px;right:-4px;background:var(--surface2);border:1px solid var(--border);color:var(--text);width:30px;height:30px;border-radius:6px;font-size:18px;cursor:pointer;line-height:1;}
 .pm-close:hover{background:var(--border);}
 .pm-sec{margin-top:14px;}
