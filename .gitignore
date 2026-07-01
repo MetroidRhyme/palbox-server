@@ -3,6 +3,7 @@ config.ps1
 PalWorldSettings.ini
 GameUserSettings.ini
 .env
+.wrangler/
 
 # ===== Live data / runtime state / logs =====
 .r2_stage/
