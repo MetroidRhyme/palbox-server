@@ -191,7 +191,7 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
 # ── Dashboard Job ─────────────────────────────────────────────────────────────
 
 $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
-    param($AdminPassword, $PalApiBase, $DashPort, $StartScript,
+    param($ServerDir, $AdminPassword, $PalApiBase, $DashPort, $StartScript,
           $ConfigFile, $SkipFlagFile, $MaintLogFile, $DefaultSettingsPath, $ActiveSettingsPath)
 
     $LogFile      = "$ServerDir\metrics-log.jsonl"
@@ -4931,7 +4931,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     $setStage = if (Test-Path $setPath) { Get-Content $setPath -Raw -Encoding UTF8 } else { $null }
 
                     Start-Job -Name "PalReboot" -ScriptBlock {
-                        param($palBase,$adminPw,$startSc,$waitSecs,$setPath,$setStage)
+                        param($ServerDir,$palBase,$adminPw,$startSc,$waitSecs,$setPath,$setStage)
                         function BC([string]$msg) {
                             $cred=[Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:$adminPw"))
                             $h=@{Authorization="Basic $cred";"Content-Type"="application/json"}
@@ -4960,7 +4960,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         # (and finished its own clobbering write), before it starts again.
                         if($setStage){ try{[IO.File]::WriteAllText($setPath,$setStage,(New-Object Text.UTF8Encoding($false)))}catch{} }
                         Start-Process powershell.exe -ArgumentList "-ExecutionPolicy Bypass -File `"$startSc`""
-                    } -ArgumentList $palBase,$adminPw,$startSc,$waitSecs,$setPath,$setStage | Out-Null
+                    } -ArgumentList $ServerDir,$palBase,$adminPw,$startSc,$waitSecs,$setPath,$setStage | Out-Null
 
                     Send-Response $res 200 "application/json" (ConvertTo-Json @{status="Reboot initiated";waittime=$waitSecs} -Compress)
                     break
@@ -4978,7 +4978,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     # Same graduated countdown as reboot, but the server stays off
                     # afterwards (no relaunch).
                     Start-Job -Name "PalShutdown" -ScriptBlock {
-                        param($palBase,$adminPw,$waitSecs,$setPath,$setStage)
+                        param($ServerDir,$palBase,$adminPw,$waitSecs,$setPath,$setStage)
                         function BC([string]$msg) {
                             $cred=[Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:$adminPw"))
                             $h=@{Authorization="Basic $cred";"Content-Type"="application/json"}
@@ -5008,7 +5008,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         # Restore the captured settings after the server has exited, so
                         # the next start uses the edited values rather than the clobbered ones.
                         if($setStage){ Start-Sleep -Seconds 2; try{[IO.File]::WriteAllText($setPath,$setStage,(New-Object Text.UTF8Encoding($false)))}catch{} }
-                    } -ArgumentList $palBase,$adminPw,$waitSecs,$setPath,$setStage | Out-Null
+                    } -ArgumentList $ServerDir,$palBase,$adminPw,$waitSecs,$setPath,$setStage | Out-Null
 
                     Send-Response $res 200 "application/json" (ConvertTo-Json @{status="Shutdown initiated";waittime=$waitSecs} -Compress)
                     break
@@ -5560,7 +5560,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
         Write-Output "Dashboard stopped."
     }
 
-} -ArgumentList $AdminPassword, $RestApiBase, $DashPort, $StartScript,
+} -ArgumentList $ServerDir, $AdminPassword, $RestApiBase, $DashPort, $StartScript,
                 $ConfigFile, $SkipFlagFile, $MaintLogFile, $DefaultSettingsPath, $ActiveSettingsPath
 
 # ── Monitor loop ──────────────────────────────────────────────────────────────
