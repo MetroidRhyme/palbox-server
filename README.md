@@ -66,7 +66,7 @@ Nothing secret is committed. You supply:
 - **Server name + passwords** in `PalWorldSettings.ini` (use the included `DefaultPalWorldSettings.ini` as a starting point). The scripts read the admin password from this file at runtime.
 - **Cloudflare names** in `config.ps1` (copied from `config.example.ps1`, git-ignored).
 - **Cloudflare API token + account id** as environment variables (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) — never in a file.
-- **Worker identity** (your admin email, the player email->GUID map, your Access team domain + AUD) directly in `site_src/_worker.js` (it ships with placeholders).
+- **Worker identity** (your admin email, the player email->GUID map, your Access team domain + AUD) as **Cloudflare Pages environment variables** (`ADMINS`, `EMAIL_TO_GUID`, `TEAM_DOMAIN`, `ACCESS_AUD`, `ALLOWED_HOSTS`) — never in a file, so `site_src/_worker.js` ships secret-free. See [docs/04 - Worker identity](docs/04-public-site.md).
 
 ## Credits / third-party data
 
