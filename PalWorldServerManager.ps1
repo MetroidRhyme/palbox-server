@@ -4320,7 +4320,13 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
 .gico.g-m{color:#58a6ff;}
 .gico.g-f{color:#f85149;}
 .pal-name .gico{font-size:.95em;}
-.cic{width:16px;height:16px;vertical-align:-3px;}
+/* elem_*.webp source images are 104x32 wide UI banner art (paldb's menu-status ribbon
+   asset), not square icons like work_*.webp (64x64) -- stretching width/height evenly
+   squished the glyph and dragged in the ribbon's excess background. object-fit:cover
+   preserves aspect ratio and crops to a square instead of stretching; object-position:left
+   keeps the crop on the glyph, which sits in the banner's left portion. No-op for the
+   already-square work icons sharing this class. */
+.cic{width:16px;height:16px;vertical-align:-3px;object-fit:cover;object-position:left center;}
 .tchip .cic,.wchip .cic{width:15px;height:15px;}
 .pm-prog{margin-top:8px;}
 .pm-prog-top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;}
