@@ -4612,11 +4612,27 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
         try {
             $syncScript = "$ServerDir\sync_public_data.ps1"
             if (Test-Path $syncScript) {
+                # -Root is passed explicitly rather than left to sync_public_data.ps1's own
+                # $PSScriptRoot default: root-caused 2026-07-01 that $PSScriptRoot comes back
+                # EMPTY when the script is launched this way (Start-Process -File, hidden, from
+                # inside this Manager's background Start-Job) -- which made every unforced
+                # auto-sync crash immediately, silently, on every single poll, for as long as
+                # this has existed. $ServerDir is always correct here (threaded in via the
+                # Dashboard job's own -ArgumentList), so passing it removes the dependency on
+                # $PSScriptRoot resolving correctly in this specific nested-process context.
                 Start-Process -FilePath 'powershell.exe' `
-                    -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $syncScript) `
+                    -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $syncScript, '-Root', $ServerDir) `
                     -WindowStyle Hidden
             }
-        } catch {}
+        } catch {
+            # This previously swallowed everything silently, so a launch-level failure here
+            # (as opposed to a failure inside sync_public_data.ps1 itself, which now logs on
+            # its own) could go unnoticed indefinitely -- log it instead.
+            try {
+                $entry = "[{0:yyyy-MM-dd HH:mm:ss}] Trigger-PublicDeploy FAILED to launch: {1}`n" -f (Get-Date), $_.Exception.Message
+                Add-Content -LiteralPath "$ServerDir\sync_public_data.log" -Value $entry -Encoding UTF8
+            } catch {}
+        }
     }
 
     # Notify each opted-in player when their eggs become ready to hatch. Runs on a fast

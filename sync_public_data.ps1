@@ -37,12 +37,17 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# This script runs detached and hidden (launched by the Manager's Trigger-PublicDeploy
-# via Start-Process -WindowStyle Hidden with no stdio redirection), so an unhandled error
-# previously vanished completely -- no console, no log, nothing -- and the public site's
-# data could go stale indefinitely with zero visible signal. Log every failure here so it
-# can be diagnosed instead of silently repeating every poll forever.
-$LogFile = Join-Path $Root 'sync_public_data.log'
+# This script runs detached and hidden (launched by the Manager's Trigger-PublicDeploy via
+# Start-Process -WindowStyle Hidden), so an unhandled error previously vanished completely --
+# no console, no log, nothing -- and the public site's data could go stale indefinitely with
+# zero visible signal. Log every failure here so it can be diagnosed instead of silently
+# repeating every poll forever. (Root-caused 2026-07-01: $Root defaulting to $PSScriptRoot
+# came back EMPTY specifically when launched this way from inside the Manager's background
+# job, which made every unforced auto-sync crash here on this very line, every single time --
+# Trigger-PublicDeploy now passes -Root explicitly so this shouldn't recur, but keep the
+# $PSScriptRoot fallback as a last resort so a log gets written even if it does.)
+if (-not $Root) { $Root = $PSScriptRoot }
+$LogFile = if ($Root) { Join-Path $Root 'sync_public_data.log' } else { Join-Path $env:TEMP 'sync_public_data.log' }
 trap {
   $entry = "[{0:yyyy-MM-dd HH:mm:ss}] FAILED: {1}`n{2}`n{3}`n" -f (Get-Date), $_.Exception.Message, $_.InvocationInfo.PositionMessage, $_.ScriptStackTrace
   try { Add-Content -LiteralPath $LogFile -Value $entry -Encoding UTF8 } catch {}
