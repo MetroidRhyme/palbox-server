@@ -3817,6 +3817,8 @@ function renderEffigyMap(){
     journalLocations.forEach(function(j){
       var trackable=!!j.key;
       var jGot=trackable&&journalCollectedSet.has(j.key.toUpperCase());
+      // The "found" toggle also hides already-found diary pickups, same as effigies.
+      if(jGot&&!effigyShowFound) return;
       var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jGot),interactive:true});
       jm._journalMarker=true;
       var jStatus=trackable?(jGot?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#1673d1">Not yet found</b>'):'<span style="color:#8a8f98">Found status unknown</span>';
