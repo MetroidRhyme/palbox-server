@@ -580,12 +580,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .leaflet-interactive:focus{outline:none;}
 /* Effigy marker tooltip: a touch larger and roomier than Leaflet's default. */
 .eff-tip{font-size:13px;line-height:1.45;padding:5px 9px;}
-/* Uncollected-effigy map marker: green acorn glyph (Flaticon, see footer credit) instead of
-   a plain dot. Drop-shadow doubles as the hover ring since divIcons aren't SVG-restylable
-   like circleMarker was. */
-.effigy-acorn-marker{filter:drop-shadow(0 0 1px rgba(0,0,0,.6));transition:transform .12s ease;}
+/* Effigy map markers: acorn glyphs (Flaticon, see footer credit) instead of plain dots -
+   green for uncollected, grey/faded for already-found. Drop-shadow doubles as the hover
+   ring since divIcons aren't SVG-restylable like circleMarker was. */
+.effigy-acorn-marker{filter:drop-shadow(0 0 1px rgba(0,0,0,.6));transition:transform .12s ease,opacity .12s ease;}
 .effigy-acorn-marker img{width:100%;height:100%;display:block;pointer-events:none;}
-.effigy-acorn-marker.eff-acorn-hover{transform:scale(1.35);filter:drop-shadow(0 0 3px #f0c000) drop-shadow(0 0 1px rgba(0,0,0,.6));}
+.effigy-acorn-marker.eff-acorn-found{opacity:.55;}
+.effigy-acorn-marker.eff-acorn-hover{transform:scale(1.35);opacity:1;filter:drop-shadow(0 0 3px #f0c000) drop-shadow(0 0 1px rgba(0,0,0,.6));}
 
 /* Header */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
@@ -3450,10 +3451,10 @@ var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
 // Uncollected-effigy acorn glyph is a divIcon, not an SVG dot, so it needs its own
 // (slightly larger, so the shape actually reads) size in px rather than a radius.
 var EFF_ACORN_SZ=EFF_DOT_R*4;
-function effigyAcornIcon(){
+function effigyAcornIcon(found){
   return L.divIcon({
-    className:'effigy-acorn-marker',
-    html:'<img src="icons/effigy_acorn.png" alt="">',
+    className:'effigy-acorn-marker'+(found?' eff-acorn-found':''),
+    html:'<img src="icons/effigy_'+(found?'acorn_found':'acorn')+'.png" alt="">',
     iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
@@ -3785,26 +3786,10 @@ function renderEffigyMap(){
     var cx=Math.round((pos.y-158000)/459), cy=Math.round((pos.x+123888)/459);
     var tip=(got?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#2f9e43">New</b>')
       +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
-    var m;
-    if(got){
-      var baseColor='#484f58', baseWeight=1;
-      m=L.circleMarker(effigyRposToLatLng(pos.x,pos.y),{
-        radius:EFF_DOT_R,
-        color: baseColor,
-        fillColor:'#21262d',
-        fillOpacity:0.45,
-        weight: baseWeight,
-        interactive:true
-      });
-      // Hover highlight (gold ring, larger) so it's obvious the marker is interactive.
-      m.on('mouseover',function(){this.setRadius(EFF_DOT_R+3);this.setStyle({weight:3,color:'#f0c000'});this.bringToFront();});
-      m.on('mouseout',function(){this.setRadius(EFF_DOT_R);this.setStyle({weight:baseWeight,color:baseColor});});
-    } else {
-      // Uncollected effigies: green acorn glyph instead of a plain dot.
-      m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(),interactive:true});
-      m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-acorn-hover');this.bringToFront();});
-      m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-acorn-hover');});
-    }
+    // Acorn glyph for both states: green = uncollected, grey/faded = already found.
+    var m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(got),interactive:true});
+    m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-acorn-hover');this.bringToFront();});
+    m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-acorn-hover');});
     m._effigyMarker=true;
     m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
     m.addTo(effigyLeaflet);
