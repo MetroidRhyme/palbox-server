@@ -642,6 +642,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .bounty-marker .bounty-ring{width:100%;height:100%;border-radius:50%;overflow:hidden;border:2px solid #e3b341;box-shadow:0 1px 4px rgba(0,0,0,.85);background:#1a1a1a;}
 .bounty-marker img{border-radius:50%;object-fit:cover;}
 .bounty-marker.eff-map-found .bounty-ring{border-color:#484f58;filter:grayscale(1) brightness(.65);}
+/* Marker-cluster count bubbles: shrink from the plugin's default 40px/30px (paired with
+   iconSize:26 above) so they stop overlapping neighboring icons and each other, and force
+   black count text -- the default MarkerCluster.Default.css leaves color unset, which reads
+   as whatever ambient color this dark theme inherits. */
+.marker-cluster div{width:18px;height:18px;margin-left:4px;margin-top:4px;border-radius:9px;line-height:18px;}
+.marker-cluster span{line-height:18px;font-size:11px;font-weight:700;color:#000;}
 
 /* Header */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
@@ -3854,7 +3860,17 @@ function initEffigyView(){
         }).addTo(effigyLeaflet);
         // Effigies+journal+bounty combined can top 700 markers; clustering keeps the map
         // smooth by only rendering a count bubble for tightly-packed groups until zoomed in.
-        effigyMarkerCluster=L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:25});
+        effigyMarkerCluster=L.markerClusterGroup({
+          showCoverageOnHover:false,maxClusterRadius:25,
+          // Default plugin bubbles are 40px and were swallowing nearby icons / touching each
+          // other at this marker density -- shrink to 26px, keeping the same small/medium/
+          // large color tiers (matching CSS sizing override below).
+          iconCreateFunction:function(cluster){
+            var n=cluster.getChildCount();
+            var cls=n>=100?'marker-cluster-large':(n>=10?'marker-cluster-medium':'marker-cluster-small');
+            return new L.DivIcon({html:'<div><span>'+n+'</span></div>',className:'marker-cluster '+cls,iconSize:new L.Point(26,26)});
+          }
+        });
         effigyLeaflet.addLayer(effigyMarkerCluster);
       } else {
         effigyLeaflet.invalidateSize();
