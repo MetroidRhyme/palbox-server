@@ -3516,6 +3516,28 @@ var JOURNAL_MAX=49;
 var bossLocations=null;
 // Per-player defeat state: list of species codes, from NormalBossDefeatFlag.
 var bossCollected=[];
+// Manually-marked bounty bosses, for species NormalBossDefeatFlag can't identify (most of
+// them -- the save only names a spawner instance descriptively for a handful of bosses; the
+// rest are anonymous zone-numbered keys with no recoverable species). Keyed by player guid
+// (not a flat list) so an admin viewing multiple players' maps can't cross-attribute a click
+// to the wrong player; a scoped player only ever has their own guid in here anyway. Persisted
+// via the existing /api/prefs store (PREFS.bountyManual), public-site only -- PREFS_ENABLED
+// is false on admin, so toggleBountyManual is inert there (savePrefs no-ops).
+var bountyManual={};
+function bountyManualSetFor(guid){
+  return new Set((bountyManual[guid]||[]).map(function(s){return s.toUpperCase();}));
+}
+function toggleBountyManual(species){
+  if(!PREFS_ENABLED)return;  // admin dashboard has no /api/prefs write path
+  var sel=document.getElementById('effigy-player');
+  var guid=sel?sel.value:'';
+  if(!guid)return;
+  var list=bountyManual[guid]||(bountyManual[guid]=[]);
+  var i=list.map(function(s){return s.toUpperCase();}).indexOf(species.toUpperCase());
+  if(i===-1) list.push(species); else list.splice(i,1);
+  renderEffigyMap();
+  savePrefs();
+}
 
 // Global visibility filter for the effigy map. Two independent toggles let the player hide
 // the effigies they have already found or the ones still new/undiscovered, to declutter the
@@ -3576,7 +3598,9 @@ function collectPrefs(){
     if(PREFS.pals!==undefined)o.pals=PREFS.pals;
     if(PREFS.eggs!==undefined)o.eggs=PREFS.eggs;
     if(PREFS.effigy!==undefined)o.effigy=PREFS.effigy;
+    if(PREFS.bountyManual!==undefined)o.bountyManual=PREFS.bountyManual;
   }
+  if(prefsApplied.effigy) o.bountyManual=bountyManual;
   var players={};
   if(PREFS&&PREFS.players){ players.paldeck=PREFS.players.paldeck; players.effigy=PREFS.players.effigy; }
   if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty};
@@ -3648,6 +3672,7 @@ function maybeApplyEffigyPrefs(){
   prefsApplied.effigy=true;
   var e=PREFS&&PREFS.effigy;
   if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; effigyShowBounty=e.bounty!==false; setEffigyFilterBtns(); }
+  if(PREFS&&PREFS.bountyManual&&typeof PREFS.bountyManual==='object') bountyManual=PREFS.bountyManual;
   var pe=PREFS&&PREFS.players&&PREFS.players.effigy;
   var sel=document.getElementById('effigy-player');
   if(sel&&pe&&_optExists(sel,pe))sel.value=pe;
@@ -3899,23 +3924,41 @@ function renderEffigyMap(){
   }
 
   // Bounty-boss (named legendary Alpha) locations -- game-world fixed, one entry per known
-  // boss species (bounty_bosses.json). "got" comes from NormalBossDefeatFlag via
-  // extract_bounty_data (see pal_save_reader.py): the boss's own portrait in color when
-  // still alive, grayed out once defeated. Unlike effigies/journals there's no "New" state
-  // to hide -- effigyShowFound also governs whether defeated bosses stay visible (grayed)
-  // or disappear, same convention as the found toggle elsewhere on this map.
+  // boss species (bounty_bosses.json). Auto-"got" comes from NormalBossDefeatFlag via
+  // extract_bounty_data (see pal_save_reader.py), but the save only names a spawner
+  // instance descriptively for a couple of bosses -- most defeats are unrecoverable from
+  // the save alone (anonymous zone-numbered keys). So a manual click-to-mark fallback
+  // (bountyManual, PREFS-backed) covers the rest: click any boss the save hasn't already
+  // confirmed to toggle your own "I defeated this" mark. The boss's own portrait shows in
+  // color when neither signal has it, grayed out once either does. Unlike effigies/journals
+  // there's no "New" state to hide -- effigyShowFound also governs whether defeated bosses
+  // stay visible (grayed) or disappear, same convention as the found toggle elsewhere.
   if(effigyShowBounty&&bossLocations&&bossLocations.length){
     var bossCollectedSet=new Set(bossCollected.map(function(s){return s.toUpperCase();}));
+    var bpSel=document.getElementById('effigy-player');
+    var bpGuid=bpSel?bpSel.value:'';
+    var manualSet=bountyManualSetFor(bpGuid);
     bossLocations.forEach(function(b){
-      var bGot=bossCollectedSet.has((b.species||'').toUpperCase());
+      var sp=(b.species||'').toUpperCase();
+      var bAuto=bossCollectedSet.has(sp);
+      var bManual=manualSet.has(sp);
+      var bGot=bAuto||bManual;
       if(bGot&&!effigyShowFound) return;
+      var clickable=PREFS_ENABLED&&!bAuto&&!!bpGuid;
       var bm=L.marker(effigyRposToLatLng(b.x,b.y),{icon:bountyBossIcon(b.name,bGot),interactive:true});
       bm._bountyMarker=true;
-      var bStatus=bGot?'<span style="color:#5a6573">&#10003; Defeated</span>':'<b style="color:#e3b341">Alpha Boss</b>';
+      var bStatus=bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
+        :bManual?'<span style="color:#5a6573">&#10003; Marked defeated by you</span>'
+        :'<b style="color:#e3b341">Alpha Boss</b>';
+      if(clickable) bStatus+='<br><span style="color:#8a8f98;font-size:11px;">Click to '+(bManual?'unmark':'mark defeated')+'</span>';
       bm.bindTooltip('<b style="color:#111;">'+b.name+'</b><br>'+bStatus,
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       bm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       bm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+      if(clickable){
+        bm.on('click',function(){toggleBountyManual(b.species);});
+        bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
+      }
       bm.addTo(effigyLeaflet);
     });
   }
