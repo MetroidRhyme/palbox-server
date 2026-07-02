@@ -580,13 +580,15 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .leaflet-interactive:focus{outline:none;}
 /* Effigy marker tooltip: a touch larger and roomier than Leaflet's default. */
 .eff-tip{font-size:13px;line-height:1.45;padding:5px 9px;}
-/* Effigy map markers: acorn glyphs (Flaticon, see footer credit) instead of plain dots -
-   green for uncollected, grey/faded for already-found. Drop-shadow doubles as the hover
-   ring since divIcons aren't SVG-restylable like circleMarker was. */
-.effigy-acorn-marker{filter:drop-shadow(0 0 1px rgba(0,0,0,.6));transition:transform .12s ease,opacity .12s ease;}
-.effigy-acorn-marker img{width:100%;height:100%;display:block;pointer-events:none;}
-.effigy-acorn-marker.eff-acorn-found{opacity:.55;}
-.effigy-acorn-marker.eff-acorn-hover{transform:scale(1.35);opacity:1;filter:drop-shadow(0 0 3px #f0c000) drop-shadow(0 0 1px rgba(0,0,0,.6));}
+/* Effigy + journal map markers: icon glyphs (Flaticon, see footer credit) instead of plain
+   dots - full color for uncollected, grey/faded for already-found. Shared across the acorn
+   (effigy) and book (journal) markers since the sizing/hover/found behavior is identical.
+   Drop-shadow doubles as the hover ring since divIcons aren't SVG-restylable like
+   circleMarker was. */
+.eff-map-marker{filter:drop-shadow(0 0 1px rgba(0,0,0,.6));transition:transform .12s ease,opacity .12s ease;}
+.eff-map-marker img{width:100%;height:100%;display:block;pointer-events:none;}
+.eff-map-marker.eff-map-found{opacity:.55;}
+.eff-map-marker.eff-map-hover{transform:scale(1.35);opacity:1;filter:drop-shadow(0 0 3px #f0c000) drop-shadow(0 0 1px rgba(0,0,0,.6));}
 
 /* Header */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
@@ -1260,6 +1262,8 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 <div id="chart-tooltip" style="position:fixed;background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:4px 8px;border-radius:4px;font-size:11px;pointer-events:none;display:none;z-index:100;white-space:nowrap;"></div>
 <footer style="padding:14px 16px;text-align:center;font-size:11px;color:var(--muted);">
   <a href="https://www.flaticon.com/free-icons/acorn" title="acorn icons" style="color:inherit;" target="_blank" rel="noopener">Acorn icons created by Freepik - Flaticon</a>
+  &bull;
+  <a href="https://www.flaticon.com/free-icons/book" title="book icons" style="color:inherit;" target="_blank" rel="noopener">Book icons created by Freepik - Flaticon</a>
 </footer>
 
 <script>
@@ -3448,13 +3452,21 @@ var _effigyPrefsWaitTries=0;
 var EFFIGY_MAX_RANK=353;
 // Bigger dots on touch devices (no hover there, and a 5px dot is a tiny tap target).
 var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
-// Uncollected-effigy acorn glyph is a divIcon, not an SVG dot, so it needs its own
-// (slightly larger, so the shape actually reads) size in px rather than a radius.
+// Effigy/journal glyphs are divIcons, not SVG dots, so they need their own (slightly
+// larger, so the shape actually reads) size in px rather than a radius.
 var EFF_ACORN_SZ=EFF_DOT_R*4;
 function effigyAcornIcon(found){
   return L.divIcon({
-    className:'effigy-acorn-marker'+(found?' eff-acorn-found':''),
+    className:'eff-map-marker'+(found?' eff-map-found':''),
     html:'<img src="icons/effigy_'+(found?'acorn_found':'acorn')+'.png" alt="">',
+    iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
+    iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
+  });
+}
+function journalBookIcon(found){
+  return L.divIcon({
+    className:'eff-map-marker'+(found?' eff-map-found':''),
+    html:'<img src="icons/journal_'+(found?'book_found':'book')+'.png" alt="">',
     iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
@@ -3788,8 +3800,8 @@ function renderEffigyMap(){
       +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
     // Acorn glyph for both states: green = uncollected, grey/faded = already found.
     var m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(got),interactive:true});
-    m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-acorn-hover');this.bringToFront();});
-    m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-acorn-hover');});
+    m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.bringToFront();});
+    m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
     m._effigyMarker=true;
     m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
     m.addTo(effigyLeaflet);
@@ -3798,28 +3810,21 @@ function renderEffigyMap(){
   // Journal / diary note locations -- static, game-world-fixed. Entries that carry a "key"
   // (matched against the save's NoteObtainForInstanceFlag names) get real found/new coloring,
   // same convention as effigies (grey=found, blue=new); entries without a known key always
-  // render blue since their found state can't be determined yet.
+  // render blue since their found state can't be determined yet. Book glyph (Flaticon, see
+  // footer credit), same acorn-marker divIcon plumbing as effigies.
   if(effigyShowJournal&&journalLocations&&journalLocations.length){
     var journalCollectedSet=new Set(journalCollected.map(function(s){return s.toUpperCase();}));
     journalLocations.forEach(function(j){
       var trackable=!!j.key;
       var jGot=trackable&&journalCollectedSet.has(j.key.toUpperCase());
-      var jColor=jGot?'#484f58':'#3399ff';
-      var jm=L.circleMarker(effigyRposToLatLng(j.x,j.y),{
-        radius:EFF_DOT_R,
-        color:jColor,
-        fillColor:jGot?'#21262d':'#3399ff',
-        fillOpacity:jGot?0.45:0.85,
-        weight:2,
-        interactive:true
-      });
+      var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jGot),interactive:true});
       jm._journalMarker=true;
       var jStatus=trackable?(jGot?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#1673d1">Not yet found</b>'):'<span style="color:#8a8f98">Found status unknown</span>';
       jm.bindTooltip('<b style="color:#1673d1">'+j.name+'</b><br>'+jStatus
         +'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
-      jm.on('mouseover',function(){this.setRadius(EFF_DOT_R+3);this.setStyle({weight:3,color:'#f0c000'});this.bringToFront();});
-      jm.on('mouseout',function(){this.setRadius(EFF_DOT_R);this.setStyle({weight:2,color:jColor});});
+      jm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.bringToFront();});
+      jm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
       jm.addTo(effigyLeaflet);
     });
   }
