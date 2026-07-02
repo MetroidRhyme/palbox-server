@@ -27,6 +27,7 @@ $ErrorActionPreference = 'Stop'
 $SaveGamesRoot = Join-Path $Root 'Pal\Saved\SaveGames\0'
 $IniPath = Join-Path $Root 'Pal\Saved\Config\WindowsServer\GameUserSettings.ini'
 $EffigiesLocal = Join-Path $Root 'effigies.json'
+$BountyBossesLocal = Join-Path $Root 'bounty_bosses.json'
 $DashBase = 'http://localhost:8213'
 
 $PubData = Join-Path $OutDir 'data'
@@ -34,6 +35,7 @@ $PubAll = Join-Path $PubData 'all'
 $PubByPlayer = Join-Path $PubData 'by-player'
 $PubEffig = Join-Path $PubData 'player-effigies'
 $PubNotes = Join-Path $PubData 'player-notes'
+$PubBounty = Join-Path $PubData 'player-bounties'
 
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 
@@ -80,10 +82,11 @@ New-Item -ItemType Directory -Force -Path $PubData | Out-Null
 # player never lingers in the output set.
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doFreq) {
-  foreach ($d in @($PubAll, $PubEffig, $PubNotes)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   Get-ChildItem -LiteralPath $PubAll -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEffig -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNotes -File -ErrorAction SilentlyContinue | Remove-Item -Force
+  Get-ChildItem -LiteralPath $PubBounty -File -ErrorAction SilentlyContinue | Remove-Item -Force
   if (Test-Path -LiteralPath $PubByPlayer) { Remove-Item -LiteralPath $PubByPlayer -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $PubByPlayer | Out-Null
 
@@ -226,6 +229,26 @@ if ($doFreq) {
     [System.IO.File]::WriteAllText((Join-Path $PubNotes ($guid + '.json')), $pn, $utf8)
   }
 
+  # ── player-bounties/<guid>.json (bounty-boss / named-Alpha defeat state, one per player) ─
+  # Mirrors player-effigies/player-notes above but for NormalBossDefeatFlag, resolved to
+  # bounty-boss species codes by pal_save_reader.py's extract_bounty_data (matched against
+  # bounty_bosses.json so the species list and map locations can't drift apart).
+  Write-Step "building data/player-bounties/*.json"
+  foreach ($p in @($paldeckObj.players)) {
+    $guid = [string]$p.guid
+    if (-not $guid) { continue }
+    $pb = Get-DashJson ('/api/player-bounties?guid=' + $guid)
+    if (-not $pb) {
+      try {
+        $pb = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'bounties', $guid)
+      } catch {
+        Write-Step "  skipped bounties for $guid ($($_.Exception.Message))"
+        continue
+      }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $PubBounty ($guid + '.json')), $pb, $utf8)
+  }
+
   # ── Server settings (read-only view) ─────────────────────────────────────────
   # Publishes data/settings.json for the public Settings tab. The entire 'Server'
   # category (server/admin passwords, ports, RCON/REST toggles) is dropped here at the
@@ -296,6 +319,18 @@ if ($doStatic) {
   } else {
     Write-Step "WARNING: journal_locations.json missing; journal overlay will be empty"
     [System.IO.File]::WriteAllText((Join-Path $PubData 'journals.json'), '[]', $utf8)
+  }
+
+  # ── bounty-bosses.json (static bounty-boss / named-Alpha locations, game-world fixed) ──
+  # Curated from paldb's DT_PaldexDistributionData BOSS_<Species> entries with exactly one
+  # fixed world location; bundled as a static file. The dashboard serves the same JSON at
+  # /api/bounty-bosses, which the data-fetch repoint points here.
+  Write-Step "building data/bounty-bosses.json"
+  if (Test-Path -LiteralPath $BountyBossesLocal) {
+    Copy-Item -Path $BountyBossesLocal -Destination (Join-Path $PubData 'bounty-bosses.json') -Force
+  } else {
+    Write-Step "WARNING: bounty_bosses.json missing; bounty-boss overlay will be empty"
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), '[]', $utf8)
   }
 
   # ── pal-species.json (curated species data: type/work/skills/stats) ──────────

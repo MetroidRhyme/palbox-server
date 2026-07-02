@@ -342,6 +342,16 @@ export default {
       return noStore(json({ collected: [] }, 200));
     }
 
+    // Per-player bounty-boss (named Alpha) defeat state: same scoping as player-effigies above.
+    if (path.startsWith('/data/player-bounties/')) {
+      const g = path.slice('/data/player-bounties/'.length).replace(/\.json$/i, '');
+      if (scope === 'all' || (scope && g.toLowerCase() === scope.toLowerCase())) {
+        const keyGuid = (scope === 'all') ? g.toUpperCase() : scope;
+        return noStore(await r2Serve(env, 'player-bounties/' + keyGuid + '.json', json({ collected: [] }, 200)));
+      }
+      return noStore(json({ collected: [] }, 200));
+    }
+
     // Server settings: same redacted view for every authenticated user, from R2.
     // Not per-user, so it need not be no-store, but it still requires having passed
     // Access (host guard above).

@@ -1,0 +1,345 @@
+[
+  {
+    "species": "Anubis",
+    "name": "Anubis",
+    "x": -167230.0,
+    "y": 96430.0,
+    "z": -1720.0
+  },
+  {
+    "species": "BlackMetalDragon",
+    "name": "Astegon",
+    "x": -320870.0,
+    "y": -124090.0,
+    "z": 18490.0
+  },
+  {
+    "species": "BlueThunderHorse",
+    "name": "Azurmane",
+    "x": -727685.3,
+    "y": -349625.47,
+    "z": 1178.61
+  },
+  {
+    "species": "ThunderBird",
+    "name": "Beakon",
+    "x": -239970.0,
+    "y": -450.0,
+    "z": 7260.0
+  },
+  {
+    "species": "KingBahamut",
+    "name": "Blazamut",
+    "x": -381240.0,
+    "y": -44760.0,
+    "z": 8530.0
+  },
+  {
+    "species": "SakuraSaurus",
+    "name": "Broncherry",
+    "x": -431050.44,
+    "y": 56140.59,
+    "z": -1864.76
+  },
+  {
+    "species": "SakuraSaurus_Water",
+    "name": "Broncherry Aqua",
+    "x": -329427.8,
+    "y": 81512.31,
+    "z": -1862.61
+  },
+  {
+    "species": "BerryGoat_Dark",
+    "name": "Caprity Noct",
+    "x": -882660.0,
+    "y": -376490.0,
+    "z": -1910.0
+  },
+  {
+    "species": "WhiteDeer",
+    "name": "Celesdir",
+    "x": -663312.1,
+    "y": -284782.62,
+    "z": 1422.1
+  },
+  {
+    "species": "WeaselDragon",
+    "name": "Chillet",
+    "x": -315583.53,
+    "y": 237116.97,
+    "z": 2448.41
+  },
+  {
+    "species": "WhiteTiger_Ground",
+    "name": "Cryolinx Terra",
+    "x": -838350.0,
+    "y": -376940.0,
+    "z": 4220.0
+  },
+  {
+    "species": "RaijinDaughter_Water",
+    "name": "Dazzi Noct",
+    "x": -848870.0,
+    "y": -458610.0,
+    "z": 370.0
+  },
+  {
+    "species": "FlowerDinosaur_Electric",
+    "name": "Dinossom Lux",
+    "x": 122760.0,
+    "y": 318710.0,
+    "z": 320.0
+  },
+  {
+    "species": "QueenBee",
+    "name": "Elizabee",
+    "x": -196380.0,
+    "y": 166870.0,
+    "z": -2050.0
+  },
+  {
+    "species": "FairyDragon",
+    "name": "Elphidran",
+    "x": -254060.0,
+    "y": 178050.0,
+    "z": 4000.0
+  },
+  {
+    "species": "Horus_Water",
+    "name": "Faleris Aqua",
+    "x": -605010.5,
+    "y": -130144.8,
+    "z": -2102.61
+  },
+  {
+    "species": "FengyunDeeper",
+    "name": "Fenglope",
+    "x": -333940.0,
+    "y": 39610.0,
+    "z": 1600.0
+  },
+  {
+    "species": "FengyunDeeper_Electric",
+    "name": "Fenglope Lux",
+    "x": -635928.44,
+    "y": -224786.02,
+    "z": -849.03
+  },
+  {
+    "species": "Kitsunebi_Ice",
+    "name": "Foxparks Cryst",
+    "x": -722610.0,
+    "y": -431080.0,
+    "z": 10186.04
+  },
+  {
+    "species": "IceHorse",
+    "name": "Frostallion",
+    "x": 109790.0,
+    "y": -5880.0,
+    "z": 22180.0
+  },
+  {
+    "species": "GoldenHorse",
+    "name": "Gildane",
+    "x": -685460.0,
+    "y": -191380.0,
+    "z": 4870.0
+  },
+  {
+    "species": "NaughtyCat",
+    "name": "Grintale",
+    "x": -236727.1,
+    "y": 321310.12,
+    "z": -1909.38
+  },
+  {
+    "species": "PlantSlime",
+    "name": "Gumoss",
+    "x": -412259.28,
+    "y": 106237.67,
+    "z": -2035.61
+  },
+  {
+    "species": "JetDragon",
+    "name": "Jetragon",
+    "x": -271220.0,
+    "y": -204190.0,
+    "z": 3760.0
+  },
+  {
+    "species": "KingAlpaca",
+    "name": "Kingpaca",
+    "x": -335225.0,
+    "y": 180735.0,
+    "z": 475.0
+  },
+  {
+    "species": "KingAlpaca_Ice",
+    "name": "Kingpaca Cryst",
+    "x": 91527.57,
+    "y": 53307.61,
+    "z": 17514.29
+  },
+  {
+    "species": "AmaterasuWolf_Dark",
+    "name": "Kitsun Noct",
+    "x": -649355.75,
+    "y": -317586.72,
+    "z": 20147.98
+  },
+  {
+    "species": "WingGolem",
+    "name": "Knocklem",
+    "x": -44230.0,
+    "y": -152230.0,
+    "z": -2100.0
+  },
+  {
+    "species": "Werewolf_Ice",
+    "name": "Loupmoon Cryst",
+    "x": -502070.0,
+    "y": -276210.0,
+    "z": -440.0
+  },
+  {
+    "species": "LilyQueen_Dark",
+    "name": "Lyleen Noct",
+    "x": 33500.0,
+    "y": 84430.0,
+    "z": 5360.0
+  },
+  {
+    "species": "GrassMammoth",
+    "name": "Mammorest",
+    "x": -343155.0,
+    "y": 244585.0,
+    "z": -95.0
+  },
+  {
+    "species": "DarkScorpion",
+    "name": "Menasting",
+    "x": -77080.27,
+    "y": 394535.8,
+    "z": 575.36
+  },
+  {
+    "species": "DarkScorpion_Ground",
+    "name": "Menasting Terra",
+    "x": 28540.0,
+    "y": -105820.0,
+    "z": -1590.0
+  },
+  {
+    "species": "GrassPanda_Electric",
+    "name": "Mossanda Lux",
+    "x": -206970.0,
+    "y": 363810.0,
+    "z": 1140.0
+  },
+  {
+    "species": "BlackCentaur",
+    "name": "Necromus",
+    "x": 187860.0,
+    "y": 363020.0,
+    "z": 2650.0
+  },
+  {
+    "species": "HawkBird",
+    "name": "Nitewing",
+    "x": -155950.0,
+    "y": 31260.0,
+    "z": -1960.0
+  },
+  {
+    "species": "BadCatgirl",
+    "name": "Nyafia",
+    "x": -555394.56,
+    "y": -353314.03,
+    "z": 22322.26
+  },
+  {
+    "species": "MysteryMask",
+    "name": "Omascul",
+    "x": -807770.0,
+    "y": -385160.0,
+    "z": 5590.0
+  },
+  {
+    "species": "SaintCentaur",
+    "name": "Paladius",
+    "x": 187860.0,
+    "y": 363020.0,
+    "z": 2650.0
+  },
+  {
+    "species": "PinkRabbit_Grass",
+    "name": "Ribbuny Botan",
+    "x": -745180.0,
+    "y": -398020.0,
+    "z": 36400.0
+  },
+  {
+    "species": "WhiteShieldDragon",
+    "name": "Silvegis",
+    "x": -593142.44,
+    "y": -293751.53,
+    "z": 1161.27
+  },
+  {
+    "species": "GrimGirl",
+    "name": "Splatterina",
+    "x": -732424.9,
+    "y": -396803.44,
+    "z": 10404.58
+  },
+  {
+    "species": "NightBlueHorse",
+    "name": "Starryon",
+    "x": -555190.0,
+    "y": -188780.0,
+    "z": -426.55
+  },
+  {
+    "species": "Suzaku",
+    "name": "Suzaku",
+    "x": -6430.0,
+    "y": 343440.0,
+    "z": 110.0
+  },
+  {
+    "species": "MopKing",
+    "name": "Sweepa",
+    "x": -396003.12,
+    "y": 53772.16,
+    "z": -1575.8
+  },
+  {
+    "species": "PurpleSpider",
+    "name": "Tarantriss",
+    "x": -779670.0,
+    "y": -457500.0,
+    "z": 6080.0
+  },
+  {
+    "species": "Kirin",
+    "name": "Univolt",
+    "x": -372950.0,
+    "y": 104400.0,
+    "z": -770.0
+  },
+  {
+    "species": "HerculesBeetle_Ground",
+    "name": "Warsect Terra",
+    "x": -788310.0,
+    "y": -310830.0,
+    "z": 9090.0
+  },
+  {
+    "species": "Yeti_Grass",
+    "name": "Wumpo Botan",
+    "x": -147370.0,
+    "y": 364010.0,
+    "z": -1940.0
+  }
+]

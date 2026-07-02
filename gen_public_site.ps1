@@ -246,6 +246,7 @@ $html = $html.Replace("'/api/server-messages'", "'data/server-messages.json'")
 $html = $html.Replace("'/api/paldeck'", "'data/paldeck.json'")
 $html = $html.Replace("'/api/effigies'", "'data/effigies.json'")
 $html = $html.Replace("'/api/journals'", "'data/journals.json'")
+$html = $html.Replace("'/api/bounty-bosses'", "'data/bounty-bosses.json'")
 $html = $html.Replace("'/api/pal-species'", "'data/pal-species.json'")
 $html = $html.Replace("'/api/pal-skills'", "'data/pal-skills.json'")
 $html = $html.Replace("'/api/pal-passives'", "'data/pal-passives.json'")
@@ -255,6 +256,9 @@ $html = $html.Replace(
 $html = $html.Replace(
   "'/api/player-notes?guid='+encodeURIComponent(guid)",
   "'data/player-notes/'+encodeURIComponent(guid)+'.json'")
+$html = $html.Replace(
+  "'/api/player-bounties?guid='+encodeURIComponent(guid)",
+  "'data/player-bounties/'+encodeURIComponent(guid)+'.json'")
 # Portraits: 3 distinct call sites cover all 4 usages (palPortrait body + paldeck row,
 # spawn-modal header img, alpha/boss icon).
 $html = $html.Replace(

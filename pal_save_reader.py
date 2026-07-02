@@ -106,6 +106,45 @@ def extract_effigy_data(sav_path):
     return parse_name_bool_map(raw, p)
 
 
+def load_bounty_species():
+    """Species codes tracked as "bounty bosses" -- the curated set of named legendary
+    Alpha bosses in bounty_bosses.json (single fixed world location each, source: paldb's
+    DT_PaldexDistributionData). Loaded from the file next to this script (not hardcoded
+    here) so the species list and the map locations can never drift out of sync."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bounty_bosses.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return [b["species"] for b in data if b.get("species")]
+    except Exception:
+        return []
+
+
+def extract_bounty_data(sav_path):
+    """Return the list of bounty-boss species codes this player has defeated.
+
+    NormalBossDefeatFlag (same NameProperty->BoolProperty map shape as effigies'
+    RelicObtainForInstanceFlag) keys named legendary Alphas as
+    "<zone>_<n>_<biome>_F_BOSS_<SPECIES>" (e.g. "1_10_PLAIN_F_BOSS_FAIRYDRAGON"). The same
+    flag also carries many unrelated entries (generic numbered field-alpha spawns, human
+    Syndicate/bandit "boss" fights) that we don't have location data for, so we only match
+    keys whose suffix identifies one of our known bounty-boss species.
+    """
+    raw = decompress_save(sav_path)
+    pos = find_property(raw, "NormalBossDefeatFlag")
+    if pos == -1:
+        return []
+    _, p = read_fstring(raw, pos)
+    _, p = read_fstring(raw, p)
+    flags = parse_name_bool_map(raw, p)  # already-true, uppercased keys
+    defeated = []
+    for species in load_bounty_species():
+        suffix = "_BOSS_" + species.upper()
+        if any(k.endswith(suffix) for k in flags):
+            defeated.append(species)
+    return defeated
+
+
 def extract_player_data(sav_path):
     raw = decompress_save(sav_path)
 
@@ -222,6 +261,20 @@ def main():
             return
         try:
             collected = extract_effigy_data(sav_path)
+            print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
+        return
+
+    # bounties mode: python pal_save_reader.py <save_dir> bounties <guid>
+    if len(sys.argv) > 2 and sys.argv[2] == "bounties":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            collected = extract_bounty_data(sav_path)
             print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))

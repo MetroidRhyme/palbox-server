@@ -589,6 +589,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .eff-map-marker img{width:100%;height:100%;display:block;pointer-events:none;}
 .eff-map-marker.eff-map-found{opacity:.55;}
 .eff-map-marker.eff-map-hover{transform:scale(1.35);opacity:1;filter:drop-shadow(0 0 3px #f0c000) drop-shadow(0 0 1px rgba(0,0,0,.6));}
+/* Bounty-boss (named Alpha) marker: circular portrait ring, same divIcon plumbing as
+   effigies/journals above but with the Pal's own portrait instead of a glyph, and a
+   grayscale wash (not just the shared opacity fade) when defeated so it reads as "spent". */
+.bounty-marker .bounty-ring{width:100%;height:100%;border-radius:50%;overflow:hidden;border:2px solid #e3b341;box-shadow:0 1px 4px rgba(0,0,0,.85);background:#1a1a1a;}
+.bounty-marker img{border-radius:50%;object-fit:cover;}
+.bounty-marker.eff-map-found .bounty-ring{border-color:#484f58;filter:grayscale(1) brightness(.65);}
 
 /* Header */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
@@ -1039,6 +1045,8 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
           <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide effigies you have already found"><span style="color:#484f58;">&#9679;</span> Found</button>
           <button id="eff-filt-journal" onclick="toggleEffigyFilter('journal')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide journal / diary note locations"><span style="color:#3399ff;">&#9679;</span> Journals</button>
           <span id="journal-summary" style="color:var(--muted);font-size:11px;" title="Journal / diary notes collected, from the save (individual notes on the map aren't matched to specific locations yet)"></span>
+          <button id="eff-filt-bounty" onclick="toggleEffigyFilter('bounty')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide named Alpha boss (Bounty Token) locations"><span style="color:#e3b341;">&#9679;</span> Bounties</button>
+          <span id="bounty-summary" style="color:var(--muted);font-size:11px;" title="Named legendary Alpha bosses defeated, from the save"></span>
         </span>
         <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
       </div>
@@ -3471,6 +3479,21 @@ function journalBookIcon(found){
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
 }
+// Bounty-boss (named legendary Alpha) marker: the Pal's own portrait in a circular ring
+// (same style as makeBossIcon on the per-species spawn map) instead of a fixed glyph, since
+// each bounty boss IS a different Pal. Grayed out via CSS (.bounty-marker.eff-map-found)
+// once NormalBossDefeatFlag shows that species defeated, rather than swapping images -- we
+// don't have a separate "grey" portrait asset per Pal.
+var BOUNTY_ICON_SZ=EFF_ACORN_SZ*1.6;
+function bountyBossIcon(name,found){
+  var img='<img src="'+palPortrait(name)+'" onerror="this.style.visibility=\'hidden\'">';
+  return L.divIcon({
+    className:'eff-map-marker bounty-marker'+(found?' eff-map-found':''),
+    html:'<div class="bounty-ring">'+img+'</div>',
+    iconSize:[BOUNTY_ICON_SZ,BOUNTY_ICON_SZ],
+    iconAnchor:[BOUNTY_ICON_SZ/2,BOUNTY_ICON_SZ/2]
+  });
+}
 
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
 // from /api/journals and overlaid on the same map as blue dots.
@@ -3486,21 +3509,31 @@ var journalLocations=null;
 var journalCollected=[], journalCollectedCount=null;
 var JOURNAL_MAX=49;
 
+// Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
+// loaded once from /api/bounty-bosses (see bounty_bosses.json). Each entry has {species,
+// name, x, y, z}; "species" is what NormalBossDefeatFlag entries in the save are matched
+// against (see extract_bounty_data in pal_save_reader.py).
+var bossLocations=null;
+// Per-player defeat state: list of species codes, from NormalBossDefeatFlag.
+var bossCollected=[];
+
 // Global visibility filter for the effigy map. Two independent toggles let the player hide
 // the effigies they have already found or the ones still new/undiscovered, to declutter the
 // map. This is a VIEW filter only -- it never changes a Pal's actual found state (which comes
-// solely from the save). Both default on. effigyShowJournal is a third, independent toggle
-// for the journal-note overlay (unrelated to found/new since journals have no per-save state).
-var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true;
+// solely from the save). Both default on. effigyShowJournal/effigyShowBounty are independent
+// toggles for the journal-note / bounty-boss overlays (unrelated to found/new).
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true;
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
   if(bj) bj.style.opacity=effigyShowJournal?'1':'0.4';
+  if(bb) bb.style.opacity=effigyShowBounty?'1':'0.4';
 }
 function toggleEffigyFilter(which){
   if(which==='found') effigyShowFound=!effigyShowFound;
   else if(which==='journal') effigyShowJournal=!effigyShowJournal;
+  else if(which==='bounty') effigyShowBounty=!effigyShowBounty;
   else effigyShowNew=!effigyShowNew;
   setEffigyFilterBtns();
   renderEffigyMap();
@@ -3546,7 +3579,7 @@ function collectPrefs(){
   }
   var players={};
   if(PREFS&&PREFS.players){ players.paldeck=PREFS.players.paldeck; players.effigy=PREFS.players.effigy; }
-  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal};
+  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty};
   // Skip persisting while a watch is mid-edit-preview (palEditId/eggEditId set): the filter
   // controls hold that watch's criteria for live preview only, not the user's real standing
   // filter, and must not overwrite it just because a render happened to fire (e.g. clicking a
@@ -3614,7 +3647,7 @@ function maybeApplyEffigyPrefs(){
   if(prefsApplied.effigy||!prefsReady)return;
   prefsApplied.effigy=true;
   var e=PREFS&&PREFS.effigy;
-  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; setEffigyFilterBtns(); }
+  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; effigyShowBounty=e.bounty!==false; setEffigyFilterBtns(); }
   var pe=PREFS&&PREFS.players&&PREFS.players.effigy;
   var sel=document.getElementById('effigy-player');
   if(sel&&pe&&_optExists(sel,pe))sel.value=pe;
@@ -3651,6 +3684,7 @@ function initEffigyView(){
       }
       fetchEffigyLocations();
       fetchJournalLocations();
+      fetchBossLocations();
     });
   });
 }
@@ -3682,6 +3716,19 @@ async function fetchJournalLocations(){
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
     journalLocations=[];
+  }
+}
+
+// Static, game-world-fixed bounty-boss (named legendary Alpha) locations. Same loading
+// convention as journals above: loaded once, failures are silent (no boss markers) rather
+// than blocking the rest of the effigy map.
+async function fetchBossLocations(){
+  if(bossLocations)return;
+  try{
+    bossLocations=await api('/api/bounty-bosses');
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    bossLocations=[];
   }
 }
 
@@ -3744,7 +3791,7 @@ function populateEffigyPlayerDropdown(){
 async function fetchEffigyPlayer(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
-  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);return;}
+  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);return;}
   document.getElementById('effigy-summary').textContent='Loading...';
   try{
     var data=await api('/api/player-effigies?guid='+encodeURIComponent(guid));
@@ -3755,6 +3802,7 @@ async function fetchEffigyPlayer(){
   }
   renderEffigyMap();
   fetchJournalPlayer(guid);
+  fetchBossPlayer(guid);
 }
 
 // Journal collection state for the selected player (see journalCollected comment above).
@@ -3777,10 +3825,29 @@ function renderJournalSummary(){
   el.textContent=(journalCollectedCount===null)?'':(journalCollectedCount+' / '+JOURNAL_MAX+' found');
 }
 
+// Bounty-boss defeat state for the selected player (see bossCollected comment above).
+async function fetchBossPlayer(guid){
+  if(!guid){bossCollected=[];renderBountySummary();if(effigyLeaflet)renderEffigyMap();return;}
+  try{
+    var data=await api('/api/player-bounties?guid='+encodeURIComponent(guid));
+    bossCollected=data.collected||[];
+  }catch(e){
+    bossCollected=[];
+  }
+  renderBountySummary();
+  if(effigyLeaflet) renderEffigyMap();
+}
+function renderBountySummary(){
+  var el=document.getElementById('bounty-summary');
+  if(!el)return;
+  var total=bossLocations?bossLocations.length:0;
+  el.textContent=total?(bossCollected.length+' / '+total+' defeated'):'';
+}
+
 function renderEffigyMap(){
   if(!effigyLeaflet||!effigyLocations) return;
   var toRemove=[];
-  effigyLeaflet.eachLayer(function(l){if(l._effigyMarker||l._journalMarker) toRemove.push(l);});
+  effigyLeaflet.eachLayer(function(l){if(l._effigyMarker||l._journalMarker||l._bountyMarker) toRemove.push(l);});
   toRemove.forEach(function(l){effigyLeaflet.removeLayer(l);});
 
   var collectedSet=new Set(effigyCollected.map(function(s){return s.toUpperCase();}));
@@ -3800,7 +3867,7 @@ function renderEffigyMap(){
       +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
     // Acorn glyph for both states: green = uncollected, grey/faded = already found.
     var m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(got),interactive:true});
-    m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.bringToFront();});
+    m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
     m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
     m._effigyMarker=true;
     m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
@@ -3825,9 +3892,31 @@ function renderEffigyMap(){
       jm.bindTooltip('<b style="color:#1673d1">'+j.name+'</b><br>'+jStatus
         +'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
-      jm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.bringToFront();});
+      jm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       jm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
       jm.addTo(effigyLeaflet);
+    });
+  }
+
+  // Bounty-boss (named legendary Alpha) locations -- game-world fixed, one entry per known
+  // boss species (bounty_bosses.json). "got" comes from NormalBossDefeatFlag via
+  // extract_bounty_data (see pal_save_reader.py): the boss's own portrait in color when
+  // still alive, grayed out once defeated. Unlike effigies/journals there's no "New" state
+  // to hide -- effigyShowFound also governs whether defeated bosses stay visible (grayed)
+  // or disappear, same convention as the found toggle elsewhere on this map.
+  if(effigyShowBounty&&bossLocations&&bossLocations.length){
+    var bossCollectedSet=new Set(bossCollected.map(function(s){return s.toUpperCase();}));
+    bossLocations.forEach(function(b){
+      var bGot=bossCollectedSet.has((b.species||'').toUpperCase());
+      if(bGot&&!effigyShowFound) return;
+      var bm=L.marker(effigyRposToLatLng(b.x,b.y),{icon:bountyBossIcon(b.name,bGot),interactive:true});
+      bm._bountyMarker=true;
+      var bStatus=bGot?'<span style="color:#5a6573">&#10003; Defeated</span>':'<b style="color:#e3b341">Alpha Boss</b>';
+      bm.bindTooltip('<b style="color:#111;">'+b.name+'</b><br>'+bStatus,
+        {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+      bm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
+      bm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+      bm.addTo(effigyLeaflet);
     });
   }
 
@@ -5692,6 +5781,28 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     break
                 }
 
+                ($path -eq '/api/bounty-bosses' -and $method -eq 'GET') {
+                    # Static bounty-boss (named legendary Alpha) locations, sourced from
+                    # paldb's DT_PaldexDistributionData BOSS_<Species> entries with exactly
+                    # one fixed world location (see bounty_bosses.json). The public site
+                    # bundles this as a static file; here we serve it from the same JSON so
+                    # both dashboards match.
+                    try {
+                        if (-not $script:bountyBossData) {
+                            $f = "$ServerDir\bounty_bosses.json"
+                            if (Test-Path -LiteralPath $f) {
+                                $script:bountyBossData = [System.IO.File]::ReadAllText($f)
+                            } else {
+                                $script:bountyBossData = '[]'
+                            }
+                        }
+                        Send-Response $res 200 "application/json" $script:bountyBossData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/pal-species' -and $method -eq 'GET') {
                     # Curated species-level data (type/work/skills/stats) built by
                     # build_pal_species.py. The public site bundles this as a static file;
@@ -5781,6 +5892,27 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir notes $guid 2>$null
+                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/player-bounties' -and $method -eq 'GET') {
+                    # Bounty-boss (named legendary Alpha) defeat state, read from
+                    # NormalBossDefeatFlag in the player's save (same mechanism as effigies'
+                    # RelicObtainForInstanceFlag). "collected" here is a list of species codes
+                    # matched against bounty_bosses.json, not raw instance IDs -- see
+                    # extract_bounty_data in pal_save_reader.py.
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir bounties $guid 2>$null
                         if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                         Send-Response $res 200 "application/json" ($rawJson -join '')
                     } catch {
