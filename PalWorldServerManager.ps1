@@ -1029,6 +1029,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
           <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide effigies you have not found yet"><span style="color:#3fb950;">&#9679;</span> New</button>
           <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide effigies you have already found"><span style="color:#484f58;">&#9679;</span> Found</button>
           <button id="eff-filt-journal" onclick="toggleEffigyFilter('journal')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide journal / diary note locations"><span style="color:#3399ff;">&#9679;</span> Journals</button>
+          <span id="journal-summary" style="color:var(--muted);font-size:11px;" title="Journal / diary notes collected, from the save (individual notes on the map aren't matched to specific locations yet)"></span>
         </span>
         <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
       </div>
@@ -3440,6 +3441,16 @@ var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
 // from /api/journals and overlaid on the same map as blue dots.
 var journalLocations=null;
+// Per-player journal collection state, from NoteObtainForInstanceFlag in the save (same
+// mechanism as effigies' RelicObtainForInstanceFlag). The in-game Notes/Journal count (49)
+// also includes dungeon-boss lore notes (e.g. GrassBoss1, VikingBoss2) that have no map
+// location at all, so journalCollectedCount (used for the toolbar "N / 49" summary) will
+// never be fully reachable via the map alone. Per-DOT found/new coloring is only possible
+// for entries that carry a "key" in journal_locations.json (currently the Castaway's
+// Journal "DayN" entries, confirmed/inferred from the actual save key names) -- entries
+// without a key always render as "new" since their found state can't be determined.
+var journalCollected=[], journalCollectedCount=null;
+var JOURNAL_MAX=49;
 
 // Global visibility filter for the effigy map. Two independent toggles let the player hide
 // the effigies they have already found or the ones still new/undiscovered, to declutter the
@@ -3682,7 +3693,7 @@ function populateEffigyPlayerDropdown(){
 async function fetchEffigyPlayer(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
-  if(!guid){effigyCollected=[];renderEffigyMap();return;}
+  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);return;}
   document.getElementById('effigy-summary').textContent='Loading...';
   try{
     var data=await api('/api/player-effigies?guid='+encodeURIComponent(guid));
@@ -3692,6 +3703,27 @@ async function fetchEffigyPlayer(){
     toast('Could not load effigy data for player: '+e.message,'error');
   }
   renderEffigyMap();
+  fetchJournalPlayer(guid);
+}
+
+// Journal collection state for the selected player (see journalCollected comment above).
+async function fetchJournalPlayer(guid){
+  if(!guid){journalCollected=[];journalCollectedCount=null;renderJournalSummary();if(effigyLeaflet)renderEffigyMap();return;}
+  try{
+    var data=await api('/api/player-notes?guid='+encodeURIComponent(guid));
+    journalCollected=data.collected||[];
+    journalCollectedCount=journalCollected.length;
+  }catch(e){
+    journalCollected=[];
+    journalCollectedCount=null;
+  }
+  renderJournalSummary();
+  if(effigyLeaflet) renderEffigyMap();
+}
+function renderJournalSummary(){
+  var el=document.getElementById('journal-summary');
+  if(!el)return;
+  el.textContent=(journalCollectedCount===null)?'':(journalCollectedCount+' / '+JOURNAL_MAX+' found');
 }
 
 function renderEffigyMap(){
@@ -3732,24 +3764,31 @@ function renderEffigyMap(){
     m.addTo(effigyLeaflet);
   });
 
-  // Journal / diary note locations (blue dots) -- static, game-world-fixed, no found/new
-  // state, so they only respect their own Journals toggle.
+  // Journal / diary note locations -- static, game-world-fixed. Entries that carry a "key"
+  // (matched against the save's NoteObtainForInstanceFlag names) get real found/new coloring,
+  // same convention as effigies (grey=found, blue=new); entries without a known key always
+  // render blue since their found state can't be determined yet.
   if(effigyShowJournal&&journalLocations&&journalLocations.length){
+    var journalCollectedSet=new Set(journalCollected.map(function(s){return s.toUpperCase();}));
     journalLocations.forEach(function(j){
+      var trackable=!!j.key;
+      var jGot=trackable&&journalCollectedSet.has(j.key.toUpperCase());
+      var jColor=jGot?'#484f58':'#3399ff';
       var jm=L.circleMarker(effigyRposToLatLng(j.x,j.y),{
         radius:EFF_DOT_R,
-        color:'#3399ff',
-        fillColor:'#3399ff',
-        fillOpacity:0.85,
+        color:jColor,
+        fillColor:jGot?'#21262d':'#3399ff',
+        fillOpacity:jGot?0.45:0.85,
         weight:2,
         interactive:true
       });
       jm._journalMarker=true;
-      jm.bindTooltip('<b style="color:#3399ff">'+j.name+'</b>'
+      var jStatus=trackable?(jGot?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#1673d1">Not yet found</b>'):'<span style="color:#8a8f98">Found status unknown</span>';
+      jm.bindTooltip('<b style="color:#1673d1">'+j.name+'</b><br>'+jStatus
         +'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       jm.on('mouseover',function(){this.setRadius(EFF_DOT_R+3);this.setStyle({weight:3,color:'#f0c000'});this.bringToFront();});
-      jm.on('mouseout',function(){this.setRadius(EFF_DOT_R);this.setStyle({weight:2,color:'#3399ff'});});
+      jm.on('mouseout',function(){this.setRadius(EFF_DOT_R);this.setStyle({weight:2,color:jColor});});
       jm.addTo(effigyLeaflet);
     });
   }
@@ -5683,6 +5722,27 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir effigies $guid 2>$null
+                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/player-notes' -and $method -eq 'GET') {
+                    # Journal/diary note collection state, read from NoteObtainForInstanceFlag
+                    # in the player's save (same mechanism as effigies' RelicObtainForInstanceFlag).
+                    # Gives an accurate collected COUNT; individual notes aren't matched to specific
+                    # instance IDs yet (no known GUID->location mapping for notes), so the map
+                    # can't color specific dots found/new the way effigies does.
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir notes $guid 2>$null
                         if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                         Send-Response $res 200 "application/json" ($rawJson -join '')
                     } catch {

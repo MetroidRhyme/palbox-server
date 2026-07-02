@@ -33,6 +33,7 @@ $PubData = Join-Path $OutDir 'data'
 $PubAll = Join-Path $PubData 'all'
 $PubByPlayer = Join-Path $PubData 'by-player'
 $PubEffig = Join-Path $PubData 'player-effigies'
+$PubNotes = Join-Path $PubData 'player-notes'
 
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 
@@ -79,9 +80,10 @@ New-Item -ItemType Directory -Force -Path $PubData | Out-Null
 # player never lingers in the output set.
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doFreq) {
-  foreach ($d in @($PubAll, $PubEffig)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+  foreach ($d in @($PubAll, $PubEffig, $PubNotes)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   Get-ChildItem -LiteralPath $PubAll -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEffig -File -ErrorAction SilentlyContinue | Remove-Item -Force
+  Get-ChildItem -LiteralPath $PubNotes -File -ErrorAction SilentlyContinue | Remove-Item -Force
   if (Test-Path -LiteralPath $PubByPlayer) { Remove-Item -LiteralPath $PubByPlayer -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $PubByPlayer | Out-Null
 
@@ -202,6 +204,26 @@ if ($doFreq) {
       }
     }
     [System.IO.File]::WriteAllText((Join-Path $PubEffig ($guid + '.json')), $pe, $utf8)
+  }
+
+  # ── player-notes/<guid>.json (journal/diary collection COUNT, one per player) ─
+  # Mirrors player-effigies above but for NoteObtainForInstanceFlag. There is no known
+  # instance-ID -> named-journal mapping (unlike effigies), so this only supports a
+  # collected COUNT on the client, not per-location found/new marking.
+  Write-Step "building data/player-notes/*.json"
+  foreach ($p in @($paldeckObj.players)) {
+    $guid = [string]$p.guid
+    if (-not $guid) { continue }
+    $pn = Get-DashJson ('/api/player-notes?guid=' + $guid)
+    if (-not $pn) {
+      try {
+        $pn = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'notes', $guid)
+      } catch {
+        Write-Step "  skipped notes for $guid ($($_.Exception.Message))"
+        continue
+      }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $PubNotes ($guid + '.json')), $pn, $utf8)
   }
 
   # ── Server settings (read-only view) ─────────────────────────────────────────

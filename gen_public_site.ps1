@@ -252,6 +252,9 @@ $html = $html.Replace("'/api/pal-passives'", "'data/pal-passives.json'")
 $html = $html.Replace(
   "'/api/player-effigies?guid='+encodeURIComponent(guid)",
   "'data/player-effigies/'+encodeURIComponent(guid)+'.json'")
+$html = $html.Replace(
+  "'/api/player-notes?guid='+encodeURIComponent(guid)",
+  "'data/player-notes/'+encodeURIComponent(guid)+'.json'")
 # Portraits: 3 distinct call sites cover all 4 usages (palPortrait body + paldeck row,
 # spawn-modal header img, alpha/boss icon).
 $html = $html.Replace(
@@ -452,6 +455,7 @@ if ($html.Contains("'/api/eggs'")) { throw "eggs fetch was not repointed" }
 if ($html.Contains("'/api/server-messages'")) { throw "server-messages fetch was not repointed" }
 if ($html.Contains('/api/palicon')) { throw "a palicon reference was left unrewritten" }
 if ($html.Contains("'/api/journals'")) { throw "journals fetch was not repointed" }
+if ($html.Contains("'/api/player-notes?guid='")) { throw "player-notes fetch was not repointed" }
 if ($html.Contains('function kickPlayer')) { throw "admin JS block was not removed" }
 if ($html.Contains('/api/kick') -or $html.Contains('/api/shutdown')) { throw "admin endpoint URL left in output" }
 if ($html.Contains("switchView('pals')") -eq $false) { throw "boot was clobbered by admin strip" }
