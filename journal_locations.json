@@ -35,5 +35,15 @@
   { "name": "Marcus Dryden's Diary - 3", "x": 121218, "y": 357206, "gx": 434, "gy": 534 },
   { "name": "Victor Ashford's Diary - 1", "x": -42186, "y": 118067, "gx": -87, "gy": 178 },
   { "name": "Victor Ashford's Diary - 2", "x": 103317, "y": 72167, "gx": -187, "gy": 495 },
-  { "name": "Victor Ashford's Diary - 3", "x": 145545, "y": 95576, "gx": -136, "gy": 587 }
+  { "name": "Victor Ashford's Diary - 3", "x": 145545, "y": 95576, "gx": -136, "gy": 587 },
+  { "name": "Saya Kurosaki's Diary - 1", "x": -29334, "y": -112351, "gx": -589, "gy": 206 },
+  { "name": "Saya Kurosaki's Diary - 2", "x": -4548, "y": -64615, "gx": -485, "gy": 260 },
+  { "name": "Saya Kurosaki's Diary - 3", "x": -84414, "y": -161005, "gx": -695, "gy": 86 },
+  { "name": "Saya Kurosaki's Diary - 4", "x": -18318, "y": -128875, "gx": -625, "gy": 230 },
+  { "name": "Saya Kurosaki's Diary - 5", "x": -18318, "y": -151825, "gx": -675, "gy": 230 },
+  { "name": "Bjorn Seligsson's Diary - 1", "x": -727473, "y": -337720, "gx": -1080, "gy": -1315 },
+  { "name": "Bjorn Seligsson's Diary - 2", "x": -660918, "y": -287230, "gx": -970, "gy": -1170 },
+  { "name": "Bjorn Seligsson's Diary - 3", "x": -680196, "y": -227560, "gx": -840, "gy": -1212 },
+  { "name": "Bjorn Seligsson's Diary - 4", "x": -554430, "y": -144940, "gx": -660, "gy": -938 },
+  { "name": "Bjorn Seligsson's Diary - 5", "x": -897303, "y": -440995, "gx": -1305, "gy": -1685 }
 ]
