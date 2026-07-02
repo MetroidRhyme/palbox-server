@@ -8,7 +8,8 @@ GameUserSettings.ini
 # ===== Live data / runtime state / logs =====
 .r2_stage/
 SaveLibrary/
-playtime-log.json
+playtime-log*.json
+playtime-glitch.log
 egg_notify.json
 .egg_notify_state.json
 server_messages.jsonl

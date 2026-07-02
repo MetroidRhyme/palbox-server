@@ -195,7 +195,6 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
           $ConfigFile, $SkipFlagFile, $MaintLogFile, $DefaultSettingsPath, $ActiveSettingsPath)
 
     $LogFile      = "$ServerDir\metrics-log.jsonl"
-    $PlaytimeFile = "$ServerDir\playtime-log.json"
     $PollInterval = 300   # metrics-collection cadence (also the history-chart granularity)
     $SyncInterval = 60    # public-data R2 sync cadence -- how fresh the dashboards' data is
     $EggCheckInterval = 30   # egg-ready check cadence (re-parses only when Level.sav changed)
@@ -468,11 +467,19 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return [ordered]@{ activeGuid=$activeGuid; activeSlot=$activeSlot; serverRunning=$running; slots=@($slots) }
     }
 
+    # Player Stats are scoped per-world (one log file per world GUID) rather than one
+    # global cross-save total, so switching to a different save (Save Manager) shows
+    # that save's own history instead of carrying over hours from another playthrough.
+    function Get-PlaytimeFile([string]$Guid) {
+        if (-not $Guid) { $Guid = 'unknown' }
+        return "$ServerDir\playtime-log-$Guid.json"
+    }
+
     function Load-Playtime {
         $ht = @{}
-        if (Test-Path $PlaytimeFile) {
+        if (Test-Path $script:PlaytimeFile) {
             try {
-                $arr = Get-Content $PlaytimeFile -Raw -Encoding UTF8 | ConvertFrom-Json
+                $arr = Get-Content $script:PlaytimeFile -Raw -Encoding UTF8 | ConvertFrom-Json
                 foreach ($e in $arr) {
                     if (-not $e.name) { continue }
                     $ht[$e.name] = @{ totalSeconds=$([long]$e.totalSeconds); sessions=$([int]$e.sessions);
@@ -491,7 +498,22 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                sampleCount=$_.Value.sampleCount; steamid=$_.Value.steamid }
         })
         $(if ($arr.Count) { ConvertTo-Json $arr -Depth 3 -Compress } else { '[]' }) |
-            Set-Content $PlaytimeFile -Encoding UTF8
+            Set-Content $script:PlaytimeFile -Encoding UTF8
+    }
+
+    # Re-points $script:playtime at whichever world is currently active (checked cheaply
+    # against Get-ActiveGuid), flushing the outgoing world's data first so nothing is
+    # lost on a switch. Call after any action that can change DedicatedServerName
+    # (save-new, save-activate) and defensively on every metrics poll in case the GUID
+    # changed some other way (manual edit, external script).
+    function Sync-PlaytimeToActiveWorld {
+        $guid = Get-ActiveGuid
+        if ($guid -eq $script:playtimeGuid) { return }
+        if ($script:playtimeGuid) { Save-Playtime }
+        $script:playtimeGuid  = $guid
+        $script:PlaytimeFile  = Get-PlaytimeFile $guid
+        $script:playtime      = Load-Playtime
+        $script:onlinePlayers = @{}
     }
 
     function Append-Metric($entry) {
@@ -502,6 +524,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
 
     function CollectMetrics {
         try {
+            Sync-PlaytimeToActiveWorld
             $m = Invoke-RestMethod -Uri "$PalApiBase/v1/api/metrics" -Method GET -Headers (Get-PalHeaders) -EA Stop
             $p = Invoke-RestMethod -Uri "$PalApiBase/v1/api/players" -Method GET -Headers (Get-PalHeaders) -EA Stop
             $playerList   = if ($p.players) { @($p.players) } elseif ($p.Players) { @($p.Players) } else { @() }
@@ -517,6 +540,30 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                   fps=[math]::Round([double]$fps,1); avgPing=$avgPing;
                                   bases=[int]$bases; days=$days; frametime=$ft }
             Append-Metric $entry
+
+            # PalWorld's /v1/api/players endpoint can intermittently come back empty for a
+            # few polls in a row even while /v1/api/metrics still correctly reports someone
+            # connected (observed 2026-07-01 ~21:50-22:15: 5 straight polls logged players:1
+            # here while /players returned nothing, silently freezing the tracker for the
+            # rest of that session even though the player never disconnected). When the two
+            # disagree like that, keep crediting whoever was already being tracked online
+            # instead of losing the time -- but only to EXTEND an existing session (never
+            # invent one without a name), and only while the metrics count still matches, so
+            # a real disconnect (metrics count actually dropping) still stops the credit.
+            if ($playerList.Count -eq 0 -and [int]$pcnt -gt 0 -and $script:onlinePlayers.Count -eq [int]$pcnt) {
+                foreach ($name in @($script:onlinePlayers.Keys)) {
+                    if (-not $script:playtime.ContainsKey($name)) { continue }
+                    $script:playtime[$name].totalSeconds += $PollInterval
+                    $script:playtime[$name].lastSeen      = $entry.ts
+                }
+                Save-Playtime
+                try {
+                    $line = "[{0:yyyy-MM-dd HH:mm:ss}] /players empty while metrics reported {1} online - credited {2}`n" -f (Get-Date), $pcnt, ($script:onlinePlayers.Keys -join ',')
+                    Add-Content -LiteralPath "$ServerDir\playtime-glitch.log" -Value $line -Encoding UTF8
+                } catch {}
+                return
+            }
+
             foreach ($pl in $playerList) {
                 $name = $pl.name; if (-not $name) { continue }
                 if (-not $script:playtime.ContainsKey($name)) {
@@ -5096,8 +5143,11 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
 '@
 
     # ── State ─────────────────────────────────────────────────────────────────
-    $script:playtime      = Load-Playtime
+    $script:playtimeGuid  = $null
+    $script:PlaytimeFile  = $null
+    $script:playtime      = @{}
     $script:onlinePlayers = @{}
+    Sync-PlaytimeToActiveWorld
     $nextCollect          = [datetime]::MinValue
     $nextSync             = [datetime]::MinValue
     $nextEggCheck         = [datetime]::MinValue
@@ -5634,6 +5684,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         # copy to the new save from the start.
                         if (Test-Path $ActiveSettingsPath) { Copy-Item $ActiveSettingsPath (Join-Path $slotDir 'PalWorldSettings.ini') -Force }
                         Set-ActiveGuid $newGuid
+                        Sync-PlaytimeToActiveWorld
                         Set-Content (Join-Path $SaveLibraryRoot '.active-slot') $id -NoNewline -Encoding UTF8
 
                         $restarted = $false
@@ -5681,6 +5732,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         $slotSettings = Join-Path $slotDir 'PalWorldSettings.ini'
                         if (Test-Path $slotSettings) { Copy-Item $slotSettings $ActiveSettingsPath -Force }
                         Set-ActiveGuid $world.guid
+                        Sync-PlaytimeToActiveWorld
                         Set-Content (Join-Path $SaveLibraryRoot '.active-slot') $slotId -NoNewline -Encoding UTF8
 
                         $restarted = $false
