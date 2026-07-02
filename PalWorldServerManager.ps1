@@ -3305,14 +3305,32 @@ var palMapLeaflet=null,palMapMarkers=[],palMapTime='dayTimeLocations',palMapCurr
 var palSpawnLocs=[], palZoneLayers=[], palZoneTight=0.01;
 
 function loadLeaflet(cb){
-  if(window.L){cb();return;}
+  // Marker clustering (leaflet.markercluster) ships as a separate bundle loaded after core
+  // Leaflet, since it extends window.L -- needed once the effigy/journal/bounty map can have
+  // 700+ markers on screen at once (see renderEffigyMap).
+  function loadCluster(){
+    if(window.L.markerClusterGroup){cb();return;}
+    var mcCss=document.createElement('link');
+    mcCss.rel='stylesheet';
+    mcCss.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css';
+    document.head.appendChild(mcCss);
+    var mcDefaultCss=document.createElement('link');
+    mcDefaultCss.rel='stylesheet';
+    mcDefaultCss.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css';
+    document.head.appendChild(mcDefaultCss);
+    var mcJs=document.createElement('script');
+    mcJs.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js';
+    mcJs.onload=cb;
+    document.head.appendChild(mcJs);
+  }
+  if(window.L){loadCluster();return;}
   var css=document.createElement('link');
   css.rel='stylesheet';
   css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
   document.head.appendChild(css);
   var js=document.createElement('script');
   js.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
-  js.onload=cb;
+  js.onload=loadCluster;
   document.head.appendChild(js);
 }
 
@@ -3574,7 +3592,7 @@ function setPalMapTime(t){
 }
 
 // ── Effigy Tracker ────────────────────────────────────────────────────────────
-var effigyLeaflet=null, effigyLocations=null, effigyCollected=[], effigyInited=false;
+var effigyLeaflet=null, effigyMarkerCluster=null, effigyLocations=null, effigyCollected=[], effigyInited=false;
 var _effigyAwaitingRoster=false;
 var _effigyPrefsWaitTries=0;
 var EFFIGY_MAX_RANK=353;
@@ -3834,6 +3852,10 @@ function initEffigyView(){
         L.tileLayer('/api/palmaptile?z={z}&x={x}&y={y}',{
           bounds:bounds,maxNativeZoom:4,tileSize:512,keepBuffer:4
         }).addTo(effigyLeaflet);
+        // Effigies+journal+bounty combined can top 700 markers; clustering keeps the map
+        // smooth by only rendering a count bubble for tightly-packed groups until zoomed in.
+        effigyMarkerCluster=L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:50});
+        effigyLeaflet.addLayer(effigyMarkerCluster);
       } else {
         effigyLeaflet.invalidateSize();
       }
@@ -4187,10 +4209,8 @@ function renderDataMine(){
 }
 
 function renderEffigyMap(){
-  if(!effigyLeaflet||!effigyLocations) return;
-  var toRemove=[];
-  effigyLeaflet.eachLayer(function(l){if(l._effigyMarker||l._journalMarker||l._bountyMarker) toRemove.push(l);});
-  toRemove.forEach(function(l){effigyLeaflet.removeLayer(l);});
+  if(!effigyLeaflet||!effigyLocations||!effigyMarkerCluster) return;
+  effigyMarkerCluster.clearLayers();
 
   var collectedSet=new Set(effigyCollected.map(function(s){return s.toUpperCase();}));
   var ids=Object.keys(effigyLocations);
@@ -4211,9 +4231,8 @@ function renderEffigyMap(){
     var m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(got),interactive:true});
     m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
     m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
-    m._effigyMarker=true;
     m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
-    m.addTo(effigyLeaflet);
+    effigyMarkerCluster.addLayer(m);
   });
 
   // Journal / diary note locations -- static, game-world-fixed. Entries that carry a "key"
@@ -4229,14 +4248,13 @@ function renderEffigyMap(){
       // The "found" toggle also hides already-found diary pickups, same as effigies.
       if(jGot&&!effigyShowFound) return;
       var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jGot),interactive:true});
-      jm._journalMarker=true;
       var jStatus=trackable?(jGot?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#1673d1">Not yet found</b>'):'<span style="color:#8a8f98">Found status unknown</span>';
       jm.bindTooltip('<b style="color:#1673d1">'+j.name+'</b><br>'+jStatus
         +'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       jm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       jm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
-      jm.addTo(effigyLeaflet);
+      effigyMarkerCluster.addLayer(jm);
     });
   }
 
@@ -4263,7 +4281,6 @@ function renderEffigyMap(){
       if(bGot&&!effigyShowFound) return;
       var clickable=PREFS_ENABLED&&!bAuto&&!!bpGuid;
       var bm=L.marker(effigyRposToLatLng(b.x,b.y),{icon:bountyBossIcon(b.name,bGot),interactive:true});
-      bm._bountyMarker=true;
       var bStatus=bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
         :bManual?'<span style="color:#5a6573">&#10003; Marked defeated by you</span>'
         :'<b style="color:#e3b341">Alpha Boss</b>';
@@ -4276,7 +4293,7 @@ function renderEffigyMap(){
         bm.on('click',function(){toggleBountyManual(b.species);});
         bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
       }
-      bm.addTo(effigyLeaflet);
+      effigyMarkerCluster.addLayer(bm);
     });
   }
 
