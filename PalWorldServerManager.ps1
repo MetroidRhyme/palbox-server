@@ -1067,8 +1067,11 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     table.syn-table th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;background:var(--bg);}
     table.syn-table td.syn-check{text-align:center;font-size:14px;}
     .syn-key{color:var(--muted);font-size:10px;font-family:monospace;}
-    .dm-section-hdr{padding:12px 14px 4px;font-size:13px;font-weight:700;border-top:1px solid var(--border);margin-top:6px;}
+    .dm-section-hdr{padding:12px 14px 4px;font-size:13px;font-weight:700;border-top:1px solid var(--border);margin-top:6px;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;}
+    .dm-section-hdr .dm-arrow{display:inline-block;font-size:10px;color:var(--muted);transition:transform .15s;}
     .dm-section-sub{padding:0 14px 8px;color:var(--muted);font-size:11px;}
+    .dm-section.collapsed .dm-section-hdr .dm-arrow{transform:rotate(-90deg);}
+    .dm-section.collapsed .dm-section-body{display:none;}
   </style>
   <div class="panel">
     <div class="panel-header">
@@ -1087,23 +1090,39 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     </div>
     <div id="dm-stats" class="syn-stats"></div>
 
-    <div class="dm-section-hdr">Alpha Bounty Bosses</div>
-    <div class="dm-section-sub">Named legendary Alphas with a single known fixed world location (bounty_bosses.json). Species/location sourced from paldb.cc + wiki -- see the palbox-bounty-tracker skill for provenance.</div>
-    <div id="dm-bounty-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+    <div class="dm-section" id="dm-sec-bounty">
+      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-bounty')"><span class="dm-arrow">&#9660;</span>Alpha Bounty Bosses</div>
+      <div class="dm-section-body">
+        <div class="dm-section-sub">Named legendary Alphas with a single known fixed world location (bounty_bosses.json). Species/location sourced from paldb.cc + wiki -- see the palbox-bounty-tracker skill for provenance.</div>
+        <div id="dm-bounty-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
 
-    <div class="dm-section-hdr">Syndicate / NPC Bosses</div>
-    <div class="dm-section-sub">Human "boss" fights (Syndicate Towers and similar). No location data exists for these in the save.</div>
-    <div id="dm-syndicate-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+    <div class="dm-section" id="dm-sec-syndicate">
+      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-syndicate')"><span class="dm-arrow">&#9660;</span>Syndicate / NPC Bosses</div>
+      <div class="dm-section-body">
+        <div class="dm-section-sub">Human "boss" fights (Syndicate Towers and similar). No location data exists for these in the save.</div>
+        <div id="dm-syndicate-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
 
-    <div class="dm-section-hdr">Anonymous Field-Alpha Spawns</div>
-    <div class="dm-section-sub">Zone-numbered field-alpha defeat keys that didn't match a known bounty species. Species for these is baked into the game's .pak assets, not the save -- raw keys only, auto-discovered from whatever's in each player's save (not a fixed roster).</div>
-    <div id="dm-anon-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+    <div class="dm-section" id="dm-sec-anon">
+      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-anon')"><span class="dm-arrow">&#9660;</span>Anonymous Field-Alpha Spawns</div>
+      <div class="dm-section-body">
+        <div class="dm-section-sub">Zone-numbered field-alpha defeat keys that didn't match a known bounty species. Species for these is baked into the game's .pak assets, not the save -- raw keys only, auto-discovered from whatever's in each player's save (not a fixed roster).</div>
+        <div id="dm-anon-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
 
-    <div class="dm-section-hdr">Journal / Diary Notes</div>
-    <div class="dm-section-sub">From NoteObtainForInstanceFlag (same mechanism as effigies). Mixes lore-journal/diary "DayN" pickups with dungeon-boss lore notes under one flag map, so the "N / 49" total on the Effigy map can never reach 49 from map pins alone. See the palbox-journal-overlay skill for full provenance rules -- a raw key only earns a "key" in journal_locations.json (and real found/new coloring on the map) after being directly observed flipping true in a live save diff.</div>
-    <div id="dm-journal-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
-    <div class="dm-section-sub" style="padding-top:10px;">Every key below has actually appeared as collected in at least one player's save but isn't yet tied to a map pin above -- either it's one of the still-unconfirmed diary pins on the map (blue, "Found status unknown"; needs a live-save diff to match it to a pin), or it's a dungeon-boss lore note with no map location at all (awarded on boss kill: GrassBoss1/2/3, ForestBoss3/4, VikingBoss1/2, SakurajimaBoss2/5, SnowBoss1 observed so far). Not auto-classified between the two -- confirm manually before editing journal_locations.json.</div>
-    <div id="dm-journal-unmapped-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+    <div class="dm-section" id="dm-sec-journal">
+      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-journal')"><span class="dm-arrow">&#9660;</span>Journal / Diary Notes</div>
+      <div class="dm-section-body">
+        <div class="dm-section-sub">From NoteObtainForInstanceFlag (same mechanism as effigies). Mixes lore-journal/diary "DayN" pickups with dungeon-boss lore notes under one flag map, so the "N / 49" total on the Effigy map can never reach 49 from map pins alone. See the palbox-journal-overlay skill for full provenance rules -- a raw key only earns a "key" in journal_locations.json (and real found/new coloring on the map) after being directly observed flipping true in a live save diff.</div>
+        <div id="dm-journal-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+        <div class="dm-section-sub" style="padding-top:10px;">Every raw key that has actually appeared as collected in at least one player's save, including ones already tied to a confirmed pin above (Mapped Pin column shows which). Rows with no Mapped Pin are either one of the still-unconfirmed diary pins on the map (blue, "Found status unknown"; needs a live-save diff to match it to a pin), or a dungeon-boss lore note with no map location at all (awarded on boss kill: GrassBoss1/2/3, ForestBoss3/4, VikingBoss1/2, SakurajimaBoss2/5, SnowBoss1 observed so far). Not auto-classified between the two -- confirm manually before editing journal_locations.json.</div>
+        <div id="dm-journal-unmapped-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3947,6 +3966,11 @@ var dmSyndicateRoster=null; // [{key,label}, ...] from syndicate_bosses.json
 var dmJournalRoster=null;   // [{name,x,y,gx,gy,key?}, ...] from journal_locations.json
 var dmPlayers=null;         // [{guid,name,bounty:[...species],syndicate:[...keys],anonymous:[...keys],journal:[...keys],predatorDefeatCount,...}, ...]
 
+function toggleDmSection(id){
+  var el=document.getElementById(id);
+  if(el) el.classList.toggle('collapsed');
+}
+
 async function fetchDataMine(){
   ['dm-bounty-area','dm-syndicate-area','dm-anon-area','dm-journal-area','dm-journal-unmapped-area'].forEach(function(id){
     document.getElementById(id).innerHTML='<div class="empty-state">Loading...</div>';
@@ -4089,23 +4113,30 @@ function renderDataMine(){
       },function(p,r){return journalHas(p,r.key);},null,'Journal Entry','Found')
     : '<div class="empty-state">No confirmed pins yet</div>';
 
-  // Journal section 2: raw NoteObtainForInstanceFlag keys observed in any player's save that
-  // don't match a confirmed pin's key above -- either an unconfirmed diary pin (needs a live-
-  // save diff to identify which) or a dungeon-boss lore note (no map pin at all, ever). Not
-  // auto-classified between the two, see the dm-section-sub text above the table.
-  var confirmedKeys={}; journalRows.forEach(function(r){confirmedKeys[r.key.toUpperCase()]=1;});
-  var unmappedKeys={};
-  dmPlayers.forEach(function(p){ p.journal.forEach(function(k){ if(!confirmedKeys[k.toUpperCase()]) unmappedKeys[k]=1; }); });
-  var journalUnmappedRows=Object.keys(unmappedKeys).sort().map(function(k){return {key:k};});
-  journalUnmappedArea.innerHTML=journalUnmappedRows.length
-    ? dmBuildTable(journalUnmappedRows,dmPlayers,function(r){return '<span class="syn-key">'+esc(r.key)+'</span>';},function(p,r){return journalHas(p,r.key);},null,'Raw Key','Found')
+  // Journal section 2: every raw NoteObtainForInstanceFlag key observed in ANY player's save,
+  // confirmed or not -- lets the key<->name mapping above be audited against the full raw list
+  // instead of trusting it silently. Mapped rows show which pin they're tied to; unmapped rows
+  // are either an unconfirmed diary pin (needs a live-save diff to identify which) or a
+  // dungeon-boss lore note (no map pin at all, ever) -- not auto-classified between the two.
+  var confirmedKeyNames={}; journalRows.forEach(function(r){confirmedKeyNames[r.key.toUpperCase()]=r.name;});
+  var allRawKeys={};
+  dmPlayers.forEach(function(p){ p.journal.forEach(function(k){ allRawKeys[k]=1; }); });
+  var journalRawRows=Object.keys(allRawKeys).sort().map(function(k){return {key:k};});
+  journalUnmappedArea.innerHTML=journalRawRows.length
+    ? dmBuildTable(journalRawRows,dmPlayers,function(r){return '<span class="syn-key">'+esc(r.key)+'</span>';},function(p,r){return journalHas(p,r.key);},[
+        {header:'Mapped Pin',cell:function(r){
+          var name=confirmedKeyNames[r.key.toUpperCase()];
+          return name?esc(name):'<span style="color:var(--muted);">unmapped</span>';
+        }}
+      ],'Raw Key','Found')
     : '<div class="empty-state">None found</div>';
 
   var bountyDone=bountyRows.filter(function(r){return dmPlayers.some(function(p){return p.bounty.indexOf(r.species)!==-1;});}).length;
   var synDone=synRows.filter(function(r){return dmPlayers.some(function(p){return p.syndicate.indexOf(r.key)!==-1;});}).length;
   var journalDone=journalRows.filter(function(r){return dmPlayers.some(function(p){return journalHas(p,r.key);});}).length;
+  var journalUnmappedCount=journalRawRows.filter(function(r){return !confirmedKeyNames[r.key.toUpperCase()];}).length;
   sumEl.textContent=bountyDone+'/'+bountyRows.length+' bounty | '+synDone+'/'+synRows.length+' syndicate | '+anonRows.length+' anonymous keys | '
-    +journalDone+'/'+journalRows.length+' journal pins | '+journalUnmappedRows.length+' unmapped journal keys';
+    +journalDone+'/'+journalRows.length+' journal pins | '+journalRawRows.length+' raw journal keys ('+journalUnmappedCount+' unmapped)';
 }
 
 function renderEffigyMap(){
