@@ -3854,7 +3854,7 @@ function initEffigyView(){
         }).addTo(effigyLeaflet);
         // Effigies+journal+bounty combined can top 700 markers; clustering keeps the map
         // smooth by only rendering a count bubble for tightly-packed groups until zoomed in.
-        effigyMarkerCluster=L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:75});
+        effigyMarkerCluster=L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:25});
         effigyLeaflet.addLayer(effigyMarkerCluster);
       } else {
         effigyLeaflet.invalidateSize();
