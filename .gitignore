@@ -18,6 +18,8 @@ maintenance.log
 .palbox_r2_sync_state.json
 .palbox_msg_push_state.json
 manager-config.json
+sync_public_data.log
+prefs/
 *.flag
 __pycache__/
 *.pyc

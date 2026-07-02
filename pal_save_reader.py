@@ -145,6 +145,67 @@ def extract_bounty_data(sav_path):
     return defeated
 
 
+def extract_datamine_data(sav_path):
+    """One-pass bucketing of every NormalBossDefeatFlag key for the admin "Data Mine" tab,
+    which shows all three categories side by side (bounty bosses have a static location
+    roster; syndicate/anonymous do not, so they're just raw key lists):
+
+      - bounty: species codes matched against bounty_bosses.json suffix ("_BOSS_<SPECIES>"),
+        i.e. named legendary Alphas with a known fixed world location.
+      - syndicate: raw "BOSS_*" human/NPC boss keys (Syndicate Tower fights etc.), no zone
+        prefix, no location data.
+      - anonymous: everything else -- zone-numbered field-alpha spawns ("<zone>_<n>_..._F_BOSS_
+        <SPECIES>"/"_FBOSS_<n>") that didn't match a known bounty species suffix. Species for
+        these lives in the game's .pak assets, not the save (see the palbox-bounty-tracker
+        skill's "auto-detection limitation" section) -- shown as raw keys only.
+
+    Also returns the three account-wide PredatorDefeatCount/FixedDungeonClearCount/
+    NormalDungeonClearCount stats, which live alongside this flag map but aren't tied to any
+    specific boss key.
+    """
+    raw = decompress_save(sav_path)
+
+    bounty, syndicate, anonymous = [], [], []
+    pos = find_property(raw, "NormalBossDefeatFlag")
+    if pos != -1:
+        _, p = read_fstring(raw, pos)
+        _, p = read_fstring(raw, p)
+        flags = parse_name_bool_map(raw, p)
+        matched_keys = set()
+        for species in load_bounty_species():
+            suffix = "_BOSS_" + species.upper()
+            for k in flags:
+                if k.endswith(suffix):
+                    bounty.append(species)
+                    matched_keys.add(k)
+                    break
+        for k in flags:
+            if k in matched_keys:
+                continue
+            if k.startswith("BOSS_"):
+                syndicate.append(k)
+            else:
+                anonymous.append(k)
+
+    def read_int_stat(name):
+        sp = find_property(raw, name)
+        if sp == -1:
+            return 0
+        _, q = read_fstring(raw, sp)
+        _, q = read_fstring(raw, q)
+        q += 9  # 8-byte size + 1-byte padding
+        return struct.unpack_from("<i", raw, q)[0]
+
+    return {
+        "bounty": bounty,
+        "syndicate": syndicate,
+        "anonymous": anonymous,
+        "predatorDefeatCount": read_int_stat("PredatorDefeatCount"),
+        "fixedDungeonClearCount": read_int_stat("FixedDungeonClearCount"),
+        "normalDungeonClearCount": read_int_stat("NormalDungeonClearCount"),
+    }
+
+
 def extract_player_data(sav_path):
     raw = decompress_save(sav_path)
 
@@ -278,6 +339,21 @@ def main():
             print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
+        return
+
+    # datamine mode: python pal_save_reader.py <save_dir> datamine <guid>
+    if len(sys.argv) > 2 and sys.argv[2] == "datamine":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            result = extract_datamine_data(sav_path)
+            result["guid"] = guid
+            print(json.dumps(result, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "bounty": [], "syndicate": [], "anonymous": [], "error": str(e)}))
         return
 
     # notes mode: python pal_save_reader.py <save_dir> notes <guid>

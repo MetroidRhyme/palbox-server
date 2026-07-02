@@ -94,6 +94,16 @@ $html = $html.Replace(
   '<button class="nav-tab" data-tab="pals" onclick="switchView(''pals'')">Pals</button>',
   '<button class="nav-tab active" data-tab="pals" onclick="switchView(''pals'')">Pals</button>')
 
+# (1b) Remove the Data Mine nav tab -- an admin-only raw-data view (see
+# /palbox-bounty-tracker) whose API calls (/api/syndicate-bosses,
+# /api/player-datamine) only exist in the Manager's own HttpListener, not in
+# _worker.js. Left in place it would show players a tab that always fails to
+# load. Same treatment as #view-dashboard below: nav button + the whole view
+# block removed; switchView's line for it is already null-guarded
+# (`if(vdm)vdm.style...`) so it doesn't need stripping for safety.
+$html = $html.Replace(
+  '<button class="nav-tab" data-tab="datamine" onclick="switchView(''datamine'')">Data Mine</button>', '')
+
 # (2) Strip the header server-control bits and remove the Refresh control entirely.
 # On the static published copy there is no live poll to trigger, so the button has
 # nothing to do -- removing it (rather than rewiring it to location.reload) keeps the
@@ -128,6 +138,11 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
 # page) and every tab click. Drop that one line.
 $html = [System.Text.RegularExpressions.Regex]::Replace(
   $html, "(?m)^\s*document\.getElementById\('view-dashboard'\)\.style\.display=[^\r\n]*\r?\n", '')
+
+# (3b) Remove the entire #view-datamine block (see 1b above) -- a single sibling div
+# ending right before #view-pals.
+$html = [System.Text.RegularExpressions.Regex]::Replace(
+  $html, '<div id="view-datamine" class="page" style="display:none">.*?(?=<div id="view-pals")', '', $rxOpts)
 
 # (4) Replace the boot sequence: no live polling, just load the data views. The data-age
 # indicator (#last-updated) is filled by renderDataAge() in the injected script below
@@ -285,8 +300,8 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
 # data/settings.json. The 'Server' category is hidden in the renderer too, matching the
 # data-layer redaction above.
 $html = $html.Replace(
-  "<button class=""nav-tab"" data-tab=""effigies"" onclick=""switchView('effigies')"">Effigies</button>",
-  "<button class=""nav-tab"" data-tab=""effigies"" onclick=""switchView('effigies')"">Effigies</button>`r`n    <button class=""nav-tab"" data-tab=""settings"" onclick=""switchView('settings')"">Settings</button>")
+  "<button class=""nav-tab"" data-tab=""effigies"" onclick=""switchView('effigies')"">Map</button>",
+  "<button class=""nav-tab"" data-tab=""effigies"" onclick=""switchView('effigies')"">Map</button>`r`n    <button class=""nav-tab"" data-tab=""settings"" onclick=""switchView('settings')"">Settings</button>")
 # NOTE: view-settings is injected just before </body>, i.e. AFTER the boot script
 # (fetchPaldeck();switchView('pals');) runs. So on the first switchView call the div
 # does not exist yet -- a bare getElementById('view-settings').style would throw a
@@ -454,6 +469,8 @@ $html = $html.Replace([char]0x00A0, ' ')
 # Sanity: the transforms above must have actually fired.
 if ($html.Contains('id="view-dashboard"')) { throw "view-dashboard was not removed" }
 if ($html.Contains("getElementById('view-dashboard')")) { throw "switchView still references removed view-dashboard" }
+if ($html.Contains('id="view-datamine"')) { throw "view-datamine was not removed" }
+if ($html.Contains('data-tab="datamine"')) { throw "Data Mine nav tab was not removed" }
 if ($html.Contains("'/api/pals'")) { throw "pals fetch was not repointed" }
 if ($html.Contains("'/api/eggs'")) { throw "eggs fetch was not repointed" }
 if ($html.Contains("'/api/server-messages'")) { throw "server-messages fetch was not repointed" }

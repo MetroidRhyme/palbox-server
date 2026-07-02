@@ -847,7 +847,8 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <button class="nav-tab" data-tab="pals" onclick="switchView('pals')">Pals</button>
     <button class="nav-tab" data-tab="eggs" onclick="switchView('eggs')">Eggs</button>
     <button class="nav-tab" data-tab="paldeck" onclick="switchView('paldeck')">Paldeck</button>
-    <button class="nav-tab" data-tab="effigies" onclick="switchView('effigies')">Effigies</button>
+    <button class="nav-tab" data-tab="effigies" onclick="switchView('effigies')">Map</button>
+    <button class="nav-tab" data-tab="datamine" onclick="switchView('datamine')">Data Mine</button>
   </nav>
   <div class="hdr-right">
     <button class="btn-icon" id="snd-toggle" onclick="toggleChatSound()" title="Notification sound for server messages">&#128276;</button>
@@ -1052,6 +1053,57 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       </div>
     </div>
     <div id="effigy-leaflet-map" style="flex:1;min-height:0;"></div>
+  </div>
+</div>
+
+<div id="view-datamine" class="page" style="display:none">
+  <style>
+    .syn-stats{display:flex;gap:18px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);}
+    .syn-stat-card{min-width:150px;}
+    .syn-stat-card .syn-stat-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;}
+    .syn-stat-card .syn-stat-row{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;}
+    table.syn-table{width:100%;border-collapse:collapse;font-size:12px;}
+    table.syn-table th,table.syn-table td{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;}
+    table.syn-table th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;background:var(--bg);}
+    table.syn-table td.syn-check{text-align:center;font-size:14px;}
+    .syn-key{color:var(--muted);font-size:10px;font-family:monospace;}
+    .dm-section-hdr{padding:12px 14px 4px;font-size:13px;font-weight:700;border-top:1px solid var(--border);margin-top:6px;}
+    .dm-section-sub{padding:0 14px 8px;color:var(--muted);font-size:11px;}
+  </style>
+  <div class="panel">
+    <div class="panel-header">
+      <span>Data Mine</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span id="dm-summary" style="color:var(--muted);font-size:12px;"></span>
+        <button class="btn btn-ghost" onclick="fetchDataMine()">&#8635; Reload</button>
+      </div>
+    </div>
+    <div style="padding:8px 14px 0;color:var(--muted);font-size:11px;">
+      Everything pulled from each player's NormalBossDefeatFlag save data, in one place: named
+      Alpha bounty bosses (known location + species), human/Syndicate "boss" fights (no
+      location data), and leftover zone-numbered field-alpha spawns whose species isn't
+      recoverable from the save. Labels not sourced from paldb/wiki are inferred from the raw
+      key name, not confirmed in-game text -- raw keys are always shown alongside labels.
+    </div>
+    <div id="dm-stats" class="syn-stats"></div>
+
+    <div class="dm-section-hdr">Alpha Bounty Bosses</div>
+    <div class="dm-section-sub">Named legendary Alphas with a single known fixed world location (bounty_bosses.json). Species/location sourced from paldb.cc + wiki -- see the palbox-bounty-tracker skill for provenance.</div>
+    <div id="dm-bounty-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+
+    <div class="dm-section-hdr">Syndicate / NPC Bosses</div>
+    <div class="dm-section-sub">Human "boss" fights (Syndicate Towers and similar). No location data exists for these in the save.</div>
+    <div id="dm-syndicate-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+
+    <div class="dm-section-hdr">Anonymous Field-Alpha Spawns</div>
+    <div class="dm-section-sub">Zone-numbered field-alpha defeat keys that didn't match a known bounty species. Species for these is baked into the game's .pak assets, not the save -- raw keys only, auto-discovered from whatever's in each player's save (not a fixed roster).</div>
+    <div id="dm-anon-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+
+    <div class="dm-section-hdr">Journal / Diary Notes</div>
+    <div class="dm-section-sub">From NoteObtainForInstanceFlag (same mechanism as effigies). Mixes lore-journal/diary "DayN" pickups with dungeon-boss lore notes under one flag map, so the "N / 49" total on the Effigy map can never reach 49 from map pins alone. See the palbox-journal-overlay skill for full provenance rules -- a raw key only earns a "key" in journal_locations.json (and real found/new coloring on the map) after being directly observed flipping true in a live save diff.</div>
+    <div id="dm-journal-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+    <div class="dm-section-sub" style="padding-top:10px;">Every key below has actually appeared as collected in at least one player's save but isn't yet tied to a map pin above -- either it's one of the still-unconfirmed diary pins on the map (blue, "Found status unknown"; needs a live-save diff to match it to a pin), or it's a dungeon-boss lore note with no map location at all (awarded on boss kill: GrassBoss1/2/3, ForestBoss3/4, VikingBoss1/2, SakurajimaBoss2/5, SnowBoss1 observed so far). Not auto-classified between the two -- confirm manually before editing journal_locations.json.</div>
+    <div id="dm-journal-unmapped-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
   </div>
 </div>
 
@@ -1576,12 +1628,14 @@ function switchView(name){
   var ve=document.getElementById('view-eggs'); if(ve)ve.style.display=name==='eggs'?'':'none';
   document.getElementById('view-paldeck').style.display=name==='paldeck'?'':'none';
   document.getElementById('view-effigies').style.display=name==='effigies'?'':'none';
+  var vdm=document.getElementById('view-datamine'); if(vdm)vdm.style.display=name==='datamine'?'':'none';
   document.querySelectorAll('.nav-tab').forEach(function(t){
     t.classList.toggle('active',t.dataset.tab===name);
   });
   if(name==='effigies') initEffigyView();
   if(name==='pals' && !palsData) fetchPals();
   if(name==='eggs') fetchEggs();
+  if(name==='datamine') fetchDataMine();
   try{localStorage.setItem('palbox_active_tab',name);}catch(e){}
 }
 
@@ -3509,10 +3563,20 @@ var journalLocations=null;
 var journalCollected=[], journalCollectedCount=null;
 var JOURNAL_MAX=49;
 
+// Species NormalBossDefeatFlag can actually confirm automatically -- across every save
+// inspected so far, only these two ever appeared name-tagged in the flag map (everything
+// else uses anonymous zone-numbered keys with no recoverable species; see the
+// palbox-bounty-tracker skill's "auto-detection limitation" section, and extract_bounty_data
+// in pal_save_reader.py). The Effigy map only plots these two -- showing the other 68 as
+// permanently "not defeated" markers would be misleading busywork since neither the save nor
+// (on admin) a click can ever confirm them.
+var AUTO_TRACKED_BOUNTY_SPECIES=['BlueDragon','FairyDragon'];
+
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
 // loaded once from /api/bounty-bosses (see bounty_bosses.json). Each entry has {species,
 // name, x, y, z}; "species" is what NormalBossDefeatFlag entries in the save are matched
-// against (see extract_bounty_data in pal_save_reader.py).
+// against (see extract_bounty_data in pal_save_reader.py). Filtered to AUTO_TRACKED_BOUNTY_
+// SPECIES for the map -- the Data Mine tab fetches the full unfiltered roster separately.
 var bossLocations=null;
 // Per-player defeat state: list of species codes, from NormalBossDefeatFlag.
 var bossCollected=[];
@@ -3750,7 +3814,8 @@ async function fetchJournalLocations(){
 async function fetchBossLocations(){
   if(bossLocations)return;
   try{
-    bossLocations=await api('/api/bounty-bosses');
+    var all=await api('/api/bounty-bosses');
+    bossLocations=all.filter(function(b){return AUTO_TRACKED_BOUNTY_SPECIES.indexOf(b.species)!==-1;});
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
     bossLocations=[];
@@ -3867,6 +3932,180 @@ function renderBountySummary(){
   if(!el)return;
   var total=bossLocations?bossLocations.length:0;
   el.textContent=total?(bossCollected.length+' / '+total+' defeated'):'';
+}
+
+// ── Data Mine tab ────────────────────────────────────────────────────────────
+// Everything extracted from NormalBossDefeatFlag, side by side: named Alpha bounty bosses
+// (bounty_bosses.json, known location), Syndicate/NPC "boss" fights (syndicate_bosses.json,
+// flat keys, no location), and anonymous zone-numbered field-alpha spawns (no roster at all --
+// auto-discovered per player). See extract_datamine_data in pal_save_reader.py. Journal/diary
+// notes (NoteObtainForInstanceFlag, /api/journals + /api/player-notes) are folded in
+// alongside these -- same "raw key, no roster" shape as the anonymous section, cross-
+// referenced against journal_locations.json's confirmed pins. See palbox-journal-overlay skill.
+var dmBountyRoster=null;    // [{species,name,x,y,z}, ...] from bounty_bosses.json
+var dmSyndicateRoster=null; // [{key,label}, ...] from syndicate_bosses.json
+var dmJournalRoster=null;   // [{name,x,y,gx,gy,key?}, ...] from journal_locations.json
+var dmPlayers=null;         // [{guid,name,bounty:[...species],syndicate:[...keys],anonymous:[...keys],journal:[...keys],predatorDefeatCount,...}, ...]
+
+async function fetchDataMine(){
+  ['dm-bounty-area','dm-syndicate-area','dm-anon-area','dm-journal-area','dm-journal-unmapped-area'].forEach(function(id){
+    document.getElementById(id).innerHTML='<div class="empty-state">Loading...</div>';
+  });
+  try{
+    if(!paldeckData) await fetchPaldeck();
+    var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
+    var bountyPromise=dmBountyRoster?Promise.resolve(dmBountyRoster):api('/api/bounty-bosses');
+    var syndicatePromise=dmSyndicateRoster?Promise.resolve(dmSyndicateRoster):api('/api/syndicate-bosses');
+    var journalPromise=dmJournalRoster?Promise.resolve(dmJournalRoster):(journalLocations?Promise.resolve(journalLocations):api('/api/journals'));
+    var results=await Promise.all([bountyPromise,syndicatePromise,journalPromise].concat(roster.map(function(p){
+      return Promise.all([
+        api('/api/player-datamine?guid='+encodeURIComponent(p.guid)).catch(function(e){
+          return {guid:p.guid,bounty:[],syndicate:[],anonymous:[],error:String(e&&e.message||e)};
+        }),
+        api('/api/player-notes?guid='+encodeURIComponent(p.guid)).catch(function(e){
+          return {guid:p.guid,collected:[],error:String(e&&e.message||e)};
+        })
+      ]);
+    })));
+    dmBountyRoster=results[0]||[];
+    dmSyndicateRoster=results[1]||[];
+    dmJournalRoster=results[2]||[];
+    dmPlayers=roster.map(function(p,i){
+      var pair=results[i+3]||[{},{}];
+      var d=pair[0]||{}, n=pair[1]||{};
+      return {
+        guid:p.guid, name:p.name,
+        bounty:d.bounty||[], syndicate:d.syndicate||[], anonymous:d.anonymous||[],
+        journal:n.collected||[],
+        predatorDefeatCount:d.predatorDefeatCount||0,
+        fixedDungeonClearCount:d.fixedDungeonClearCount||0,
+        normalDungeonClearCount:d.normalDungeonClearCount||0
+      };
+    });
+    renderDataMine();
+  }catch(e){
+    var msg='<div class="empty-state">Failed to load: '+esc(String(e&&e.message||e))+'</div>';
+    document.getElementById('dm-bounty-area').innerHTML=msg;
+    document.getElementById('dm-syndicate-area').innerHTML='';
+    document.getElementById('dm-anon-area').innerHTML='';
+    document.getElementById('dm-journal-area').innerHTML='';
+    document.getElementById('dm-journal-unmapped-area').innerHTML='';
+  }
+}
+
+// Builds a rows x players checkmark table. rowLabelHtml(row) renders the left-hand cell;
+// hasFn(player,row) decides if that player's cell is checked. extraCols (optional) inserts
+// extra [{header,cell(row)}] columns between the label and the player columns. rowHeader/
+// doneLabel (optional) customize the row-label column header and the checkmark title text
+// (default "Boss"/"Defeated"), so this can double as the journal-notes table.
+function dmBuildTable(rows,players,rowLabelHtml,hasFn,extraCols,rowHeader,doneLabel){
+  extraCols=extraCols||[];
+  doneLabel=doneLabel||'Defeated';
+  var html='<table class="syn-table"><thead><tr><th>'+esc(rowHeader||'Boss')+'</th>'
+    +extraCols.map(function(c){return '<th>'+esc(c.header)+'</th>';}).join('')
+    +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
+    +'</tr></thead><tbody>';
+  rows.forEach(function(r){
+    html+='<tr><td>'+rowLabelHtml(r)+'</td>';
+    extraCols.forEach(function(c){ html+='<td>'+c.cell(r)+'</td>'; });
+    players.forEach(function(p){
+      var done=hasFn(p,r);
+      html+='<td class="syn-check" title="'+(done?doneLabel:'Not '+doneLabel.toLowerCase())+'">'+(done?'<span style="color:#3fb950;">&#10003;</span>':'<span style="color:var(--muted);">&#8212;</span>')+'</td>';
+    });
+    html+='</tr>';
+  });
+  return html+'</tbody></table>';
+}
+
+function renderDataMine(){
+  var statsEl=document.getElementById('dm-stats');
+  var sumEl=document.getElementById('dm-summary');
+  var bountyArea=document.getElementById('dm-bounty-area');
+  var syndicateArea=document.getElementById('dm-syndicate-area');
+  var anonArea=document.getElementById('dm-anon-area');
+  var journalArea=document.getElementById('dm-journal-area');
+  var journalUnmappedArea=document.getElementById('dm-journal-unmapped-area');
+  if(!dmBountyRoster||!dmSyndicateRoster||!dmJournalRoster||!dmPlayers){ return; }
+  if(!dmPlayers.length){
+    [bountyArea,syndicateArea,anonArea,journalArea,journalUnmappedArea].forEach(function(a){a.innerHTML='<div class="empty-state">No player data</div>';});
+    statsEl.innerHTML=''; sumEl.textContent='';
+    return;
+  }
+
+  statsEl.innerHTML=dmPlayers.map(function(p){
+    return '<div class="syn-stat-card"><div class="syn-stat-name">'+esc(p.name)+'</div>'
+      +'<div class="syn-stat-row"><span>Predators defeated</span><b>'+p.predatorDefeatCount+'</b></div>'
+      +'<div class="syn-stat-row"><span>Fixed dungeons cleared</span><b>'+p.fixedDungeonClearCount+'</b></div>'
+      +'<div class="syn-stat-row"><span>Normal dungeons cleared</span><b>'+p.normalDungeonClearCount+'</b></div>'
+      +'</div>';
+  }).join('')+'<div style="font-size:10px;color:var(--muted);width:100%;">Account-wide totals from the save -- not broken down per boss below (the save has no per-boss counter, only a defeated/not-defeated flag).</div>';
+
+  // Bounty section: fixed roster (locations are the whole point of this one), sorted by name.
+  var bountyRows=dmBountyRoster.slice().sort(function(a,b){return a.name<b.name?-1:a.name>b.name?1:0;});
+  bountyArea.innerHTML=dmBuildTable(bountyRows,dmPlayers,function(r){
+    var loc=Math.round(r.x)+', '+Math.round(r.y)+', '+Math.round(r.z);
+    return esc(r.name)+'<div class="syn-key">'+esc(r.species)+' &bull; '+loc+'</div>';
+  },function(p,r){return p.bounty.indexOf(r.species)!==-1;},[
+    {header:'In-Game Coords',cell:function(r){
+      // Same raw-world -> in-game conversion used by the effigy map tooltip
+      // (cx=(y-158000)/459, cy=(x+123888)/459) so this matches what the player sees on
+      // their in-game map, not the raw save/world units in the Species/Location line above.
+      var cx=Math.round((r.y-158000)/459), cy=Math.round((r.x+123888)/459);
+      return '<span class="syn-key">X: '+cx+', Y: '+cy+'</span>';
+    }}
+  ]);
+
+  // Syndicate section: static roster unioned with any newly-observed key (mirrors the
+  // owner-select union pattern used for eggs), so an unseen boss key still shows up.
+  var synRows=dmSyndicateRoster.slice();
+  var synKnown={}; synRows.forEach(function(r){synKnown[r.key]=1;});
+  dmPlayers.forEach(function(p){
+    p.syndicate.forEach(function(k){ if(!synKnown[k]){ synKnown[k]=1; synRows.push({key:k,label:null}); } });
+  });
+  synRows.sort(function(a,b){return a.key<b.key?-1:a.key>b.key?1:0;});
+  syndicateArea.innerHTML=dmBuildTable(synRows,dmPlayers,function(r){
+    return esc(r.label||r.key)+(r.label?'<div class="syn-key">'+esc(r.key)+'</div>':'');
+  },function(p,r){return p.syndicate.indexOf(r.key)!==-1;});
+
+  // Anonymous section: no roster at all, purely auto-discovered from whatever's in the saves.
+  var anonKeys={};
+  dmPlayers.forEach(function(p){ p.anonymous.forEach(function(k){ anonKeys[k]=1; }); });
+  var anonRows=Object.keys(anonKeys).sort().map(function(k){return {key:k};});
+  anonArea.innerHTML=anonRows.length
+    ? dmBuildTable(anonRows,dmPlayers,function(r){return '<span class="syn-key">'+esc(r.key)+'</span>';},function(p,r){return p.anonymous.indexOf(r.key)!==-1;})
+    : '<div class="empty-state">None found</div>';
+
+  // Journal section 1: confirmed map pins (journal_locations.json entries carrying a "key"),
+  // same case-insensitive match convention as the Effigy map (renderEffigyMap's
+  // journalCollectedSet). Sorted by name.
+  var journalHas=function(p,key){
+    return p.journal.map(function(k){return k.toUpperCase();}).indexOf(key.toUpperCase())!==-1;
+  };
+  var journalRows=dmJournalRoster.filter(function(r){return !!r.key;})
+    .sort(function(a,b){return a.name<b.name?-1:a.name>b.name?1:0;});
+  journalArea.innerHTML=journalRows.length
+    ? dmBuildTable(journalRows,dmPlayers,function(r){
+        return esc(r.name)+'<div class="syn-key">'+esc(r.key)+' &bull; X: '+r.gx+', Y: '+r.gy+'</div>';
+      },function(p,r){return journalHas(p,r.key);},null,'Journal Entry','Found')
+    : '<div class="empty-state">No confirmed pins yet</div>';
+
+  // Journal section 2: raw NoteObtainForInstanceFlag keys observed in any player's save that
+  // don't match a confirmed pin's key above -- either an unconfirmed diary pin (needs a live-
+  // save diff to identify which) or a dungeon-boss lore note (no map pin at all, ever). Not
+  // auto-classified between the two, see the dm-section-sub text above the table.
+  var confirmedKeys={}; journalRows.forEach(function(r){confirmedKeys[r.key.toUpperCase()]=1;});
+  var unmappedKeys={};
+  dmPlayers.forEach(function(p){ p.journal.forEach(function(k){ if(!confirmedKeys[k.toUpperCase()]) unmappedKeys[k]=1; }); });
+  var journalUnmappedRows=Object.keys(unmappedKeys).sort().map(function(k){return {key:k};});
+  journalUnmappedArea.innerHTML=journalUnmappedRows.length
+    ? dmBuildTable(journalUnmappedRows,dmPlayers,function(r){return '<span class="syn-key">'+esc(r.key)+'</span>';},function(p,r){return journalHas(p,r.key);},null,'Raw Key','Found')
+    : '<div class="empty-state">None found</div>';
+
+  var bountyDone=bountyRows.filter(function(r){return dmPlayers.some(function(p){return p.bounty.indexOf(r.species)!==-1;});}).length;
+  var synDone=synRows.filter(function(r){return dmPlayers.some(function(p){return p.syndicate.indexOf(r.key)!==-1;});}).length;
+  var journalDone=journalRows.filter(function(r){return dmPlayers.some(function(p){return journalHas(p,r.key);});}).length;
+  sumEl.textContent=bountyDone+'/'+bountyRows.length+' bounty | '+synDone+'/'+synRows.length+' syndicate | '+anonRows.length+' anonymous keys | '
+    +journalDone+'/'+journalRows.length+' journal pins | '+journalUnmappedRows.length+' unmapped journal keys';
 }
 
 function renderEffigyMap(){
@@ -5846,6 +6085,27 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     break
                 }
 
+                ($path -eq '/api/syndicate-bosses' -and $method -eq 'GET') {
+                    # Static roster of NPC/Syndicate "boss" defeat-flag keys (human enemies,
+                    # e.g. Syndicate Tower bosses) -- see syndicate_bosses.json. Unlike
+                    # bounty_bosses.json these carry no confirmed map location, so this is a
+                    # flat list tab, not a map overlay.
+                    try {
+                        if (-not $script:syndicateBossData) {
+                            $f = "$ServerDir\syndicate_bosses.json"
+                            if (Test-Path -LiteralPath $f) {
+                                $script:syndicateBossData = [System.IO.File]::ReadAllText($f)
+                            } else {
+                                $script:syndicateBossData = '[]'
+                            }
+                        }
+                        Send-Response $res 200 "application/json" $script:syndicateBossData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/pal-species' -and $method -eq 'GET') {
                     # Curated species-level data (type/work/skills/stats) built by
                     # build_pal_species.py. The public site bundles this as a static file;
@@ -5956,6 +6216,28 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir bounties $guid 2>$null
+                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/player-datamine' -and $method -eq 'GET') {
+                    # All NormalBossDefeatFlag data for one player, bucketed into
+                    # bounty/syndicate/anonymous (see extract_datamine_data in
+                    # pal_save_reader.py). Also carries the account-wide
+                    # PredatorDefeatCount/FixedDungeonClearCount/NormalDungeonClearCount
+                    # stats, which aren't tied to a specific boss key but live in the same
+                    # save data.
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir datamine $guid 2>$null
                         if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                         Send-Response $res 200 "application/json" ($rawJson -join '')
                     } catch {
