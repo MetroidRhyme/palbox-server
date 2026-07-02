@@ -21,6 +21,13 @@
     "z": 1178.61
   },
   {
+    "species": "BlueDragon",
+    "name": "Azurobe",
+    "x": -301521,
+    "y": 133673,
+    "z": 0.0
+  },
+  {
     "species": "ThunderBird",
     "name": "Beakon",
     "x": -239970.0,
@@ -47,6 +54,13 @@
     "x": -329427.8,
     "y": 81512.31,
     "z": -1862.61
+  },
+  {
+    "species": "Ronin",
+    "name": "Bushi",
+    "x": -349257,
+    "y": 104756,
+    "z": 0.0
   },
   {
     "species": "BerryGoat_Dark",
@@ -91,6 +105,13 @@
     "z": 320.0
   },
   {
+    "species": "LazyCatfish",
+    "name": "Dumud",
+    "x": -122052,
+    "y": 15710,
+    "z": 0.0
+  },
+  {
     "species": "QueenBee",
     "name": "Elizabee",
     "x": -196380.0,
@@ -110,6 +131,13 @@
     "x": -605010.5,
     "y": -130144.8,
     "z": -2102.61
+  },
+  {
+    "species": "CatVampire",
+    "name": "Felbat",
+    "x": -149133,
+    "y": -30649,
+    "z": 0.0
   },
   {
     "species": "FengyunDeeper",
@@ -140,6 +168,13 @@
     "z": 22180.0
   },
   {
+    "species": "IceHorse_Dark",
+    "name": "Frostallion Noct",
+    "x": -729768,
+    "y": -338638,
+    "z": 0.0
+  },
+  {
     "species": "GoldenHorse",
     "name": "Gildane",
     "x": -685460.0,
@@ -166,6 +201,20 @@
     "x": -271220.0,
     "y": -204190.0,
     "z": 3760.0
+  },
+  {
+    "species": "Umihebi",
+    "name": "Jormuntide",
+    "x": -245982,
+    "y": 77216,
+    "z": 0.0
+  },
+  {
+    "species": "CatMage",
+    "name": "Katress",
+    "x": -276276,
+    "y": 269078,
+    "z": 0.0
   },
   {
     "species": "KingAlpaca",
@@ -201,6 +250,13 @@
     "x": -502070.0,
     "y": -276210.0,
     "z": -440.0
+  },
+  {
+    "species": "Mutant",
+    "name": "Lunaris",
+    "x": -426369,
+    "y": 90527,
+    "z": 0.0
   },
   {
     "species": "LilyQueen_Dark",
@@ -245,6 +301,20 @@
     "z": 2650.0
   },
   {
+    "species": "PoseidonOrca",
+    "name": "Neptilius",
+    "x": 174921,
+    "y": 221801,
+    "z": 0.0
+  },
+  {
+    "species": "GhostRabbit",
+    "name": "Nitemary",
+    "x": -589314,
+    "y": -265657,
+    "z": 0.0
+  },
+  {
     "species": "HawkBird",
     "name": "Nitewing",
     "x": -155950.0,
@@ -273,6 +343,41 @@
     "z": 2650.0
   },
   {
+    "species": "CaptainPenguin",
+    "name": "Penking",
+    "x": -285915,
+    "y": 209867,
+    "z": 0.0
+  },
+  {
+    "species": "FlowerDoll",
+    "name": "Petallia",
+    "x": -245064,
+    "y": 149279,
+    "z": 0.0
+  },
+  {
+    "species": "BlueberryFairy",
+    "name": "Prunelia",
+    "x": -568200,
+    "y": -463945,
+    "z": 0.0
+  },
+  {
+    "species": "SkyDragon",
+    "name": "Quivern",
+    "x": -184017,
+    "y": 40496,
+    "z": 0.0
+  },
+  {
+    "species": "LazyDragon_Electric",
+    "name": "Relaxaurus Lux",
+    "x": -282702,
+    "y": 64823,
+    "z": 0.0
+  },
+  {
     "species": "PinkRabbit_Grass",
     "name": "Ribbuny Botan",
     "x": -745180.0,
@@ -280,11 +385,25 @@
     "z": 36400.0
   },
   {
+    "species": "WhiteMoth",
+    "name": "Sibelyx",
+    "x": -92217,
+    "y": 273668,
+    "z": 0.0
+  },
+  {
     "species": "WhiteShieldDragon",
     "name": "Silvegis",
     "x": -593142.44,
     "y": -293751.53,
     "z": 1161.27
+  },
+  {
+    "species": "BlackPuppy",
+    "name": "Smokie",
+    "x": -797241,
+    "y": -245461,
+    "z": 0.0
   },
   {
     "species": "GrimGirl",
@@ -329,11 +448,39 @@
     "z": -770.0
   },
   {
+    "species": "GrassRabbitMan",
+    "name": "Verdash",
+    "x": -119298,
+    "y": 288815,
+    "z": 0.0
+  },
+  {
+    "species": "HerculesBeetle",
+    "name": "Warsect",
+    "x": -227163,
+    "y": 231440,
+    "z": 0.0
+  },
+  {
     "species": "HerculesBeetle_Ground",
     "name": "Warsect Terra",
     "x": -788310.0,
     "y": -310830.0,
     "z": 9090.0
+  },
+  {
+    "species": "IceNarwhal",
+    "name": "Whalaska",
+    "x": 262590,
+    "y": 75839,
+    "z": 0.0
+  },
+  {
+    "species": "IceNarwhal_Fire",
+    "name": "Whalaska Ignis",
+    "x": -370830,
+    "y": -287230,
+    "z": 0.0
   },
   {
     "species": "Yeti_Grass",
