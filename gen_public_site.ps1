@@ -337,7 +337,7 @@ $settingsBlock = @'
   var svData=null, svCat=null;
   var SV_CATS=CATS.filter(function(c){return c!=='Server';});
 
-  // ── Data freshness ──────────────────────────────────────────────────────────
+  // -- Data freshness ----------------------------------------------------------
   // DATA_TS is the ISO-8601 UTC stamp baked in when this site was generated. We show
   // it as a relative age ("3 hr ago") so players know how stale the data is, with the
   // exact local time on hover. Refreshed every minute so the label stays current.
