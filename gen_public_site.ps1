@@ -271,6 +271,12 @@ $html = $html.Replace(
 $html = $html.Replace(
   "'/api/player-notes?guid='+encodeURIComponent(guid)",
   "'data/player-notes/'+encodeURIComponent(guid)+'.json'")
+# Data Mine's per-player bulk fetch uses the same route with a different guid expression
+# (p.guid instead of guid) -- same repoint, second call site. Dead code on public (the
+# Data Mine tab/button is stripped above) but must not leak a raw /api/ URL either way.
+$html = $html.Replace(
+  "'/api/player-notes?guid='+encodeURIComponent(p.guid)",
+  "'data/player-notes/'+encodeURIComponent(p.guid)+'.json'")
 $html = $html.Replace(
   "'/api/player-bounties?guid='+encodeURIComponent(guid)",
   "'data/player-bounties/'+encodeURIComponent(guid)+'.json'")
