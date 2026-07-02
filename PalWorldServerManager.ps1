@@ -6185,9 +6185,10 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                 ($path -eq '/api/player-notes' -and $method -eq 'GET') {
                     # Journal/diary note collection state, read from NoteObtainForInstanceFlag
                     # in the player's save (same mechanism as effigies' RelicObtainForInstanceFlag).
-                    # Gives an accurate collected COUNT; individual notes aren't matched to specific
-                    # instance IDs yet (no known GUID->location mapping for notes), so the map
-                    # can't color specific dots found/new the way effigies does.
+                    # Returns the full raw collected-key list. The map can only color a specific
+                    # dot found/new once journal_locations.json has that key confirmed (see the
+                    # palbox-journal-overlay skill) -- entries without a confirmed key render
+                    # blue/"unknown" regardless of what's in this list.
                     try {
                         $guid = $req.QueryString['guid']
                         if (-not $guid) { throw "Missing guid parameter" }
