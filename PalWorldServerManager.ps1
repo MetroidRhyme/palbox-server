@@ -3434,6 +3434,7 @@ function setPalMapTime(t){
 // ── Effigy Tracker ────────────────────────────────────────────────────────────
 var effigyLeaflet=null, effigyLocations=null, effigyCollected=[], effigyInited=false;
 var _effigyAwaitingRoster=false;
+var _effigyPrefsWaitTries=0;
 var EFFIGY_MAX_RANK=353;
 // Bigger dots on touch devices (no hover there, and a 5px dot is a tiny tap target).
 var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
@@ -3678,6 +3679,23 @@ function populateEffigyPlayerDropdown(){
     document.getElementById('effigy-summary').textContent='No player data';
     return;
   }
+  // On the FIRST-ever populate this session (no live selection to preserve yet), wait for
+  // saved prefs to arrive before picking a fallback default player. Without this, a fresh
+  // page load that reaches here before /api/prefs resolves would default to players[0] and
+  // immediately fetch/render THAT player's data -- looking like the map "swapped back" to
+  // the wrong player -- only self-correcting once prefs load a moment later (or never
+  // visibly correcting if that request is slow/fails). Capped retries so a genuinely failed
+  // prefs fetch (which still flips prefsReady=true in its own catch handler) can't hang this.
+  if(!prev&&typeof PREFS_ENABLED!=='undefined'&&PREFS_ENABLED&&!prefsReady){
+    _effigyPrefsWaitTries=(_effigyPrefsWaitTries||0)+1;
+    if(_effigyPrefsWaitTries<=50){
+      sel.innerHTML='<option value="">-- loading --</option>';
+      document.getElementById('effigy-summary').textContent='Loading...';
+      setTimeout(populateEffigyPlayerDropdown,100);
+      return;
+    }
+  }
+  _effigyPrefsWaitTries=0;
   paldeckData.players.forEach(function(p){
     var opt=document.createElement('option');
     opt.value=p.guid; opt.textContent=p.name;
