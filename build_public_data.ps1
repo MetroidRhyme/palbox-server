@@ -263,6 +263,19 @@ if ($doStatic) {
   if (-not $effJson) { throw "No effigy data available (missing $EffigiesLocal and dashboard unreachable)" }
   [System.IO.File]::WriteAllText((Join-Path $PubData 'effigies.json'), $effJson, $utf8)
 
+  # ── journals.json (static journal/diary note locations, game-world fixed) ────
+  # Built once (converted from wiki-published in-game X/Y); bundled as a static file.
+  # The dashboard serves the same JSON at /api/journals, which the data-fetch repoint
+  # points here.
+  Write-Step "building data/journals.json"
+  $journalsLocal = Join-Path $Root 'journal_locations.json'
+  if (Test-Path -LiteralPath $journalsLocal) {
+    Copy-Item -Path $journalsLocal -Destination (Join-Path $PubData 'journals.json') -Force
+  } else {
+    Write-Step "WARNING: journal_locations.json missing; journal overlay will be empty"
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'journals.json'), '[]', $utf8)
+  }
+
   # ── pal-species.json (curated species data: type/work/skills/stats) ──────────
   # Built once by build_pal_species.py; bundled as a static file. The dashboard serves
   # the same JSON at /api/pal-species, which the data-fetch repoint points here.

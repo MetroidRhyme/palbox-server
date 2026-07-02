@@ -1028,6 +1028,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         <span style="font-size:11px;display:inline-flex;gap:6px;align-items:center;">
           <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide effigies you have not found yet"><span style="color:#3fb950;">&#9679;</span> New</button>
           <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide effigies you have already found"><span style="color:#484f58;">&#9679;</span> Found</button>
+          <button id="eff-filt-journal" onclick="toggleEffigyFilter('journal')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide journal / diary note locations"><span style="color:#3399ff;">&#9679;</span> Journals</button>
         </span>
         <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
       </div>
@@ -3436,18 +3437,26 @@ var EFFIGY_MAX_RANK=353;
 // Bigger dots on touch devices (no hover there, and a 5px dot is a tiny tap target).
 var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
 
+// Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
+// from /api/journals and overlaid on the same map as blue dots.
+var journalLocations=null;
+
 // Global visibility filter for the effigy map. Two independent toggles let the player hide
 // the effigies they have already found or the ones still new/undiscovered, to declutter the
 // map. This is a VIEW filter only -- it never changes a Pal's actual found state (which comes
-// solely from the save). Both default on.
-var effigyShowFound=true, effigyShowNew=true;
+// solely from the save). Both default on. effigyShowJournal is a third, independent toggle
+// for the journal-note overlay (unrelated to found/new since journals have no per-save state).
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true;
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
+  if(bj) bj.style.opacity=effigyShowJournal?'1':'0.4';
 }
 function toggleEffigyFilter(which){
-  if(which==='found') effigyShowFound=!effigyShowFound; else effigyShowNew=!effigyShowNew;
+  if(which==='found') effigyShowFound=!effigyShowFound;
+  else if(which==='journal') effigyShowJournal=!effigyShowJournal;
+  else effigyShowNew=!effigyShowNew;
   setEffigyFilterBtns();
   renderEffigyMap();
 }
@@ -3492,7 +3501,7 @@ function collectPrefs(){
   }
   var players={};
   if(PREFS&&PREFS.players){ players.paldeck=PREFS.players.paldeck; players.effigy=PREFS.players.effigy; }
-  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew};
+  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal};
   // Skip persisting while a watch is mid-edit-preview (palEditId/eggEditId set): the filter
   // controls hold that watch's criteria for live preview only, not the user's real standing
   // filter, and must not overwrite it just because a render happened to fire (e.g. clicking a
@@ -3560,7 +3569,7 @@ function maybeApplyEffigyPrefs(){
   if(prefsApplied.effigy||!prefsReady)return;
   prefsApplied.effigy=true;
   var e=PREFS&&PREFS.effigy;
-  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; setEffigyFilterBtns(); }
+  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; setEffigyFilterBtns(); }
   var pe=PREFS&&PREFS.players&&PREFS.players.effigy;
   var sel=document.getElementById('effigy-player');
   if(sel&&pe&&_optExists(sel,pe))sel.value=pe;
@@ -3596,6 +3605,7 @@ function initEffigyView(){
         effigyLeaflet.invalidateSize();
       }
       fetchEffigyLocations();
+      fetchJournalLocations();
     });
   });
 }
@@ -3615,6 +3625,18 @@ async function fetchEffigyLocations(){
     populateEffigyPlayerDropdown();
   }catch(e){
     document.getElementById('effigy-summary').textContent='Error loading effigy data: '+e.message;
+  }
+}
+
+// Static, game-world-fixed journal/diary note locations. Loaded once and left in place for
+// the session; failures are silent (no journal dots) rather than blocking the effigy map.
+async function fetchJournalLocations(){
+  if(journalLocations)return;
+  try{
+    journalLocations=await api('/api/journals');
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    journalLocations=[];
   }
 }
 
@@ -3675,7 +3697,7 @@ async function fetchEffigyPlayer(){
 function renderEffigyMap(){
   if(!effigyLeaflet||!effigyLocations) return;
   var toRemove=[];
-  effigyLeaflet.eachLayer(function(l){if(l._effigyMarker) toRemove.push(l);});
+  effigyLeaflet.eachLayer(function(l){if(l._effigyMarker||l._journalMarker) toRemove.push(l);});
   toRemove.forEach(function(l){effigyLeaflet.removeLayer(l);});
 
   var collectedSet=new Set(effigyCollected.map(function(s){return s.toUpperCase();}));
@@ -3709,6 +3731,28 @@ function renderEffigyMap(){
     m.on('mouseout',function(){this.setRadius(EFF_DOT_R);this.setStyle({weight:baseWeight,color:baseColor});});
     m.addTo(effigyLeaflet);
   });
+
+  // Journal / diary note locations (blue dots) -- static, game-world-fixed, no found/new
+  // state, so they only respect their own Journals toggle.
+  if(effigyShowJournal&&journalLocations&&journalLocations.length){
+    journalLocations.forEach(function(j){
+      var jm=L.circleMarker(effigyRposToLatLng(j.x,j.y),{
+        radius:EFF_DOT_R,
+        color:'#3399ff',
+        fillColor:'#3399ff',
+        fillOpacity:0.85,
+        weight:2,
+        interactive:true
+      });
+      jm._journalMarker=true;
+      jm.bindTooltip('<b style="color:#3399ff">'+j.name+'</b>'
+        +'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>',
+        {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+      jm.on('mouseover',function(){this.setRadius(EFF_DOT_R+3);this.setStyle({weight:3,color:'#f0c000'});this.bringToFront();});
+      jm.on('mouseout',function(){this.setRadius(EFF_DOT_R);this.setStyle({weight:2,color:'#3399ff'});});
+      jm.addTo(effigyLeaflet);
+    });
+  }
 
   var needed=Math.max(0,EFFIGY_MAX_RANK-collectedCount);
   var pct=total>0?Math.round(collectedCount/total*100):0;
@@ -5543,6 +5587,28 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                             }
                         }
                         Send-Response $res 200 "application/json" $script:effigyData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/journals' -and $method -eq 'GET') {
+                    # Static lore-journal/diary locations (game-world fixed, not per-save),
+                    # sourced from wiki-published in-game X/Y and converted to real world
+                    # coords with the same formula the effigy tooltip uses in reverse
+                    # (cx=(y-158000)/459, cy=(x+123888)/459). The public site bundles this
+                    # as a static file; here we serve it from the same JSON so both match.
+                    try {
+                        if (-not $script:journalData) {
+                            $f = "$ServerDir\journal_locations.json"
+                            if (Test-Path -LiteralPath $f) {
+                                $script:journalData = [System.IO.File]::ReadAllText($f)
+                            } else {
+                                $script:journalData = '[]'
+                            }
+                        }
+                        Send-Response $res 200 "application/json" $script:journalData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }

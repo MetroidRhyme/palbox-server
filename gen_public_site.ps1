@@ -245,6 +245,7 @@ $html = $html.Replace("'/api/eggs'", "'data/eggs.json'")
 $html = $html.Replace("'/api/server-messages'", "'data/server-messages.json'")
 $html = $html.Replace("'/api/paldeck'", "'data/paldeck.json'")
 $html = $html.Replace("'/api/effigies'", "'data/effigies.json'")
+$html = $html.Replace("'/api/journals'", "'data/journals.json'")
 $html = $html.Replace("'/api/pal-species'", "'data/pal-species.json'")
 $html = $html.Replace("'/api/pal-skills'", "'data/pal-skills.json'")
 $html = $html.Replace("'/api/pal-passives'", "'data/pal-passives.json'")
@@ -450,6 +451,7 @@ if ($html.Contains("'/api/pals'")) { throw "pals fetch was not repointed" }
 if ($html.Contains("'/api/eggs'")) { throw "eggs fetch was not repointed" }
 if ($html.Contains("'/api/server-messages'")) { throw "server-messages fetch was not repointed" }
 if ($html.Contains('/api/palicon')) { throw "a palicon reference was left unrewritten" }
+if ($html.Contains("'/api/journals'")) { throw "journals fetch was not repointed" }
 if ($html.Contains('function kickPlayer')) { throw "admin JS block was not removed" }
 if ($html.Contains('/api/kick') -or $html.Contains('/api/shutdown')) { throw "admin endpoint URL left in output" }
 if ($html.Contains("switchView('pals')") -eq $false) { throw "boot was clobbered by admin strip" }
