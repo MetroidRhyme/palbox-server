@@ -580,6 +580,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .leaflet-interactive:focus{outline:none;}
 /* Effigy marker tooltip: a touch larger and roomier than Leaflet's default. */
 .eff-tip{font-size:13px;line-height:1.45;padding:5px 9px;}
+/* Uncollected-effigy map marker: green acorn glyph (Flaticon, see footer credit) instead of
+   a plain dot. Drop-shadow doubles as the hover ring since divIcons aren't SVG-restylable
+   like circleMarker was. */
+.effigy-acorn-marker{filter:drop-shadow(0 0 1px rgba(0,0,0,.6));transition:transform .12s ease;}
+.effigy-acorn-marker img{width:100%;height:100%;display:block;pointer-events:none;}
+.effigy-acorn-marker.eff-acorn-hover{transform:scale(1.35);filter:drop-shadow(0 0 3px #f0c000) drop-shadow(0 0 1px rgba(0,0,0,.6));}
 
 /* Header */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
@@ -1251,6 +1257,9 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 </div>
 <div id="toasts"></div>
 <div id="chart-tooltip" style="position:fixed;background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:4px 8px;border-radius:4px;font-size:11px;pointer-events:none;display:none;z-index:100;white-space:nowrap;"></div>
+<footer style="padding:14px 16px;text-align:center;font-size:11px;color:var(--muted);">
+  <a href="https://www.flaticon.com/free-icons/acorn" title="acorn icons" style="color:inherit;" target="_blank" rel="noopener">Acorn icons created by Freepik - Flaticon</a>
+</footer>
 
 <script>
 // ── Globals ───────────────────────────────────────────────────────────────────
@@ -3438,6 +3447,17 @@ var _effigyPrefsWaitTries=0;
 var EFFIGY_MAX_RANK=353;
 // Bigger dots on touch devices (no hover there, and a 5px dot is a tiny tap target).
 var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
+// Uncollected-effigy acorn glyph is a divIcon, not an SVG dot, so it needs its own
+// (slightly larger, so the shape actually reads) size in px rather than a radius.
+var EFF_ACORN_SZ=EFF_DOT_R*4;
+function effigyAcornIcon(){
+  return L.divIcon({
+    className:'effigy-acorn-marker',
+    html:'<img src="icons/effigy_acorn.png" alt="">',
+    iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
+    iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
+  });
+}
 
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
 // from /api/journals and overlaid on the same map as blue dots.
@@ -3762,23 +3782,31 @@ function renderEffigyMap(){
     // Global view filter: hide whichever category (found / new) the player has toggled off.
     // Runs after the count so the summary stays accurate regardless of what is shown.
     if((got&&!effigyShowFound)||(!got&&!effigyShowNew)) return;
-    var baseColor=got?'#484f58':'#3fb950', baseWeight=got?1:2;
-    var m=L.circleMarker(effigyRposToLatLng(pos.x,pos.y),{
-      radius:EFF_DOT_R,
-      color: baseColor,
-      fillColor: got?'#21262d':'#3fb950',
-      fillOpacity: got?0.45:0.9,
-      weight: baseWeight,
-      interactive:true
-    });
-    m._effigyMarker=true;
     var cx=Math.round((pos.y-158000)/459), cy=Math.round((pos.x+123888)/459);
-    m.bindTooltip((got?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#2f9e43">New</b>')
-      +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
-      {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
-    // Hover highlight (gold ring, larger) so it's obvious the marker is interactive.
-    m.on('mouseover',function(){this.setRadius(EFF_DOT_R+3);this.setStyle({weight:3,color:'#f0c000'});this.bringToFront();});
-    m.on('mouseout',function(){this.setRadius(EFF_DOT_R);this.setStyle({weight:baseWeight,color:baseColor});});
+    var tip=(got?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#2f9e43">New</b>')
+      +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+    var m;
+    if(got){
+      var baseColor='#484f58', baseWeight=1;
+      m=L.circleMarker(effigyRposToLatLng(pos.x,pos.y),{
+        radius:EFF_DOT_R,
+        color: baseColor,
+        fillColor:'#21262d',
+        fillOpacity:0.45,
+        weight: baseWeight,
+        interactive:true
+      });
+      // Hover highlight (gold ring, larger) so it's obvious the marker is interactive.
+      m.on('mouseover',function(){this.setRadius(EFF_DOT_R+3);this.setStyle({weight:3,color:'#f0c000'});this.bringToFront();});
+      m.on('mouseout',function(){this.setRadius(EFF_DOT_R);this.setStyle({weight:baseWeight,color:baseColor});});
+    } else {
+      // Uncollected effigies: green acorn glyph instead of a plain dot.
+      m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(),interactive:true});
+      m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-acorn-hover');this.bringToFront();});
+      m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-acorn-hover');});
+    }
+    m._effigyMarker=true;
+    m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
     m.addTo(effigyLeaflet);
   });
 
