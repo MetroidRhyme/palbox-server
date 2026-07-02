@@ -430,10 +430,16 @@ $settingsBlock = @'
     }).catch(function(){ renderDataAge(); });
   }
   // Auto-refresh the page WITHOUT a manual reload. Poll the tiny freshness marker every
-  // 60s; when savedAt advances (a new ~5-min R2 sync landed), silently re-pull the active
-  // data tab. pals/eggs refetch with no loading flash; paldeck keeps its selection;
-  // effigies (static reference data) and other tabs are left alone. Only a real data change
-  // triggers the heavier fetch, so idle polling is just one small meta.json request.
+  // 30s (the sync itself only lands new data every ~60s, so this just halves the average
+  // wait to notice it -- polling faster than the sync cadence wouldn't reduce latency
+  // further); when savedAt advances (a new R2 sync landed), silently re-pull whatever's on
+  // screen. pals/eggs refetch with no loading flash; paldeck keeps its selection; effigies
+  // (the Map tab) re-pulls the SELECTED player's collected effigies/journals/bounties via
+  // fetchEffigyPlayer -- the marker LOCATIONS are static but the collected STATE is exactly
+  // what changes when someone picks one up in-game, so this is the one that makes "pick up
+  // an effigy -> map updates on its own" work. It only touches per-player state, not the
+  // Leaflet map instance or the player roster. Only a real data change triggers any of
+  // this, so idle polling is just one small meta.json request.
   function autoRefresh(){
     fetch('data/meta.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(m){
       if(!m || !m.savedAt) return;
@@ -445,12 +451,13 @@ $settingsBlock = @'
         if(t==='pals' && typeof fetchPals==='function') fetchPals(true);
         else if(t==='eggs' && typeof fetchEggs==='function') fetchEggs(true);
         else if(t==='paldeck' && typeof fetchPaldeck==='function') fetchPaldeck();
+        else if(t==='effigies' && typeof fetchEffigyPlayer==='function') fetchEffigyPlayer();
       }catch(e){}
     }).catch(function(){});
   }
   loadDataAge();
   setInterval(renderDataAge,60000);
-  setInterval(autoRefresh,60000);
+  setInterval(autoRefresh,30000);
 })();
 </script>
 '@
