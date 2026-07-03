@@ -120,6 +120,23 @@ def load_bounty_species():
         return []
 
 
+def load_anonymous_boss_keys():
+    """Exact NormalBossDefeatFlag key -> species, for anonymous zone-numbered field-alpha
+    keys ("<zone>_<n>_<biome>_FBOSS_<n>") that carry no species suffix. The world map is
+    fixed (not per-save), so once a specific key is confirmed (manually, by correlating a
+    known spawn location to a defeat) it's a permanent match for every player/save on this
+    server. Grows one entry at a time as Anthony supplies confirmed mappings -- see the
+    palbox-bounty-tracker skill's "auto-detection limitation" section. Loaded from the file
+    next to this script, matched keys uppercased same as parse_name_bool_map's output."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "anonymous_boss_keys.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return {e["key"].upper(): e["species"] for e in data if e.get("key") and e.get("species")}
+    except Exception:
+        return {}
+
+
 def extract_bounty_data(sav_path):
     """Return the list of bounty-boss species codes this player has defeated.
 
@@ -128,7 +145,8 @@ def extract_bounty_data(sav_path):
     "<zone>_<n>_<biome>_F_BOSS_<SPECIES>" (e.g. "1_10_PLAIN_F_BOSS_FAIRYDRAGON"). The same
     flag also carries many unrelated entries (generic numbered field-alpha spawns, human
     Syndicate/bandit "boss" fights) that we don't have location data for, so we only match
-    keys whose suffix identifies one of our known bounty-boss species.
+    keys whose suffix identifies one of our known bounty-boss species, plus any exact key
+    confirmed in anonymous_boss_keys.json (see load_anonymous_boss_keys).
     """
     raw = decompress_save(sav_path)
     pos = find_property(raw, "NormalBossDefeatFlag")
@@ -137,10 +155,14 @@ def extract_bounty_data(sav_path):
     _, p = read_fstring(raw, pos)
     _, p = read_fstring(raw, p)
     flags = parse_name_bool_map(raw, p)  # already-true, uppercased keys
+    flag_set = set(flags)
     defeated = []
     for species in load_bounty_species():
         suffix = "_BOSS_" + species.upper()
         if any(k.endswith(suffix) for k in flags):
+            defeated.append(species)
+    for key, species in load_anonymous_boss_keys().items():
+        if key in flag_set and species not in defeated:
             defeated.append(species)
     return defeated
 
@@ -155,9 +177,10 @@ def extract_datamine_data(sav_path):
       - syndicate: raw "BOSS_*" human/NPC boss keys (Syndicate Tower fights etc.), no zone
         prefix, no location data.
       - anonymous: everything else -- zone-numbered field-alpha spawns ("<zone>_<n>_..._F_BOSS_
-        <SPECIES>"/"_FBOSS_<n>") that didn't match a known bounty species suffix. Species for
-        these lives in the game's .pak assets, not the save (see the palbox-bounty-tracker
-        skill's "auto-detection limitation" section) -- shown as raw keys only.
+        <SPECIES>"/"_FBOSS_<n>") that didn't match a known bounty species suffix or a confirmed
+        entry in anonymous_boss_keys.json. Species for these lives in the game's .pak assets,
+        not the save (see the palbox-bounty-tracker skill's "auto-detection limitation"
+        section) -- shown as raw keys only.
 
     Also returns the three account-wide PredatorDefeatCount/FixedDungeonClearCount/
     NormalDungeonClearCount stats, which live alongside this flag map but aren't tied to any
@@ -179,6 +202,10 @@ def extract_datamine_data(sav_path):
                     bounty.append(species)
                     matched_keys.add(k)
                     break
+        for key, species in load_anonymous_boss_keys().items():
+            if key in flags and key not in matched_keys:
+                bounty.append(species)
+                matched_keys.add(key)
         for k in flags:
             if k in matched_keys:
                 continue

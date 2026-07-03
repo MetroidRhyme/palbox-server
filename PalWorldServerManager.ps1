@@ -758,9 +758,11 @@ input:checked+.tog-sl{background:var(--green);}
 input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 
 /* Top-level nav tabs */
-.nav-tab{padding:4px 14px;font-size:13px;cursor:pointer;color:var(--muted);border-radius:6px;border:1px solid transparent;background:transparent;font-family:inherit;font-weight:500;transition:color .12s,background .12s,border-color .12s;}
+.nav-tab{position:relative;padding:4px 14px;font-size:13px;cursor:pointer;color:var(--muted);border-radius:6px;border:1px solid transparent;background:transparent;font-family:inherit;font-weight:500;transition:color .12s,background .12s,border-color .12s;}
 .nav-tab:hover{color:var(--text);background:var(--surface2);}
 .nav-tab.active{color:var(--text);background:var(--surface2);border-color:var(--border);}
+.nav-tab.has-new::after{content:'';position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:#ffd84d;animation:tabNewPulse 1.4s ease-out infinite;}
+@keyframes tabNewPulse{0%{box-shadow:0 0 0 0 rgba(255,216,77,.65);}70%{box-shadow:0 0 0 6px rgba(255,216,77,0);}100%{box-shadow:0 0 0 0 rgba(255,216,77,0);}}
 
 /* Tags */
 .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:500;}
@@ -898,12 +900,18 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <button class="nav-tab" data-tab="datamine" onclick="switchView('datamine')">Data Mine</button>
   </nav>
   <div class="hdr-right">
+    <button class="btn-icon" id="msglog-toggle" onclick="toggleMsgLog()" title="Server message history (last 24h)">&#128220;</button>
     <button class="btn-icon" id="snd-toggle" onclick="toggleChatSound()" title="Notification sound for server messages">&#128276;</button>
     <button class="btn btn-green" id="btn-start-hdr" onclick="startServer()" style="display:none">&#9654; Start Server</button>
     <span class="hdr-mid">Updated <b id="last-updated">-</b> &bull; refresh in <b id="countdown">5:00</b></span>
     <button class="btn-icon" onclick="refreshAll()">&#8635; Refresh</button>
   </div>
 </header>
+
+<div id="msglog-panel" class="msglog-panel" style="display:none;">
+  <div class="msglog-hdr"><span>Message Log <span style="color:var(--muted);font-weight:400;">(24h)</span></span><button onclick="toggleMsgLog()" title="Close">&times;</button></div>
+  <div class="msglog-body" id="msglog-body"><div class="empty-state">No messages yet.</div></div>
+</div>
 
 <div id="view-dashboard" class="page">
 
@@ -1058,6 +1066,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         <span id="dirty-badge" class="badge" style="display:none;color:var(--yellow);border-color:var(--yellow)"></span>
         <button class="btn btn-ghost" onclick="reloadSettings()">&#8635; Reload</button>
         <button class="btn btn-ghost" onclick="resetDirty()">Discard</button>
+        <button class="btn btn-warn" onclick="resetTabToDefaults()">Reset Tab to Defaults</button>
         <button class="btn btn-primary" onclick="saveFileSettings()">Save Settings</button>
       </div>
     </div>
@@ -1413,10 +1422,10 @@ var META = {
   ServerName:{c:'Server',t:'string',d:'Server name shown in browser'},
   ServerDescription:{c:'Server',t:'string',d:'Server description'},
   ServerPassword:{c:'Server',t:'string',d:'Join password (blank = open)'},
-  AdminPassword:{c:'Server',t:'string',d:'In-game /adminauth password'},
-  PublicPort:{c:'Server',t:'int',d:'UDP port (default 8211)'},
+  AdminPassword:{c:'Server',t:'string',d:'Admin password (auth in-game via /AdminPassword <pw>)'},
+  PublicPort:{c:'Server',t:'int',d:"Community-browser advertised port -- not the listen port (that's the -port launch arg)"},
   ServerPlayerMaxNum:{c:'Server',t:'int',d:'Max players on the server'},
-  CoopPlayerMaxNum:{c:'Server',t:'int',d:'Max co-op session players'},
+  CoopPlayerMaxNum:{c:'Server',t:'int',d:'Max players per co-op party (distinct from the server-wide cap)'},
   RCONEnabled:{c:'Server',t:'bool',d:'Enable RCON remote control'},
   RCONPort:{c:'Server',t:'int',d:'RCON port'},
   RESTAPIEnabled:{c:'Server',t:'bool',d:'Enable REST API'},
@@ -1424,14 +1433,13 @@ var META = {
   bUseAuth:{c:'Server',t:'bool',d:'Steam authentication'},
   bIsUseBackupSaveData:{c:'Server',t:'bool',d:'Keep backup save files'},
   bAllowClientMod:{c:'Server',t:'bool',d:'Allow client-side mods'},
-  bShowPlayerList:{c:'Server',t:'bool',d:'Expose player list via API'},
+  bShowPlayerList:{c:'Server',t:'bool',d:'Show player list in the in-game ESC menu'},
   ChatPostLimitPerMinute:{c:'Server',t:'int',d:'Chat messages per minute limit'},
   bIsShowJoinLeftMessage:{c:'Server',t:'bool',d:'Show join/leave in chat'},
-  Difficulty:{c:'Gameplay',t:'enum',d:'World difficulty preset',opts:['None','Normal','Difficult']},
   DeathPenalty:{c:'Gameplay',t:'enum',d:'Items lost on death',opts:['None','Item','ItemAndEquipment','All']},
   bIsPvP:{c:'Gameplay',t:'bool',d:'Enable PvP damage'},
   bIsMultiplay:{c:'Gameplay',t:'bool',d:'Multiplayer mode'},
-  bHardcore:{c:'Gameplay',t:'bool',d:'Hardcore mode (permadeath)'},
+  bHardcore:{c:'Gameplay',t:'bool',d:'No respawn on death (see character recreation below)'},
   bPalLost:{c:'Gameplay',t:'bool',d:'Pals permanently lost on death'},
   bCharacterRecreateInHardcore:{c:'Gameplay',t:'bool',d:'Allow character recreation in hardcore'},
   bEnablePlayerToPlayerDamage:{c:'Gameplay',t:'bool',d:'Player-to-player damage'},
@@ -1440,10 +1448,12 @@ var META = {
   bEnableFastTravel:{c:'Gameplay',t:'bool',d:'Fast travel'},
   bEnableFastTravelOnlyBaseCamp:{c:'Gameplay',t:'bool',d:'Fast travel only to base camps'},
   bIsStartLocationSelectByMap:{c:'Gameplay',t:'bool',d:'Choose spawn on map'},
-  bExistPlayerAfterLogout:{c:'Gameplay',t:'bool',d:'Body persists after logout'},
+  bExistPlayerAfterLogout:{c:'Gameplay',t:'bool',d:'Player appears sleeping in place after logout (vs. vanishing)'},
   bCanPickupOtherGuildDeathPenaltyDrop:{c:'Gameplay',t:'bool',d:'Other guilds can loot your drops'},
   EnablePredatorBossPal:{c:'Gameplay',t:'bool',d:'Predator boss Pals spawn'},
   bEnableNonLoginPenalty:{c:'Gameplay',t:'bool',d:'Offline penalty applies'},
+  bAllowGlobalPalboxExport:{c:'Gameplay',t:'bool',d:'Allow uploading Pals to the Global Palbox'},
+  bAllowGlobalPalboxImport:{c:'Gameplay',t:'bool',d:'Allow downloading Pals from the Global Palbox'},
   ExpRate:{c:'Rates',t:'float',d:'XP gain multiplier'},
   PalCaptureRate:{c:'Rates',t:'float',d:'Pal capture rate multiplier'},
   PalSpawnNumRate:{c:'Rates',t:'float',d:'Pal spawn quantity multiplier'},
@@ -1465,28 +1475,28 @@ var META = {
   PalStomachDecreaceRate:{c:'Pal',t:'float',d:'Pal hunger drain rate'},
   PalStaminaDecreaceRate:{c:'Pal',t:'float',d:'Pal stamina drain rate'},
   PalAutoHPRegeneRate:{c:'Pal',t:'float',d:'Pal HP regen rate'},
-  PalAutoHpRegeneRateInSleep:{c:'Pal',t:'float',d:'Pal HP regen while sleeping'},
-  PalEggDefaultHatchingTime:{c:'Pal',t:'float',d:'Egg hatch time (hours)'},
+  PalAutoHpRegeneRateInSleep:{c:'Pal',t:'float',d:'Pal HP regen while sleeping in the Palbox'},
+  PalEggDefaultHatchingTime:{c:'Pal',t:'float',d:'Hatch time (hours) for the largest egg tier; smaller eggs hatch faster'},
   BuildObjectHpRate:{c:'Building',t:'float',d:'Building HP multiplier'},
   BuildObjectDamageRate:{c:'Building',t:'float',d:'Damage to buildings multiplier'},
   BuildObjectDeteriorationDamageRate:{c:'Building',t:'float',d:'Building decay rate'},
   CollectionObjectHpRate:{c:'Building',t:'float',d:'Resource node HP multiplier'},
   CollectionObjectRespawnSpeedRate:{c:'Building',t:'float',d:'Resource respawn speed'},
   BaseCampMaxNum:{c:'Building',t:'int',d:'Max total base camps in world'},
-  BaseCampWorkerMaxNum:{c:'Building',t:'int',d:'Max Pal workers per camp'},
-  BaseCampMaxNumInGuild:{c:'Building',t:'int',d:'Max camps per guild'},
-  MaxBuildingLimitNum:{c:'Building',t:'int',d:'Max total buildings (0=unlimited)'},
-  bBuildAreaLimit:{c:'Building',t:'bool',d:'Restrict building to zones'},
-  bInvisibleOtherGuildBaseCampAreaFX:{c:'Building',t:'bool',d:"Hide other guilds' base effects"},
+  BaseCampWorkerMaxNum:{c:'Building',t:'int',d:'Max Pal workers per base camp (max 50)'},
+  BaseCampMaxNumInGuild:{c:'Building',t:'int',d:'Max base camps per guild (default 4, max 10)'},
+  MaxBuildingLimitNum:{c:'Building',t:'int',d:'Max buildings per player (0=unlimited)'},
+  bBuildAreaLimit:{c:'Building',t:'bool',d:'Prevent building near landmarks like fast-travel points'},
+  bInvisibleOtherGuildBaseCampAreaFX:{c:'Building',t:'bool',d:"Hide other guilds' base-camp area effect (plain boundary only)"},
   DropItemMaxNum:{c:'Items',t:'int',d:'Max dropped items in world at once'},
   DropItemAliveMaxHours:{c:'Items',t:'float',d:'Hours before drops despawn'},
   GuildPlayerMaxNum:{c:'Guild',t:'int',d:'Max players per guild'},
-  bAutoResetGuildNoOnlinePlayers:{c:'Guild',t:'bool',d:'Auto-reset inactive guilds'},
+  bAutoResetGuildNoOnlinePlayers:{c:'Guild',t:'bool',d:"Delete a guild's structures & base Pals if no members log in"},
   AutoResetGuildTimeNoOnlinePlayers:{c:'Guild',t:'float',d:'Hours of inactivity before guild resets'},
   GuildRejoinCooldownMinutes:{c:'Guild',t:'int',d:'Guild rejoin cooldown (minutes)'},
   AutoSaveSpan:{c:'World',t:'float',d:'Autosave interval (seconds)'},
   SupplyDropSpan:{c:'World',t:'int',d:'Supply drop interval (minutes)'},
-  ServerReplicatePawnCullDistance:{c:'World',t:'float',d:'Remote player cull distance'}
+  ServerReplicatePawnCullDistance:{c:'World',t:'float',d:'Pal sync distance to remote players, cm (min 5000, max 15000)'}
 };
 var CATS = ['Server','Gameplay','Rates','Damage','Player','Pal','Building','Items','Guild','World'];
 
@@ -1625,7 +1635,7 @@ function initChartHover(){
 // repoints to data/server-messages.json (the R2 mirror). PalWorld has no chat-read API, so
 // this only surfaces what the SERVER sends -- there is no player chat. Sound is a WebAudio
 // chime (no asset to host) muteable via the header bell, persisted per-browser.
-var _chatLastId=0, _chatInit=false;
+var _chatLastId=0, _chatInit=false, _msgLog=[];
 function chatSoundOn(){ try{ return localStorage.getItem('palbox_chat_sound')!=='off'; }catch(e){ return true; } }
 function toggleChatSound(){
   var on=!chatSoundOn();
@@ -1664,6 +1674,7 @@ async function pollServerMessages(){
     var arr=await api('/api/server-messages');
     if(!Array.isArray(arr)) arr=(arr&&arr.messages)||[];
     arr.sort(function(a,b){ return (a.id||0)-(b.id||0); });
+    _msgLog=arr; renderMsgLog();
     if(!_chatInit){   // first load: adopt the latest id WITHOUT replaying the backlog
       _chatInit=true;
       if(arr.length) _chatLastId=arr[arr.length-1].id||0;
@@ -1674,6 +1685,36 @@ async function pollServerMessages(){
     });
   }catch(e){}
 }
+// ── Message Log panel (top right): full history of the server-message feed above,
+// windowed to the last 24h client-side (the backend already caps the feed at the last
+// 50 lines total -- see server_messages.ps1 -- so this is a display window on top of
+// that, not a separate retention mechanism).
+function renderMsgLog(){
+  var body=document.getElementById('msglog-body'); if(!body)return;
+  var cutoff=Date.now()-24*3600*1000;
+  var items=_msgLog.filter(function(m){ var t=Date.parse(m.ts); return !isNaN(t)&&t>=cutoff; })
+    .slice().reverse();
+  if(!items.length){ body.innerHTML='<div class="empty-state">No messages in the last 24h.</div>'; return; }
+  var icon={egg:'&#129370;',maintenance:'&#128295;',broadcast:'&#128226;'};
+  body.innerHTML=items.map(function(m){
+    var kind=m.kind||'broadcast';
+    var d=new Date(m.ts);
+    var timeStr=isNaN(d.getTime())?'':d.toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    return '<div class="msglog-item ml-'+esc(kind)+'"><span class="ml-time">'+(icon[kind]||icon.broadcast)+' '+esc(timeStr)+'</span><span class="ml-msg">'+esc(m.message||'')+'</span></div>';
+  }).join('');
+}
+function toggleMsgLog(){
+  var p=document.getElementById('msglog-panel'); if(!p)return;
+  var show=p.style.display==='none';
+  p.style.display=show?'':'none';
+  if(show) renderMsgLog();
+}
+document.addEventListener('click',function(e){
+  var p=document.getElementById('msglog-panel'); if(!p||p.style.display==='none')return;
+  if(p.contains(e.target))return;
+  var btn=document.getElementById('msglog-toggle'); if(btn&&btn.contains(e.target))return;
+  p.style.display='none';
+});
 
 // Remember the last-opened tab across browser reloads. Captured BEFORE the boot
 // sequence runs (the public build's boot calls switchView('pals'), which would
@@ -1698,11 +1739,24 @@ function switchView(name){
   document.querySelectorAll('.nav-tab').forEach(function(t){
     t.classList.toggle('active',t.dataset.tab===name);
   });
+  clearTabNew(name);
   if(name==='effigies') initEffigyView();
   if(name==='pals' && !palsData) fetchPals();
   if(name==='eggs') fetchEggs();
   if(name==='datamine') fetchDataMine();
   try{localStorage.setItem('palbox_active_tab',name);}catch(e){}
+}
+// "New content" pulse dot on a nav tab -- lit when a watch match (or other tracked
+// event) surfaces while the user isn't already looking at that tab, cleared the moment
+// they click into it (switchView above). Keyed by data-tab so callers just pass the tab
+// name ('pals'/'eggs'/etc.) -- notifyWatchFinds's `kind` already matches 1:1.
+function markTabNew(name){
+  var btn=document.querySelector('.nav-tab[data-tab="'+name+'"]');
+  if(btn && !btn.classList.contains('active')) btn.classList.add('has-new');
+}
+function clearTabNew(name){
+  var btn=document.querySelector('.nav-tab[data-tab="'+name+'"]');
+  if(btn) btn.classList.remove('has-new');
 }
 
 // ── Paldeck data ──────────────────────────────────────────────────────────────
@@ -2477,6 +2531,7 @@ function watchFoundAlert(kind,names,count){
   var who=uniq.slice(0,3).join(', ')+(uniq.length>3?(' +'+(uniq.length-3)+' more'):'');
   showWatchBanner('&#9733; Watch hit: '+count+' new '+label+(count===1?'':'s')+' matched &mdash; '+esc(who));
   playWatchChime();
+  markTabNew(kind);
 }
 // Transient top banner, built on demand so no HTML template change is needed (works on
 // both the admin dashboard and the generated public site). Click or 8s timeout dismisses.
@@ -3647,14 +3702,16 @@ var journalLocations=null;
 var journalCollected=[], journalCollectedCount=null;
 var JOURNAL_MAX=49;
 
-// Species NormalBossDefeatFlag can actually confirm automatically -- across every save
-// inspected so far, only these two ever appeared name-tagged in the flag map (everything
-// else uses anonymous zone-numbered keys with no recoverable species; see the
-// palbox-bounty-tracker skill's "auto-detection limitation" section, and extract_bounty_data
-// in pal_save_reader.py). The Effigy map only plots these two -- showing the other 68 as
-// permanently "not defeated" markers would be misleading busywork since neither the save nor
-// (on admin) a click can ever confirm them.
-var AUTO_TRACKED_BOUNTY_SPECIES=['BlueDragon','FairyDragon'];
+// Species NormalBossDefeatFlag can actually confirm automatically, two ways: (1) name-tagged
+// directly in the flag map -- across every save inspected so far, only BlueDragon and
+// FairyDragon ever appeared this way; or (2) an anonymous zone-numbered key ("<zone>_<n>_
+// <biome>_FBOSS_<n>") manually confirmed to a species and recorded in anonymous_boss_keys.json
+// -- the world map is fixed, so a confirmed key/species pair holds for every player/save on
+// this server. See the palbox-bounty-tracker skill's "auto-detection limitation" section and
+// extract_bounty_data/load_anonymous_boss_keys in pal_save_reader.py. The Effigy map only
+// plots species in this list -- showing the rest as permanently "not defeated" markers would
+// be misleading busywork since neither the save nor (on admin) a click can ever confirm them.
+var AUTO_TRACKED_BOUNTY_SPECIES=['BlueDragon','FairyDragon','GrassMammoth'];
 
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
 // loaded once from /api/bounty-bosses (see bounty_bosses.json). Each entry has {species,
@@ -4644,6 +4701,16 @@ async function fetchFileSettings(){
 function reloadSettings(){sLoaded=false;sDirty={};fetchFileSettings();}
 function resetDirty(){sDirty={};updateDirtyBadge();renderSettingsTabs();renderSettingsGrid();}
 
+// Stages every setting in the current tab back to its default value (doesn't
+// write the file until Save Settings is clicked, matching the normal dirty flow).
+function resetTabToDefaults(){
+  var keys=Object.keys(META).filter(function(k){return META[k].c===sCat;});
+  if(!keys.length)return;
+  if(!confirm('Reset all "'+sCat+'" settings to their defaults?\nThis only stages the change - click Save Settings to apply it.')) return;
+  keys.forEach(function(k){ if(k in sDefault) sDirty[k]=sDefault[k]; });
+  updateDirtyBadge(); renderSettingsTabs(); renderSettingsGrid();
+}
+
 async function saveFileSettings(){
   var merged=Object.assign({},sActive,sDirty);
   try{
@@ -4840,6 +4907,17 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
 .chat-banner.show{opacity:1;transform:translateY(0);}
 .chat-banner-ico{font-size:16px;flex-shrink:0;}
 .chat-banner-msg{word-break:break-word;}
+.msglog-panel{position:fixed;top:54px;right:14px;z-index:9998;width:360px;max-width:92vw;max-height:70vh;background:var(--surface2,#21262d);border:1px solid var(--border,#30363d);border-radius:10px;box-shadow:0 10px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;}
+.msglog-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border,#30363d);font-size:13px;font-weight:700;color:var(--text,#c9d1d9);}
+.msglog-hdr button{background:none;border:0;color:var(--muted,#8b949e);font-size:16px;cursor:pointer;line-height:1;padding:0 2px;}
+.msglog-hdr button:hover{color:#f85149;}
+.msglog-body{overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:6px;}
+.msglog-item{background:var(--surface,#161b22);border:1px solid var(--border,#30363d);border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.4;}
+.msglog-item .ml-time{color:var(--muted,#8b949e);font-size:10.5px;display:block;margin-bottom:2px;}
+.msglog-item .ml-msg{color:var(--text,#c9d1d9);word-break:break-word;}
+.msglog-item.ml-egg{border-left:3px solid #ffd84d;}
+.msglog-item.ml-maintenance{border-left:3px solid #58a6ff;}
+.msglog-item.ml-broadcast{border-left:3px solid #3fb950;}
 .pal-card{cursor:pointer;}
 .pal-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:24px 12px;overflow:auto;}
 .pal-modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;max-width:520px;width:100%;padding:16px;}
