@@ -158,6 +158,22 @@ def load_anonymous_boss_keys():
         return {}
 
 
+def load_excluded_boss_keys():
+    """Exact NormalBossDefeatFlag keys to ignore entirely when matching bounty species --
+    keys that suffix-match or anonymous-match a species but turned out to be unreliable
+    (see excluded_boss_keys.json for the reason each was added). Checked in BOTH the
+    suffix-match and the anonymous-key lookup, so an excluded key falls through to the raw
+    "anonymous" bucket in extract_datamine_data instead of being misattributed to a
+    species -- see the palbox-bounty-tracker skill's "OPEN QUESTION" note."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "excluded_boss_keys.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return {e["key"].upper() for e in data if e.get("key")}
+    except Exception:
+        return set()
+
+
 def extract_bounty_data(sav_path):
     """Return the list of bounty-boss species codes this player has defeated.
 
@@ -177,13 +193,14 @@ def extract_bounty_data(sav_path):
     _, p = read_fstring(raw, p)
     flags = parse_name_bool_map(raw, p)  # already-true, uppercased keys
     flag_set = set(flags)
+    excluded = load_excluded_boss_keys()
     defeated = []
     for species in load_bounty_species():
         suffix = "_BOSS_" + species.upper()
-        if any(k.endswith(suffix) for k in flags):
+        if any(k.endswith(suffix) for k in flags if k not in excluded):
             defeated.append(species)
     for key, species in load_anonymous_boss_keys().items():
-        if key in flag_set and species not in defeated:
+        if key not in excluded and key in flag_set and species not in defeated:
             defeated.append(species)
     return defeated
 
@@ -215,16 +232,19 @@ def extract_datamine_data(sav_path):
         _, p = read_fstring(raw, pos)
         _, p = read_fstring(raw, p)
         flags = parse_name_bool_map(raw, p)
+        excluded = load_excluded_boss_keys()
         matched_keys = set()
         for species in load_bounty_species():
             suffix = "_BOSS_" + species.upper()
             for k in flags:
+                if k in excluded:
+                    continue
                 if k.endswith(suffix):
                     bounty.append(species)
                     matched_keys.add(k)
                     break
         for key, species in load_anonymous_boss_keys().items():
-            if key in flags and key not in matched_keys:
+            if key not in excluded and key in flags and key not in matched_keys:
                 bounty.append(species)
                 matched_keys.add(key)
         for k in flags:

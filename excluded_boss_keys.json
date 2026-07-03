@@ -1,0 +1,6 @@
+[
+  {
+    "key": "1_10_PLAIN_F_BOSS_FAIRYDRAGON",
+    "reason": "Suffix-matches FairyDragon (Elphidran), but Anthony is certain he has NOT killed Elphidran and this flag went true right around a confirmed Chillet (WeaselDragon) kill -- suspected mislabeled spawner (note: 'Chillet???', not fully confirmed). Excluded from all bounty matching until a snapshot-diff pins down the real species; falls through to the raw anonymous-key bucket on the Data Mine tab instead of being misattributed."
+  }
+]

@@ -3711,7 +3711,7 @@ var JOURNAL_MAX=49;
 // extract_bounty_data/load_anonymous_boss_keys in pal_save_reader.py. The Effigy map only
 // plots species in this list -- showing the rest as permanently "not defeated" markers would
 // be misleading busywork since neither the save nor (on admin) a click can ever confirm them.
-var AUTO_TRACKED_BOUNTY_SPECIES=['BlueDragon','FairyDragon','GrassMammoth','CaptainPenguin'];
+var AUTO_TRACKED_BOUNTY_SPECIES=['BlueDragon','FairyDragon','GrassMammoth','CaptainPenguin','KingAlpaca','SakuraSaurus_Water','Ronin','Kirin','PlantSlime','Mutant'];
 
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
 // loaded once from /api/bounty-bosses (see bounty_bosses.json). Each entry has {species,
