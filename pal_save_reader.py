@@ -71,6 +71,27 @@ def parse_name_bool_map(raw, pos):
     return result
 
 
+def parse_name_bool_map_full(raw, pos):
+    """Same layout/position as parse_name_bool_map but returns EVERY entry (not just the
+    true ones) as {uppercased_key: bool}. Used by diagnostic/snapshot tooling that needs to
+    see a key flip false->true or appear for the first time, not just the current true set
+    -- parse_name_bool_map alone can't distinguish "always was false" from "didn't exist"."""
+    pos += 8
+    _, pos = read_fstring(raw, pos)
+    _, pos = read_fstring(raw, pos)
+    pos += 5
+    count = struct.unpack_from("<I", raw, pos)[0]
+    pos += 4
+    result = {}
+    for _ in range(count):
+        name, pos = read_fstring(raw, pos)
+        val = raw[pos]
+        pos += 1
+        if name:
+            result[name.upper()] = bool(val)
+    return result
+
+
 def parse_name_int_map(raw, pos):
     # Layout after property-name + type FStrings:
     #   8 bytes: data size
