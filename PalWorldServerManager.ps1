@@ -297,6 +297,108 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         try { $Response.OutputStream.Write($bytes, 0, $bytes.Length); $Response.OutputStream.Close() } catch {}
     }
 
+    # ── Hand-confirmed map locations (Anthony's own live-play data) ──────────────
+    # confirmed_locations.json holds flag-key -> {name,gx,gy} entries Anthony has
+    # personally verified in-game via a companion save-watching script (Desktop
+    # DataMine\palworld_full_save_dump.py, see the palworld-project skill). These
+    # are the source of truth wherever they overlap a key in effigies.json /
+    # journal_locations.json / bounty_bosses.json, which were sourced from a
+    # public GitHub dataset or third-party wiki guides -- see Merge-Confirmed*
+    # below, applied inside the /api/effigies, /api/journals, and
+    # /api/bounty-bosses handlers.
+    function Get-ConfirmedLocations {
+        if ($null -eq $script:confirmedLocations) {
+            $f = "$ServerDir\confirmed_locations.json"
+            if (Test-Path -LiteralPath $f) {
+                try { $script:confirmedLocations = @(Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json) }
+                catch { $script:confirmedLocations = @() }
+            } else {
+                $script:confirmedLocations = @()
+            }
+        }
+        return $script:confirmedLocations
+    }
+
+    # gx/gy (in-game grid coords) -> real world x/y. Inverse of the effigy
+    # tooltip's cx=(y-158000)/459, cy=(x+123888)/459 -- see the
+    # palbox-journal-overlay skill's coordinate-transform section.
+    function ConvertTo-WorldXY([int]$gx, [int]$gy) {
+        return @{ x = ($gy * 459) - 123888; y = ($gx * 459) + 158000 }
+    }
+
+    function Merge-ConfirmedEffigies([string]$json) {
+        $confirmed = Get-ConfirmedLocations
+        if (-not $confirmed.Count) { return $json }
+        try { $obj = $json | ConvertFrom-Json } catch { return $json }
+        $props = @{}
+        foreach ($p in $obj.PSObject.Properties) { $props[$p.Name.ToUpper()] = $p.Name }
+        foreach ($c in $confirmed) {
+            $propName = $props[$c.key.ToUpper()]
+            if ($propName) {
+                $xy = ConvertTo-WorldXY $c.gx $c.gy
+                $obj.$propName.x = $xy.x
+                $obj.$propName.y = $xy.y
+            }
+        }
+        return ($obj | ConvertTo-Json -Depth 6 -Compress)
+    }
+
+    function Merge-ConfirmedJournals([string]$json) {
+        $confirmed = Get-ConfirmedLocations
+        if (-not $confirmed.Count) { return $json }
+        try { $arr = @($json | ConvertFrom-Json) } catch { return $json }
+        $byKey = @{}
+        foreach ($c in $confirmed) { $byKey[$c.key.ToUpper()] = $c }
+        foreach ($entry in $arr) {
+            if (-not $entry.key) { continue }
+            $c = $byKey[$entry.key.ToUpper()]
+            if ($c) {
+                $xy = ConvertTo-WorldXY $c.gx $c.gy
+                $entry.x = $xy.x
+                $entry.y = $xy.y
+                $entry.gx = $c.gx
+                $entry.gy = $c.gy
+                # Anthony's script is the source of truth -- override the name too,
+                # not just the coordinates, if it has one for this key.
+                if ($c.name) { $entry.name = $c.name }
+            }
+        }
+        return ($arr | ConvertTo-Json -Depth 6)
+    }
+
+    function Merge-ConfirmedBounty([string]$json) {
+        $confirmed = Get-ConfirmedLocations
+        if (-not $confirmed.Count) { return $json }
+        try { $arr = @($json | ConvertFrom-Json) } catch { return $json }
+        # Resolve a confirmed key to a species via anonymous_boss_keys.json (the
+        # world map is fixed, so a confirmed key/species pair holds for every
+        # save -- see the palbox-bounty-tracker skill) plus literal species-named
+        # keys (BlueDragon/FairyDragon, the two that self-name-tag in the save).
+        $anonMap = @{}
+        $anonFile = "$ServerDir\anonymous_boss_keys.json"
+        if (Test-Path -LiteralPath $anonFile) {
+            try {
+                foreach ($e in @(Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.key -and $e.species) { $anonMap[$e.key.ToUpper()] = $e.species }
+                }
+            } catch {}
+        }
+        $bySpecies = @{}
+        foreach ($entry in $arr) { if ($entry.species) { $bySpecies[$entry.species.ToUpper()] = $entry } }
+        foreach ($c in $confirmed) {
+            $species = $anonMap[$c.key.ToUpper()]
+            if (-not $species) { $species = $c.key }
+            $entry = $bySpecies[$species.ToUpper()]
+            if ($entry) {
+                $xy = ConvertTo-WorldXY $c.gx $c.gy
+                $entry.x = $xy.x
+                $entry.y = $xy.y
+                if ($c.name) { $entry.name = $c.name }
+            }
+        }
+        return ($arr | ConvertTo-Json -Depth 6)
+    }
+
     # ── Save-management helpers ───────────────────────────────────────────────
 
     # Read/write the world GUID the server loads on start. The server rewrites
@@ -6220,13 +6322,16 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                             # offline / if the upstream repo changes.
                             $localEffigies = "$ServerDir\effigies.json"
                             if (Test-Path -LiteralPath $localEffigies) {
-                                $script:effigyData = [System.IO.File]::ReadAllText($localEffigies)
+                                $raw = [System.IO.File]::ReadAllText($localEffigies)
                             } else {
                                 $wc = New-Object System.Net.WebClient
                                 $wc.Headers.Add('User-Agent', 'Mozilla/5.0')
-                                $script:effigyData = $wc.DownloadString(
+                                $raw = $wc.DownloadString(
                                     'https://raw.githubusercontent.com/oMaN-Rod/palworld-save-pal/main/data/json/effigies.json')
                             }
+                            # Overlay Anthony's own live-play-confirmed coordinates on top of
+                            # the public/upstream data -- see Merge-ConfirmedEffigies above.
+                            $script:effigyData = Merge-ConfirmedEffigies $raw
                         }
                         Send-Response $res 200 "application/json" $script:effigyData
                     } catch {
@@ -6245,10 +6350,13 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         if (-not $script:journalData) {
                             $f = "$ServerDir\journal_locations.json"
                             if (Test-Path -LiteralPath $f) {
-                                $script:journalData = [System.IO.File]::ReadAllText($f)
+                                $raw = [System.IO.File]::ReadAllText($f)
                             } else {
-                                $script:journalData = '[]'
+                                $raw = '[]'
                             }
+                            # Overlay Anthony's own live-play-confirmed coordinates/names on
+                            # top of the wiki-sourced base data -- see Merge-ConfirmedJournals.
+                            $script:journalData = Merge-ConfirmedJournals $raw
                         }
                         Send-Response $res 200 "application/json" $script:journalData
                     } catch {
@@ -6267,10 +6375,13 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         if (-not $script:bountyBossData) {
                             $f = "$ServerDir\bounty_bosses.json"
                             if (Test-Path -LiteralPath $f) {
-                                $script:bountyBossData = [System.IO.File]::ReadAllText($f)
+                                $raw = [System.IO.File]::ReadAllText($f)
                             } else {
-                                $script:bountyBossData = '[]'
+                                $raw = '[]'
                             }
+                            # Overlay Anthony's own live-play-confirmed coordinates/names on
+                            # top of the paldb-sourced base data -- see Merge-ConfirmedBounty.
+                            $script:bountyBossData = Merge-ConfirmedBounty $raw
                         }
                         Send-Response $res 200 "application/json" $script:bountyBossData
                     } catch {

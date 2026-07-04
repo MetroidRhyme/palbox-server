@@ -63,6 +63,107 @@ function Get-DashJson($pathAndQuery) {
   return $null
 }
 
+# ── Hand-confirmed map locations (Anthony's own live-play data) ────────────────
+# confirmed_locations.json holds flag-key -> {name,gx,gy} entries Anthony has
+# personally verified in-game via a companion save-watching script (Desktop
+# DataMine\palworld_full_save_dump.py, see the palworld-project skill). These
+# are the source of truth wherever they overlap a key in effigies.json /
+# journal_locations.json / bounty_bosses.json, which were sourced from a public
+# GitHub dataset or third-party wiki guides. Mirrors the same-named functions
+# in PalWorldServerManager.ps1 so the admin dashboard and this static bundle
+# always agree -- kept as an independent copy rather than a shared module,
+# matching this codebase's existing convention (no dot-sourcing between these
+# two files).
+$ConfirmedLocationsLocal = Join-Path $Root 'confirmed_locations.json'
+$script:confirmedLocationsCache = $null
+function Get-ConfirmedLocations {
+  if ($null -eq $script:confirmedLocationsCache) {
+    if (Test-Path -LiteralPath $ConfirmedLocationsLocal) {
+      try { $script:confirmedLocationsCache = @(Get-Content -LiteralPath $ConfirmedLocationsLocal -Raw -Encoding UTF8 | ConvertFrom-Json) }
+      catch { $script:confirmedLocationsCache = @() }
+    } else {
+      $script:confirmedLocationsCache = @()
+    }
+  }
+  return $script:confirmedLocationsCache
+}
+
+# gx/gy (in-game grid coords) -> real world x/y. Inverse of the effigy
+# tooltip's cx=(y-158000)/459, cy=(x+123888)/459 -- see the
+# palbox-journal-overlay skill's coordinate-transform section.
+function ConvertTo-WorldXY([int]$gx, [int]$gy) {
+  return @{ x = ($gy * 459) - 123888; y = ($gx * 459) + 158000 }
+}
+
+function Merge-ConfirmedEffigies([string]$json) {
+  $confirmed = Get-ConfirmedLocations
+  if (-not $confirmed.Count) { return $json }
+  try { $obj = $json | ConvertFrom-Json } catch { return $json }
+  $props = @{}
+  foreach ($p in $obj.PSObject.Properties) { $props[$p.Name.ToUpper()] = $p.Name }
+  foreach ($c in $confirmed) {
+    $propName = $props[$c.key.ToUpper()]
+    if ($propName) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $obj.$propName.x = $xy.x
+      $obj.$propName.y = $xy.y
+    }
+  }
+  return ($obj | ConvertTo-Json -Depth 6 -Compress)
+}
+
+function Merge-ConfirmedJournals([string]$json) {
+  $confirmed = Get-ConfirmedLocations
+  if (-not $confirmed.Count) { return $json }
+  try { $arr = @($json | ConvertFrom-Json) } catch { return $json }
+  $byKey = @{}
+  foreach ($c in $confirmed) { $byKey[$c.key.ToUpper()] = $c }
+  foreach ($entry in $arr) {
+    if (-not $entry.key) { continue }
+    $c = $byKey[$entry.key.ToUpper()]
+    if ($c) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $entry.x = $xy.x
+      $entry.y = $xy.y
+      $entry.gx = $c.gx
+      $entry.gy = $c.gy
+      # Anthony's script is the source of truth -- override the name too, not
+      # just the coordinates, if it has one for this key.
+      if ($c.name) { $entry.name = $c.name }
+    }
+  }
+  return ($arr | ConvertTo-Json -Depth 6)
+}
+
+function Merge-ConfirmedBounty([string]$json) {
+  $confirmed = Get-ConfirmedLocations
+  if (-not $confirmed.Count) { return $json }
+  try { $arr = @($json | ConvertFrom-Json) } catch { return $json }
+  $anonMap = @{}
+  $anonFile = Join-Path $Root 'anonymous_boss_keys.json'
+  if (Test-Path -LiteralPath $anonFile) {
+    try {
+      foreach ($e in @(Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.key -and $e.species) { $anonMap[$e.key.ToUpper()] = $e.species }
+      }
+    } catch {}
+  }
+  $bySpecies = @{}
+  foreach ($entry in $arr) { if ($entry.species) { $bySpecies[$entry.species.ToUpper()] = $entry } }
+  foreach ($c in $confirmed) {
+    $species = $anonMap[$c.key.ToUpper()]
+    if (-not $species) { $species = $c.key }
+    $entry = $bySpecies[$species.ToUpper()]
+    if ($entry) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $entry.x = $xy.x
+      $entry.y = $xy.y
+      if ($c.name) { $entry.name = $c.name }
+    }
+  }
+  return ($arr | ConvertTo-Json -Depth 6)
+}
+
 # ── Run a Python reader and return its stdout as a single string ───────────────
 function Invoke-Reader([string[]]$ScriptArgs) {
   $out = & python @ScriptArgs 2>$null
@@ -306,16 +407,20 @@ if ($doStatic) {
     $effJson = Get-DashJson '/api/effigies'
   }
   if (-not $effJson) { throw "No effigy data available (missing $EffigiesLocal and dashboard unreachable)" }
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'effigies.json'), $effJson, $utf8)
+  # Overlay Anthony's own live-play-confirmed coordinates on top of the
+  # public/upstream data -- see Merge-ConfirmedEffigies above.
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'effigies.json'), (Merge-ConfirmedEffigies $effJson), $utf8)
 
   # ── journals.json (static journal/diary note locations, game-world fixed) ────
   # Built once (converted from wiki-published in-game X/Y); bundled as a static file.
   # The dashboard serves the same JSON at /api/journals, which the data-fetch repoint
-  # points here.
+  # points here. Anthony's own confirmed coordinates/names (Merge-ConfirmedJournals)
+  # override the wiki-sourced base data wherever they overlap.
   Write-Step "building data/journals.json"
   $journalsLocal = Join-Path $Root 'journal_locations.json'
   if (Test-Path -LiteralPath $journalsLocal) {
-    Copy-Item -Path $journalsLocal -Destination (Join-Path $PubData 'journals.json') -Force
+    $journalsJson = [System.IO.File]::ReadAllText($journalsLocal)
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'journals.json'), (Merge-ConfirmedJournals $journalsJson), $utf8)
   } else {
     Write-Step "WARNING: journal_locations.json missing; journal overlay will be empty"
     [System.IO.File]::WriteAllText((Join-Path $PubData 'journals.json'), '[]', $utf8)
@@ -324,10 +429,13 @@ if ($doStatic) {
   # ── bounty-bosses.json (static bounty-boss / named-Alpha locations, game-world fixed) ──
   # Curated from paldb's DT_PaldexDistributionData BOSS_<Species> entries with exactly one
   # fixed world location; bundled as a static file. The dashboard serves the same JSON at
-  # /api/bounty-bosses, which the data-fetch repoint points here.
+  # /api/bounty-bosses, which the data-fetch repoint points here. Anthony's own confirmed
+  # coordinates/names (Merge-ConfirmedBounty) override the paldb-sourced base data wherever
+  # they overlap.
   Write-Step "building data/bounty-bosses.json"
   if (Test-Path -LiteralPath $BountyBossesLocal) {
-    Copy-Item -Path $BountyBossesLocal -Destination (Join-Path $PubData 'bounty-bosses.json') -Force
+    $bountyJson = [System.IO.File]::ReadAllText($BountyBossesLocal)
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), (Merge-ConfirmedBounty $bountyJson), $utf8)
   } else {
     Write-Step "WARNING: bounty_bosses.json missing; bounty-boss overlay will be empty"
     [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), '[]', $utf8)
