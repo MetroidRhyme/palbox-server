@@ -424,7 +424,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return (ConvertTo-Json -InputObject @($result) -Depth 6)
     }
 
-    # "Human Bounties" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
+    # "Wanted Fugitive" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
     # BOSS_MALE_SOLDIER02) that Anthony has personally located. Unlike bounty bosses these
     # carry no location at all in the base roster, so this is entirely sourced from
     # confirmed_locations.json, matched against the syndicate roster just to confirm the
@@ -432,7 +432,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # roster label as a name fallback. No per-player found/unfound state (that would need
     # /api/player-datamine, which is admin-only and has no public-site route) -- static
     # named pins only, same as Landmarks below.
-    function Get-ConfirmedHumanBounties {
+    function Get-ConfirmedWantedFugitives {
         $confirmed = Get-ConfirmedLocations
         $roster = @{}
         $synFile = "$ServerDir\syndicate_bosses.json"
@@ -454,11 +454,64 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return (ConvertTo-Json -InputObject @($result) -Depth 6)
     }
 
+    # "Eagle Statues" -- fast-travel points (FastTravelPointUnlockFlag), matched against
+    # fast_travel_keys.json (a roster of confirmed fast-travel point GUIDs, grown from real
+    # save data -- see pal_save_reader.py's extract_fast_travel_data). Static named pins
+    # only, same as Landmarks -- Anthony didn't ask for per-player unlock tracking on these.
+    function Get-ConfirmedEagleStatues {
+        $confirmed = Get-ConfirmedLocations
+        $roster = New-Object System.Collections.Generic.HashSet[string]
+        $ftFile = "$ServerDir\fast_travel_keys.json"
+        if (Test-Path -LiteralPath $ftFile) {
+            try {
+                foreach ($e in (Get-Content -LiteralPath $ftFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.key) { [void]$roster.Add($e.key.ToUpper()) }
+                }
+            } catch {}
+        }
+        $result = @()
+        foreach ($c in $confirmed) {
+            if ($roster.Contains($c.key.ToUpper())) {
+                $xy = ConvertTo-WorldXY $c.gx $c.gy
+                $name = if ($c.name) { $c.name } else { $c.key }
+                $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+            }
+        }
+        return (ConvertTo-Json -InputObject @($result) -Depth 6)
+    }
+
+    # "NPC" -- NPCTalkCountMap keys, matched against npc_keys.json (a roster of confirmed
+    # NPC GUIDs, grown from real save data -- see pal_save_reader.py's extract_npc_data).
+    # Unlike Eagle Statues/Landmarks, this DOES get per-player tracking: /api/player-npcs
+    # (below) marks an NPC "found" once its key shows up in that player's own
+    # NPCTalkCountMap, same mechanism as effigies/journals/bounty.
+    function Get-ConfirmedNPCs {
+        $confirmed = Get-ConfirmedLocations
+        $roster = New-Object System.Collections.Generic.HashSet[string]
+        $npcFile = "$ServerDir\npc_keys.json"
+        if (Test-Path -LiteralPath $npcFile) {
+            try {
+                foreach ($e in (Get-Content -LiteralPath $npcFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.key) { [void]$roster.Add($e.key.ToUpper()) }
+                }
+            } catch {}
+        }
+        $result = @()
+        foreach ($c in $confirmed) {
+            if ($roster.Contains($c.key.ToUpper())) {
+                $xy = ConvertTo-WorldXY $c.gx $c.gy
+                $name = if ($c.name) { $c.name } else { $c.key }
+                $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+            }
+        }
+        return (ConvertTo-Json -InputObject @($result) -Depth 6)
+    }
+
     # "Landmarks" -- everything else in confirmed_locations.json that isn't already
-    # plotted as an effigy, journal note, bounty boss, or human bounty: fast-travel points
-    # (e.g. Eagle Statues), discovered-area markers, and any other named spot Anthony has
-    # confirmed. A catch-all so a new category of confirmed location doesn't need its own
-    # plumbing to show up somewhere on the map.
+    # plotted as an effigy, journal note, bounty boss, Wanted Fugitive, Eagle Statue, or
+    # NPC: discovered-area markers and any other named spot Anthony has confirmed. A
+    # catch-all so a new category of confirmed location doesn't need its own plumbing to
+    # show up somewhere on the map.
     function Get-ConfirmedLandmarks {
         $confirmed = Get-ConfirmedLocations
         $claimed = New-Object System.Collections.Generic.HashSet[string]
@@ -496,6 +549,22 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         if (Test-Path -LiteralPath $synFile) {
             try {
                 foreach ($e in (Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+                }
+            } catch {}
+        }
+        $ftFile = "$ServerDir\fast_travel_keys.json"
+        if (Test-Path -LiteralPath $ftFile) {
+            try {
+                foreach ($e in (Get-Content -LiteralPath $ftFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+                }
+            } catch {}
+        }
+        $npcFile = "$ServerDir\npc_keys.json"
+        if (Test-Path -LiteralPath $npcFile) {
+            try {
+                foreach ($e in (Get-Content -LiteralPath $npcFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
                     if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
                 }
             } catch {}
@@ -1316,10 +1385,14 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
           <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide effigies you have already found"><span style="color:#484f58;">&#9679;</span> Found</button>
           <button id="eff-filt-journal" onclick="toggleEffigyFilter('journal')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide journal / diary note locations"><span style="color:#3399ff;">&#9679;</span> Journals</button>
           <span id="journal-summary" style="color:var(--muted);font-size:11px;" title="Journal / diary notes collected, from the save (individual notes on the map aren't matched to specific locations yet)"></span>
-          <button id="eff-filt-bounty" onclick="toggleEffigyFilter('bounty')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide named Alpha boss (Bounty Token) locations"><span style="color:#e3b341;">&#9679;</span> Bounties</button>
+          <button id="eff-filt-bounty" onclick="toggleEffigyFilter('bounty')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide named Alpha boss (Bounty Token) locations"><span style="color:#e3b341;">&#9679;</span> Field Boss</button>
           <span id="bounty-summary" style="color:var(--muted);font-size:11px;" title="Named legendary Alpha bosses defeated, from the save"></span>
-          <button id="eff-filt-human" onclick="toggleEffigyFilter('human')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide human / Syndicate boss locations"><span style="color:#f85149;">&#9679;</span> Human Bounties</button>
-          <button id="eff-filt-landmark" onclick="toggleEffigyFilter('landmark')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide other confirmed landmarks (fast-travel points, discovered areas, etc.)"><span style="color:#a371f7;">&#9679;</span> Landmarks</button>
+          <button id="eff-filt-fugitive" onclick="toggleEffigyFilter('fugitive')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide human/Syndicate boss (Wanted Fugitive) locations"><span style="color:#f85149;">&#9679;</span> Wanted Fugitive</button>
+          <button id="eff-filt-eagle" onclick="toggleEffigyFilter('eagle')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide fast-travel point (Eagle Statue) locations"><span style="color:#e8b339;">&#9679;</span> Eagle Statues</button>
+          <button id="eff-filt-npc" onclick="toggleEffigyFilter('npc')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide NPC locations"><span style="color:#39c5bb;">&#9679;</span> NPCs</button>
+          <span id="npc-summary" style="color:var(--muted);font-size:11px;" title="NPCs talked to, from the save"></span>
+          <button id="eff-filt-landmark" onclick="toggleEffigyFilter('landmark')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide other confirmed landmarks (discovered areas, etc.)"><span style="color:#a371f7;">&#9679;</span> Landmarks</button>
+          <button id="eff-filt-players" onclick="toggleEffigyFilter('players')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide every player's live position (from their own save's Translation/Rotation)"><span style="color:#58a6ff;">&#9679;</span> Players</button>
         </span>
         <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
       </div>
@@ -1961,7 +2034,14 @@ function switchView(name){
   if(name==='eggs') fetchEggs();
   if(name==='datamine') fetchDataMine();
   try{localStorage.setItem('palbox_active_tab',name);}catch(e){}
+  // Player positions move in real time, unlike the rest of the Map tab's mostly-static
+  // overlays -- poll faster than the 5-minute refreshAll cadence, but only while the tab
+  // is actually on screen (stopped immediately on tab-away, not left running in the
+  // background racking up needless save reads).
+  if(_playerLocPollTimer){clearInterval(_playerLocPollTimer);_playerLocPollTimer=null;}
+  if(name==='effigies'){_playerLocPollTimer=setInterval(fetchPlayerLocations,15000);}
 }
+var _playerLocPollTimer=null;
 // "New content" pulse dot on a nav tab -- lit when a watch match (or other tracked
 // event) surfaces while the user isn't already looking at that tab, cleared the moment
 // they click into it (switchView above). Keyed by data-tab so callers just pass the tab
@@ -3885,19 +3965,44 @@ function bountyBossIcon(name,found){
     iconAnchor:[BOUNTY_ICON_SZ/2,BOUNTY_ICON_SZ/2]
   });
 }
-// Human Bounties (NPC/Syndicate bosses) and Landmarks (fast-travel points, discovered
-// areas, etc.) have no dedicated art -- plain colored-dot divIcons, same sizing as the
-// acorn/book glyphs, distinguished by color only (see the toggle buttons' legend dots).
-function simpleDotIcon(colorHex){
+// Wanted Fugitive (human/Syndicate bosses), Eagle Statue (fast-travel points), NPC, and
+// Landmarks (discovered areas, everything else) have no dedicated art -- plain
+// colored-dot divIcons, same sizing as the acorn/book glyphs, distinguished by color only
+// (see the toggle buttons' legend dots). `found` grays the dot out, same convention as
+// effigies/journals -- only NPC currently passes a real found value; the others have no
+// per-player state so always render in color.
+function simpleDotIcon(colorHex,found){
   return L.divIcon({
-    className:'eff-map-marker',
-    html:'<div style="width:100%;height:100%;border-radius:50%;background:'+colorHex+';border:2px solid #fff;box-sizing:border-box;"></div>',
+    className:'eff-map-marker'+(found?' eff-map-found':''),
+    html:'<div style="width:100%;height:100%;border-radius:50%;background:'+(found?'#484f58':colorHex)+';border:2px solid #fff;box-sizing:border-box;"></div>',
     iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
 }
-function humanBountyIcon(){ return simpleDotIcon('#f85149'); }
+function wantedFugitiveIcon(){ return simpleDotIcon('#f85149'); }
 function landmarkIcon(){ return simpleDotIcon('#a371f7'); }
+// Live player position marker: a colored dot, plus (if the save has a current Rotation --
+// it's briefly absent right after a teleport/spawn, see /palworld-dataminer) a small
+// triangular "nose" showing facing direction, rotated by yawDeg. NOTE: yawDeg's mapping onto
+// this map's own screen orientation is a best-effort quaternion->compass-heading formula,
+// NOT independently verified against the map's actual up/down/left/right -- if the arrow
+// visibly doesn't match which way a player is really facing in-game, that's a rotation-offset
+// bug to fix here, not a data bug.
+function playerMarkerIcon(yawDeg){
+  var hasYaw=(typeof yawDeg==='number'&&!isNaN(yawDeg));
+  var nose=hasYaw?'<div style="position:absolute;top:-6px;left:50%;width:0;height:0;margin-left:-4px;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:7px solid #58a6ff;"></div>':'';
+  return L.divIcon({
+    className:'eff-map-marker',
+    html:'<div style="width:100%;height:100%;'+(hasYaw?('transform:rotate('+yawDeg+'deg);'):'')+'position:relative;">'
+      +nose
+      +'<div style="width:100%;height:100%;border-radius:50%;background:#58a6ff;border:2px solid #fff;box-sizing:border-box;"></div>'
+      +'</div>',
+    iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
+    iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
+  });
+}
+function eagleStatueIcon(){ return simpleDotIcon('#e8b339'); }
+function npcIcon(found){ return simpleDotIcon('#39c5bb',found); }
 
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
 // from /api/journals and overlaid on the same map as blue dots.
@@ -3912,6 +4017,9 @@ var journalLocations=null;
 // without a key always render as "new" since their found state can't be determined.
 var journalCollected=[], journalCollectedCount=null;
 var JOURNAL_MAX=49;
+// Per-player NPC talked-to state, from NPCTalkCountMap (a count map, not a bool flag --
+// "collected" here means the player has talked to that NPC at least once).
+var npcCollected=[], npcCollectedCount=null;
 
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
 // loaded once from /api/bounty-bosses (see bounty_bosses.json). Each entry has {species,
@@ -3950,21 +4058,27 @@ function toggleBountyManual(species){
 // map. This is a VIEW filter only -- it never changes a Pal's actual found state (which comes
 // solely from the save). Both default on. effigyShowJournal/effigyShowBounty are independent
 // toggles for the journal-note / bounty-boss overlays (unrelated to found/new).
-var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowHuman=true, effigyShowLandmark=true;
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowNpc=true, effigyShowLandmark=true, effigyShowPlayers=true;
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-human'), bl=document.getElementById('eff-filt-landmark');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bp=document.getElementById('eff-filt-npc'), bl=document.getElementById('eff-filt-landmark'), bpl=document.getElementById('eff-filt-players');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
   if(bj) bj.style.opacity=effigyShowJournal?'1':'0.4';
   if(bb) bb.style.opacity=effigyShowBounty?'1':'0.4';
-  if(bh) bh.style.opacity=effigyShowHuman?'1':'0.4';
+  if(bh) bh.style.opacity=effigyShowFugitive?'1':'0.4';
+  if(be) be.style.opacity=effigyShowEagle?'1':'0.4';
+  if(bp) bp.style.opacity=effigyShowNpc?'1':'0.4';
   if(bl) bl.style.opacity=effigyShowLandmark?'1':'0.4';
+  if(bpl) bpl.style.opacity=effigyShowPlayers?'1':'0.4';
 }
 function toggleEffigyFilter(which){
   if(which==='found') effigyShowFound=!effigyShowFound;
   else if(which==='journal') effigyShowJournal=!effigyShowJournal;
+  else if(which==='players') effigyShowPlayers=!effigyShowPlayers;
   else if(which==='bounty') effigyShowBounty=!effigyShowBounty;
-  else if(which==='human') effigyShowHuman=!effigyShowHuman;
+  else if(which==='fugitive') effigyShowFugitive=!effigyShowFugitive;
+  else if(which==='eagle') effigyShowEagle=!effigyShowEagle;
+  else if(which==='npc') effigyShowNpc=!effigyShowNpc;
   else if(which==='landmark') effigyShowLandmark=!effigyShowLandmark;
   else effigyShowNew=!effigyShowNew;
   setEffigyFilterBtns();
@@ -4013,7 +4127,7 @@ function collectPrefs(){
   if(prefsApplied.effigy) o.bountyManual=bountyManual;
   var players={};
   if(PREFS&&PREFS.players){ players.paldeck=PREFS.players.paldeck; players.effigy=PREFS.players.effigy; }
-  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,human:effigyShowHuman,landmark:effigyShowLandmark};
+  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,npc:effigyShowNpc,landmark:effigyShowLandmark,players:effigyShowPlayers};
   // Skip persisting while a watch is mid-edit-preview (palEditId/eggEditId set): the filter
   // controls hold that watch's criteria for live preview only, not the user's real standing
   // filter, and must not overwrite it just because a render happened to fire (e.g. clicking a
@@ -4081,7 +4195,7 @@ function maybeApplyEffigyPrefs(){
   if(prefsApplied.effigy||!prefsReady)return;
   prefsApplied.effigy=true;
   var e=PREFS&&PREFS.effigy;
-  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; effigyShowBounty=e.bounty!==false; effigyShowHuman=e.human!==false; effigyShowLandmark=e.landmark!==false; setEffigyFilterBtns(); }
+  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; effigyShowBounty=e.bounty!==false; effigyShowFugitive=e.fugitive!==false; effigyShowEagle=e.eagle!==false; effigyShowNpc=e.npc!==false; effigyShowLandmark=e.landmark!==false; effigyShowPlayers=e.players!==false; setEffigyFilterBtns(); }
   if(PREFS&&PREFS.bountyManual&&typeof PREFS.bountyManual==='object') bountyManual=PREFS.bountyManual;
   var pe=PREFS&&PREFS.players&&PREFS.players.effigy;
   var sel=document.getElementById('effigy-player');
@@ -4127,8 +4241,11 @@ function initEffigyView(){
       fetchEffigyLocations();
       fetchJournalLocations();
       fetchBossLocations();
-      fetchHumanBounties();
+      fetchWantedFugitives();
+      fetchEagleStatues();
+      fetchNPCs();
       fetchLandmarks();
+      fetchPlayerLocations();
     });
   });
 }
@@ -4176,19 +4293,19 @@ async function fetchBossLocations(){
   }
 }
 
-// "Human Bounties" (NPC/Syndicate boss locations) and "Landmarks" (fast-travel points,
+// "Wanted Fugitive" (NPC/Syndicate boss locations) and "Landmarks" (fast-travel points,
 // discovered areas, everything else) -- both static, game-world-fixed, sourced entirely
-// from Anthony's own confirmed_locations.json (see Get-ConfirmedHumanBounties/
+// from Anthony's own confirmed_locations.json (see Get-ConfirmedWantedFugitives/
 // Get-ConfirmedLandmarks). Same loading convention as journals/bounty bosses: loaded
 // once, failures are silent rather than blocking the rest of the effigy map.
-var humanBountyLocations=null;
-async function fetchHumanBounties(){
-  if(humanBountyLocations)return;
+var wantedFugitiveLocations=null;
+async function fetchWantedFugitives(){
+  if(wantedFugitiveLocations)return;
   try{
-    humanBountyLocations=await api('/api/human-bounties');
+    wantedFugitiveLocations=await api('/api/wanted-fugitives');
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
-    humanBountyLocations=[];
+    wantedFugitiveLocations=[];
   }
 }
 var landmarkLocations=null;
@@ -4199,6 +4316,44 @@ async function fetchLandmarks(){
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
     landmarkLocations=[];
+  }
+}
+
+// Live player positions -- UNLIKE the static overlays above, this is re-fetched on a timer
+// (see refreshAll) whenever the Map tab is on screen, so markers track players as they move.
+// A failed fetch leaves the previous positions on screen rather than clearing them (a
+// transient save-read error shouldn't make everyone vanish from the map).
+var playerLocations=null;
+async function fetchPlayerLocations(){
+  try{
+    var data=await api('/api/player-locations');
+    playerLocations=data.players||[];
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    if(!playerLocations) playerLocations=[];
+  }
+}
+// "Eagle Statues" (fast-travel points) -- static, same loading convention as above.
+var eagleStatueLocations=null;
+async function fetchEagleStatues(){
+  if(eagleStatueLocations)return;
+  try{
+    eagleStatueLocations=await api('/api/eagle-statues');
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    eagleStatueLocations=[];
+  }
+}
+// NPC locations -- static list, but DOES get per-player found/unfound state (see
+// fetchNPCPlayer below), unlike Eagle Statues/Landmarks/Wanted Fugitive.
+var npcLocations=null;
+async function fetchNPCs(){
+  if(npcLocations)return;
+  try{
+    npcLocations=await api('/api/npcs');
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    npcLocations=[];
   }
 }
 
@@ -4261,7 +4416,7 @@ function populateEffigyPlayerDropdown(){
 async function fetchEffigyPlayer(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
-  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);return;}
+  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);return;}
   document.getElementById('effigy-summary').textContent='Loading...';
   try{
     var data=await api('/api/player-effigies?guid='+encodeURIComponent(guid));
@@ -4273,6 +4428,28 @@ async function fetchEffigyPlayer(){
   renderEffigyMap();
   fetchJournalPlayer(guid);
   fetchBossPlayer(guid);
+  fetchNPCPlayer(guid);
+}
+
+// NPC talked-to state for the selected player (see npcCollected comment above).
+async function fetchNPCPlayer(guid){
+  if(!guid){npcCollected=[];npcCollectedCount=null;renderNpcSummary();if(effigyLeaflet)renderEffigyMap();return;}
+  try{
+    var data=await api('/api/player-npcs?guid='+encodeURIComponent(guid));
+    npcCollected=data.collected||[];
+    npcCollectedCount=npcCollected.length;
+  }catch(e){
+    npcCollected=[];
+    npcCollectedCount=null;
+  }
+  renderNpcSummary();
+  if(effigyLeaflet) renderEffigyMap();
+}
+function renderNpcSummary(){
+  var el=document.getElementById('npc-summary');
+  if(!el)return;
+  var total=npcLocations?npcLocations.length:0;
+  el.textContent=(npcCollectedCount===null||!total)?'':(npcCollectedCount+' / '+total+' met');
 }
 
 // Journal collection state for the selected player (see journalCollected comment above).
@@ -4589,12 +4766,13 @@ function renderEffigyMap(){
     });
   }
 
-  // Human Bounties (NPC/Syndicate bosses) and Landmarks (fast-travel points, discovered
-  // areas, etc.) -- both static named pins with no found/unfound state (see
-  // fetchHumanBounties/fetchLandmarks above for why). {key,name,x,y} shape.
-  if(effigyShowHuman&&humanBountyLocations&&humanBountyLocations.length){
-    humanBountyLocations.forEach(function(h){
-      var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:humanBountyIcon(),interactive:true});
+  // Wanted Fugitive (human/Syndicate bosses), Eagle Statue (fast-travel points), and
+  // Landmarks (discovered areas, everything else) -- all static named pins with no
+  // found/unfound state (see fetchWantedFugitives/fetchEagleStatues/fetchLandmarks above
+  // for why). {key,name,x,y} shape.
+  if(effigyShowFugitive&&wantedFugitiveLocations&&wantedFugitiveLocations.length){
+    wantedFugitiveLocations.forEach(function(h){
+      var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(),interactive:true});
       var cx=Math.round((h.y-158000)/459), cy=Math.round((h.x+123888)/459);
       hm.bindTooltip('<b style="color:#f85149">'+h.name+'</b>'
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
@@ -4602,6 +4780,36 @@ function renderEffigyMap(){
       hm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       hm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
       effigyMarkerLayer.addLayer(hm);
+    });
+  }
+  if(effigyShowEagle&&eagleStatueLocations&&eagleStatueLocations.length){
+    eagleStatueLocations.forEach(function(es){
+      var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(),interactive:true});
+      var cx=Math.round((es.y-158000)/459), cy=Math.round((es.x+123888)/459);
+      esm.bindTooltip('<b style="color:#e8b339">'+es.name+'</b>'
+        +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
+        {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+      esm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
+      esm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+      effigyMarkerLayer.addLayer(esm);
+    });
+  }
+  // NPC -- static list, but DOES track per-player found/unfound (talked to at least once
+  // via NPCTalkCountMap), same convention as effigies/journals (grey=met, teal=not met yet).
+  if(effigyShowNpc&&npcLocations&&npcLocations.length){
+    var npcCollectedSet=new Set(npcCollected.map(function(s){return s.toUpperCase();}));
+    npcLocations.forEach(function(n){
+      var nGot=n.key&&npcCollectedSet.has(n.key.toUpperCase());
+      if(nGot&&!effigyShowFound) return;
+      var nm=L.marker(effigyRposToLatLng(n.x,n.y),{icon:npcIcon(nGot),interactive:true});
+      var cx=Math.round((n.y-158000)/459), cy=Math.round((n.x+123888)/459);
+      var nStatus=nGot?'<span style="color:#5a6573">&#10003; Met</span>':'<b style="color:#39c5bb">Not yet met</b>';
+      nm.bindTooltip('<b style="color:#111;">'+n.name+'</b><br>'+nStatus
+        +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
+        {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+      nm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
+      nm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+      effigyMarkerLayer.addLayer(nm);
     });
   }
   if(effigyShowLandmark&&landmarkLocations&&landmarkLocations.length){
@@ -4614,6 +4822,23 @@ function renderEffigyMap(){
       lmk.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       lmk.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
       effigyMarkerLayer.addLayer(lmk);
+    });
+  }
+
+  // Live player positions, from each player's own save (Translation/Rotation), not the
+  // static confirmed-location data above -- see fetchPlayerLocations. A player whose save
+  // couldn't be read (x/y null -- e.g. mid-write) is skipped rather than plotted at (0,0).
+  if(effigyShowPlayers&&playerLocations&&playerLocations.length){
+    playerLocations.forEach(function(pl){
+      if(typeof pl.x!=='number'||typeof pl.y!=='number') return;
+      var pm=L.marker(effigyRposToLatLng(pl.x,pl.y),{icon:playerMarkerIcon(pl.yawDeg),interactive:true,zIndexOffset:900});
+      var cx=Math.round((pl.y-158000)/459), cy=Math.round((pl.x+123888)/459);
+      pm.bindTooltip('<b style="color:#58a6ff">'+esc(pl.name)+'</b>'
+        +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
+        {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+      pm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1500);});
+      pm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+      effigyMarkerLayer.addLayer(pm);
     });
   }
 
@@ -4644,6 +4869,7 @@ async function refreshAll(){
   var at=(document.querySelector('.nav-tab.active')||{}).dataset; at=at&&at.tab;
   if(at==='pals') fetchPals(true);
   else if(at==='eggs') fetchEggs(true);
+  else if(at==='effigies') fetchPlayerLocations();
 }
 async function fetchInfo(){
   try{
@@ -6183,6 +6409,57 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     break
                 }
 
+                ($path -eq '/api/player-locations' -and $method -eq 'GET') {
+                    # Live player world position (Translation/Rotation from each player's own
+                    # save, via pal_team_reader.py's lightweight "locations" mode -- skips the
+                    # full Level.sav Pal parse /api/pals does). Optional ?guid= scopes to one
+                    # player (used by the public site's "just me" view); omitted returns
+                    # everyone, for the admin dashboard's Map tab.
+                    try {
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $guidParam = $req.QueryString['guid']
+                        if ($guidParam) {
+                            $rawJson = & python "$ServerDir\pal_team_reader.py" $saveDir locations $guidParam 2>$null
+                        } else {
+                            $rawJson = & python "$ServerDir\pal_team_reader.py" $saveDir locations 2>$null
+                        }
+                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_team_reader.py failed (exit $LASTEXITCODE)" }
+                        $data = ($rawJson -join '') | ConvertFrom-Json
+
+                        # Same name-resolution as /api/paldeck: playtime steamid map, then live
+                        # REST API for anyone currently online.
+                        $guidToName = @{}
+                        foreach ($entry in $script:playtime.GetEnumerator()) {
+                            $sid = $entry.Value.steamid
+                            if ($sid) { $guidToName[$sid.ToUpper()] = $entry.Key }
+                        }
+                        try {
+                            $online = Invoke-RestMethod -Uri "$PalApiBase/v1/api/players" -Method GET -Headers (Get-PalHeaders) -EA Stop
+                            $onlinePlayers = if ($online.players) { @($online.players) } elseif ($online.Players) { @($online.Players) } else { @() }
+                            foreach ($op in $onlinePlayers) {
+                                $uid = if ($op.playerid) { [string]$op.playerid } `
+                                       elseif ($op.playeruid) { [string]$op.playeruid } `
+                                       elseif ($op.userid) { [string]$op.userid } else { '' }
+                                if ($uid -and $op.name) { $guidToName[$uid.Replace('-','').ToUpper()] = [string]$op.name }
+                            }
+                        } catch {}
+
+                        $outPlayers = @($data.players | ForEach-Object {
+                            $g = [string]$_.guid
+                            $name = if ($guidToName.ContainsKey($g.ToUpper())) { $guidToName[$g.ToUpper()] } else { $g.Substring(0,8) }
+                            $entry = [ordered]@{ guid=$g; name=$name; x=$_.x; y=$_.y; z=$_.z; yawDeg=$_.yawDeg }
+                            if ($_.PSObject.Properties['error']) { $entry.error = [string]$_.error }
+                            $entry
+                        })
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ players=$outPlayers } -Compress -Depth 5)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/pals' -and $method -eq 'GET') {
                     try {
                         $activeGuid = Get-ActiveGuid
@@ -6535,15 +6812,45 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     break
                 }
 
-                ($path -eq '/api/human-bounties' -and $method -eq 'GET') {
+                ($path -eq '/api/wanted-fugitives' -and $method -eq 'GET') {
                     # Anthony's own confirmed locations for NPC/Syndicate "boss" defeat-flag
-                    # keys (see Get-ConfirmedHumanBounties above) -- static named pins, no
+                    # keys (see Get-ConfirmedWantedFugitives above) -- static named pins, no
                     # public/wiki-sourced base data exists for these at all.
                     try {
-                        if (-not $script:humanBountyData) {
-                            $script:humanBountyData = Get-ConfirmedHumanBounties
+                        if (-not $script:wantedFugitiveData) {
+                            $script:wantedFugitiveData = Get-ConfirmedWantedFugitives
                         }
-                        Send-Response $res 200 "application/json" $script:humanBountyData
+                        Send-Response $res 200 "application/json" $script:wantedFugitiveData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/eagle-statues' -and $method -eq 'GET') {
+                    # Anthony's own confirmed fast-travel point locations (see
+                    # Get-ConfirmedEagleStatues above) -- static named pins, no public/wiki
+                    # base data exists for these at all.
+                    try {
+                        if (-not $script:eagleStatueData) {
+                            $script:eagleStatueData = Get-ConfirmedEagleStatues
+                        }
+                        Send-Response $res 200 "application/json" $script:eagleStatueData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/npcs' -and $method -eq 'GET') {
+                    # Anthony's own confirmed NPC locations (see Get-ConfirmedNPCs above) --
+                    # static named pins; per-player found state comes from a separate route,
+                    # /api/player-npcs?guid=, below.
+                    try {
+                        if (-not $script:npcData) {
+                            $script:npcData = Get-ConfirmedNPCs
+                        }
+                        Send-Response $res 200 "application/json" $script:npcData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -6552,8 +6859,8 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
 
                 ($path -eq '/api/landmarks' -and $method -eq 'GET') {
                     # Anthony's own confirmed locations that aren't an effigy, journal note,
-                    # bounty boss, or human bounty (fast-travel points/Eagle Statues, discovered
-                    # areas, etc.) -- see Get-ConfirmedLandmarks above.
+                    # bounty boss, Wanted Fugitive, Eagle Statue, or NPC -- discovered areas
+                    # etc. -- see Get-ConfirmedLandmarks above.
                     try {
                         if (-not $script:landmarkData) {
                             $script:landmarkData = Get-ConfirmedLandmarks
@@ -6697,6 +7004,25 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir bounties $guid 2>$null
+                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/player-npcs' -and $method -eq 'GET') {
+                    # NPC talked-to state, read from NPCTalkCountMap in the player's save (a
+                    # Name->Int count map, not a Name->Bool flag like effigies/journals/bounty
+                    # -- see extract_npc_data in pal_save_reader.py, "collected" means count>0).
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir npcs $guid 2>$null
                         if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                         Send-Response $res 200 "application/json" ($rawJson -join '')
                     } catch {

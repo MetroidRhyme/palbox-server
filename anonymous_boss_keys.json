@@ -30,5 +30,37 @@
   {
     "key": "81_1_GRASS_FBOSS_28",
     "species": "Mutant"
+  },
+  {
+    "key": "81_1_FOREST_FBOSS_2",
+    "species": "HerculesBeetle"
+  },
+  {
+    "key": "81_1_FOREST_FBOSS_3",
+    "species": "GrassRabbitMan"
+  },
+  {
+    "key": "81_1_GRASS_FBOSS_13",
+    "species": "Umihebi"
+  },
+  {
+    "key": "81_1_GRASS_FBOSS_20",
+    "species": "CatMage"
+  },
+  {
+    "key": "81_1_GRASS_FBOSS_21",
+    "species": "MopKing"
+  },
+  {
+    "key": "81_1_GRASS_FBOSS_24",
+    "species": "SakuraSaurus"
+  },
+  {
+    "key": "81_1_GRASS_FBOSS_29",
+    "species": "Yeti_Grass"
+  },
+  {
+    "key": "81_5_YAMIJIMA_FBOSS_4",
+    "species": "Horus_Water"
   }
 ]

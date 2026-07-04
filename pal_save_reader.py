@@ -127,6 +127,34 @@ def extract_effigy_data(sav_path):
     return parse_name_bool_map(raw, p)
 
 
+def extract_fast_travel_data(sav_path):
+    """Return list of uppercase hex GUID strings for unlocked fast-travel points ("Eagle
+    Statues"). FastTravelPointUnlockFlag is a Name->Bool map, same layout as
+    RelicObtainForInstanceFlag/NoteObtainForInstanceFlag."""
+    raw = decompress_save(sav_path)
+    pos = find_property(raw, "FastTravelPointUnlockFlag")
+    if pos == -1:
+        return []
+    _, p = read_fstring(raw, pos)
+    _, p = read_fstring(raw, p)
+    return parse_name_bool_map(raw, p)
+
+
+def extract_npc_data(sav_path):
+    """Return list of uppercase hex GUID strings for NPCs the player has talked to at
+    least once. NPCTalkCountMap is a Name->Int map (talk count per NPC instance), not a
+    Name->Bool flag like Relic/Note/NormalBossDefeat -- so "collected" here means count > 0,
+    parsed via parse_name_int_map rather than parse_name_bool_map."""
+    raw = decompress_save(sav_path)
+    pos = find_property(raw, "NPCTalkCountMap")
+    if pos == -1:
+        return []
+    _, p = read_fstring(raw, pos)
+    _, p = read_fstring(raw, p)
+    counts = parse_name_int_map(raw, p)
+    return [name.upper() for name, count in counts.items() if count > 0]
+
+
 def load_bounty_species():
     """Species codes tracked as "bounty bosses" -- the curated set of named legendary
     Alpha bosses in bounty_bosses.json (single fixed world location each, source: paldb's
@@ -440,6 +468,20 @@ def main():
             _, p = read_fstring(raw, pos)
             _, p = read_fstring(raw, p)
             collected = parse_name_bool_map(raw, p)
+            print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
+        return
+
+    # npcs mode: python pal_save_reader.py <save_dir> npcs <guid>
+    if len(sys.argv) > 2 and sys.argv[2] == "npcs":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            collected = extract_npc_data(sav_path)
             print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))

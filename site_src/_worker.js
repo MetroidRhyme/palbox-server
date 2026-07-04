@@ -352,6 +352,29 @@ export default {
       return noStore(json({ collected: [] }, 200));
     }
 
+    // Per-player NPC talked-to state: same scoping as player-effigies above.
+    if (path.startsWith('/data/player-npcs/')) {
+      const g = path.slice('/data/player-npcs/'.length).replace(/\.json$/i, '');
+      if (scope === 'all' || (scope && g.toLowerCase() === scope.toLowerCase())) {
+        const keyGuid = (scope === 'all') ? g.toUpperCase() : scope;
+        return noStore(await r2Serve(env, 'player-npcs/' + keyGuid + '.json', json({ collected: [] }, 200)));
+      }
+      return noStore(json({ collected: [] }, 200));
+    }
+
+    // Per-player live world position (Translation/Rotation): same scoping as
+    // player-effigies above. A scoped (non-admin) user can only ever request their own
+    // guid anyway (the public page never shows anyone else's), but the Worker enforces
+    // it server-side regardless, same as every other per-player route.
+    if (path.startsWith('/data/player-location/')) {
+      const g = path.slice('/data/player-location/'.length).replace(/\.json$/i, '');
+      if (scope === 'all' || (scope && g.toLowerCase() === scope.toLowerCase())) {
+        const keyGuid = (scope === 'all') ? g.toUpperCase() : scope;
+        return noStore(await r2Serve(env, 'player-location/' + keyGuid + '.json', json({}, 200)));
+      }
+      return noStore(json({}, 200));
+    }
+
     // Server settings: same redacted view for every authenticated user, from R2.
     // Not per-user, so it need not be no-store, but it still requires having passed
     // Access (host guard above).

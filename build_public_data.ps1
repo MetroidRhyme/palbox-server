@@ -36,6 +36,7 @@ $PubByPlayer = Join-Path $PubData 'by-player'
 $PubEffig = Join-Path $PubData 'player-effigies'
 $PubNotes = Join-Path $PubData 'player-notes'
 $PubBounty = Join-Path $PubData 'player-bounties'
+$PubNPCs = Join-Path $PubData 'player-npcs'
 
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 
@@ -194,14 +195,14 @@ function Merge-ConfirmedBounty([string]$json) {
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
-# "Human Bounties" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
+# "Wanted Fugitive" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
 # BOSS_MALE_SOLDIER02) that Anthony has personally located. Unlike bounty bosses these
 # carry no location at all in the base roster, so this is entirely sourced from
 # confirmed_locations.json, matched against the syndicate roster just to confirm the key
 # really is a human/Syndicate boss (not some other kind of flag) and to borrow its roster
 # label as a name fallback. No per-player found/unfound state -- static named pins only,
 # same as Landmarks below.
-function Get-ConfirmedHumanBounties {
+function Get-ConfirmedWantedFugitives {
   $confirmed = Get-ConfirmedLocations
   $roster = @{}
   $synFile = Join-Path $Root 'syndicate_bosses.json'
@@ -223,9 +224,59 @@ function Get-ConfirmedHumanBounties {
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
+# "Eagle Statues" -- fast-travel points (FastTravelPointUnlockFlag), matched against
+# fast_travel_keys.json (a roster of confirmed fast-travel point GUIDs, grown from real
+# save data -- see pal_save_reader.py's extract_fast_travel_data). Static named pins only.
+function Get-ConfirmedEagleStatues {
+  $confirmed = Get-ConfirmedLocations
+  $roster = New-Object System.Collections.Generic.HashSet[string]
+  $ftFile = Join-Path $Root 'fast_travel_keys.json'
+  if (Test-Path -LiteralPath $ftFile) {
+    try {
+      foreach ($e in (Get-Content -LiteralPath $ftFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.key) { [void]$roster.Add($e.key.ToUpper()) }
+      }
+    } catch {}
+  }
+  $result = @()
+  foreach ($c in $confirmed) {
+    if ($roster.Contains($c.key.ToUpper())) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $name = if ($c.name) { $c.name } else { $c.key }
+      $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+    }
+  }
+  return (ConvertTo-Json -InputObject @($result) -Depth 6)
+}
+
+# "NPC" -- NPCTalkCountMap keys, matched against npc_keys.json (a roster of confirmed NPC
+# GUIDs, grown from real save data -- see pal_save_reader.py's extract_npc_data). Gets
+# per-player tracking via /api/player-npcs, bundled separately in the Frequent branch below.
+function Get-ConfirmedNPCs {
+  $confirmed = Get-ConfirmedLocations
+  $roster = New-Object System.Collections.Generic.HashSet[string]
+  $npcFile = Join-Path $Root 'npc_keys.json'
+  if (Test-Path -LiteralPath $npcFile) {
+    try {
+      foreach ($e in (Get-Content -LiteralPath $npcFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.key) { [void]$roster.Add($e.key.ToUpper()) }
+      }
+    } catch {}
+  }
+  $result = @()
+  foreach ($c in $confirmed) {
+    if ($roster.Contains($c.key.ToUpper())) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $name = if ($c.name) { $c.name } else { $c.key }
+      $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+    }
+  }
+  return (ConvertTo-Json -InputObject @($result) -Depth 6)
+}
+
 # "Landmarks" -- everything else in confirmed_locations.json that isn't already plotted
-# as an effigy, journal note, bounty boss, or human bounty: fast-travel points (e.g. Eagle
-# Statues), discovered-area markers, and any other named spot Anthony has confirmed.
+# as an effigy, journal note, bounty boss, Wanted Fugitive, Eagle Statue, or NPC --
+# discovered-area markers and any other named spot Anthony has confirmed.
 function Get-ConfirmedLandmarks {
   $confirmed = Get-ConfirmedLocations
   $claimed = New-Object System.Collections.Generic.HashSet[string]
@@ -267,6 +318,22 @@ function Get-ConfirmedLandmarks {
       }
     } catch {}
   }
+  $ftFile = Join-Path $Root 'fast_travel_keys.json'
+  if (Test-Path -LiteralPath $ftFile) {
+    try {
+      foreach ($e in (Get-Content -LiteralPath $ftFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+      }
+    } catch {}
+  }
+  $npcFile = Join-Path $Root 'npc_keys.json'
+  if (Test-Path -LiteralPath $npcFile) {
+    try {
+      foreach ($e in (Get-Content -LiteralPath $npcFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+      }
+    } catch {}
+  }
   $result = @()
   foreach ($c in $confirmed) {
     if (-not $claimed.Contains($c.key.ToUpper())) {
@@ -297,11 +364,12 @@ New-Item -ItemType Directory -Force -Path $PubData | Out-Null
 # player never lingers in the output set.
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doFreq) {
-  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubNPCs)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   Get-ChildItem -LiteralPath $PubAll -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEffig -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNotes -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubBounty -File -ErrorAction SilentlyContinue | Remove-Item -Force
+  Get-ChildItem -LiteralPath $PubNPCs -File -ErrorAction SilentlyContinue | Remove-Item -Force
   if (Test-Path -LiteralPath $PubByPlayer) { Remove-Item -LiteralPath $PubByPlayer -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $PubByPlayer | Out-Null
 
@@ -464,6 +532,25 @@ if ($doFreq) {
     [System.IO.File]::WriteAllText((Join-Path $PubBounty ($guid + '.json')), $pb, $utf8)
   }
 
+  # ── player-npcs/<guid>.json (NPC talked-to state, one per player) ────────────
+  # Mirrors player-notes above but for NPCTalkCountMap via pal_save_reader.py's
+  # extract_npc_data ("collected" = count>0, not a bool flag).
+  Write-Step "building data/player-npcs/*.json"
+  foreach ($p in @($paldeckObj.players)) {
+    $guid = [string]$p.guid
+    if (-not $guid) { continue }
+    $pnpc = Get-DashJson ('/api/player-npcs?guid=' + $guid)
+    if (-not $pnpc) {
+      try {
+        $pnpc = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'npcs', $guid)
+      } catch {
+        Write-Step "  skipped npcs for $guid ($($_.Exception.Message))"
+        continue
+      }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $PubNPCs ($guid + '.json')), $pnpc, $utf8)
+  }
+
   # ── Server settings (read-only view) ─────────────────────────────────────────
   # Publishes data/settings.json for the public Settings tab. The entire 'Server'
   # category (server/admin passwords, ports, RCON/REST toggles) is dropped here at the
@@ -555,15 +642,28 @@ if ($doStatic) {
     [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), '[]', $utf8)
   }
 
-  # ── human-bounties.json (Anthony's confirmed NPC/Syndicate boss locations) ───
+  # ── wanted-fugitives.json (Anthony's confirmed NPC/Syndicate boss locations) ───
   # Entirely sourced from confirmed_locations.json -- no public/wiki base data exists for
-  # these at all. The dashboard serves the same JSON at /api/human-bounties.
-  Write-Step "building data/human-bounties.json"
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'human-bounties.json'), (Get-ConfirmedHumanBounties), $utf8)
+  # these at all. The dashboard serves the same JSON at /api/wanted-fugitives.
+  Write-Step "building data/wanted-fugitives.json"
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'wanted-fugitives.json'), (Get-ConfirmedWantedFugitives), $utf8)
 
-  # ── landmarks.json (Anthony's other confirmed locations: fast-travel points, areas, etc.) ──
+  # ── eagle-statues.json (Anthony's confirmed fast-travel point locations) ─────
+  # Entirely sourced from confirmed_locations.json. The dashboard serves the same JSON at
+  # /api/eagle-statues.
+  Write-Step "building data/eagle-statues.json"
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'eagle-statues.json'), (Get-ConfirmedEagleStatues), $utf8)
+
+  # ── npcs.json (Anthony's confirmed NPC locations, static; per-player state is separate) ──
+  # Entirely sourced from confirmed_locations.json. The dashboard serves the same JSON at
+  # /api/npcs; per-player talked-to state is player-npcs/<guid>.json (Frequent branch above).
+  Write-Step "building data/npcs.json"
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'npcs.json'), (Get-ConfirmedNPCs), $utf8)
+
+  # ── landmarks.json (Anthony's other confirmed locations: discovered areas, etc.) ──
   # Entirely sourced from confirmed_locations.json -- catch-all for anything not already an
-  # effigy/journal/bounty/human-bounty. The dashboard serves the same JSON at /api/landmarks.
+  # effigy/journal/bounty/Wanted-Fugitive/Eagle-Statue/NPC. Dashboard serves the same JSON
+  # at /api/landmarks.
   Write-Step "building data/landmarks.json"
   [System.IO.File]::WriteAllText((Join-Path $PubData 'landmarks.json'), (Get-ConfirmedLandmarks), $utf8)
 
