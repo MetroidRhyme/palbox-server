@@ -214,6 +214,76 @@ def _display_move(internal):
     return _MOVE_NAMES.get(key.lower()) or _humanize(key)
 
 
+# ── live player world-position (Translation/Rotation), for the map "players" layer ──
+def _vec3(prop):
+    try:
+        v = prop["value"]
+        return {"x": float(v["x"]), "y": float(v["y"]), "z": float(v["z"])}
+    except (KeyError, TypeError):
+        return None
+
+
+def _quat_yaw_deg(prop):
+    """Best-effort compass heading in degrees from an Unreal FQuat (Z-up rotation),
+    standard atan2 extraction of yaw. Returns None if Rotation isn't serialized at
+    all -- confirmed to happen right after a teleport/spawn (see
+    /palworld-dataminer), not an error. UNVERIFIED against the map's actual on-
+    screen orientation -- confirm by comparing a known in-game facing to the
+    rendered arrow and adjust playerIcon()'s rotation in the dashboard JS if wrong."""
+    try:
+        v = prop["value"]
+        x, y, z, w = float(v["x"]), float(v["y"]), float(v["z"]), float(v["w"])
+    except (KeyError, TypeError):
+        return None
+    import math
+    return math.degrees(math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z)))
+
+
+def read_locations(save_dir, guid=None):
+    """Lightweight per-player position read: just Translation/Rotation from each
+    player's own .sav, skipping the full Level.sav CharacterSaveParameterMap parse
+    that read_pals() does (that one covers ~700+ entries and is comparatively slow;
+    this is meant to be cheap enough to poll for a live "players on the map" layer).
+    Player display names are resolved by the caller (PowerShell route already does
+    this the same way for /api/paldeck), not here.
+    """
+    from palworld_save_tools import paltypes
+    pdir = os.path.join(save_dir, "Players")
+    if not os.path.isdir(pdir):
+        return []
+    files = sorted(
+        f for f in glob.glob(os.path.join(pdir, "*.sav"))
+        if "_dps" not in os.path.basename(f)
+    )
+    if guid:
+        files = [f for f in files if os.path.basename(f) == guid + ".sav"]
+    out = []
+    for f in files:
+        g = os.path.basename(f).replace(".sav", "")
+        try:
+            gvas = _read_gvas(f, paltypes.PALWORLD_CUSTOM_PROPERTIES)
+            sd = gvas.properties["SaveData"]["value"]
+            # Translation/Rotation are NOT their own top-level SaveData keys in the real
+            # parsed tree (confirmed live 2026-07-04) -- they only exist nested inside
+            # LastTransform (structName "Transform"), matching /palworld-dataminer's
+            # documented finding that a flat byte-scanner's "top-level Translation/
+            # Rotation" hits are this same nested pair, mis-flattened.
+            lt = sd.get("LastTransform") or {}
+            lt_val = lt.get("value") if isinstance(lt, dict) else None
+            pos = _vec3(lt_val.get("Translation")) if lt_val else None
+            yaw = _quat_yaw_deg(lt_val.get("Rotation")) if lt_val else None
+            out.append({
+                "guid": g,
+                "x": pos["x"] if pos else None,
+                "y": pos["y"] if pos else None,
+                "z": pos["z"] if pos else None,
+                "yawDeg": yaw,
+            })
+        except Exception as e:
+            out.append({"guid": g, "x": None, "y": None, "z": None, "yawDeg": None, "error": str(e)})
+    return out
+
+
 # ── player saves give us party / palbox container ids per player ───────────────
 def read_players(save_dir):
     players = []
@@ -400,6 +470,19 @@ def read_dps(save_dir, seen_ids):
 
 def main():
     _install_patches()
+
+    # Lightweight mode: python pal_team_reader.py <save_dir> locations [guid]
+    # Just player positions, for the map "players" layer -- skips the full parse below.
+    if len(sys.argv) > 2 and sys.argv[2] == "locations":
+        save_dir = sys.argv[1]
+        guid = sys.argv[3] if len(sys.argv) > 3 else None
+        try:
+            players = read_locations(save_dir, guid)
+        except Exception as e:
+            players = []
+        print(json.dumps({"players": players}, separators=(",", ":"), default=str))
+        return
+
     save_dir = sys.argv[1] if len(sys.argv) > 1 else \
         r"PATH\TO\Pal\Saved\SaveGames\0\<WorldGUID>"  # fallback for manual runs; the dashboard passes the real save folder as argv[1]
 

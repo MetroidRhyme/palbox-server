@@ -37,6 +37,7 @@ $PubEffig = Join-Path $PubData 'player-effigies'
 $PubNotes = Join-Path $PubData 'player-notes'
 $PubBounty = Join-Path $PubData 'player-bounties'
 $PubNPCs = Join-Path $PubData 'player-npcs'
+$PubLocation = Join-Path $PubData 'player-location'
 
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 
@@ -364,12 +365,13 @@ New-Item -ItemType Directory -Force -Path $PubData | Out-Null
 # player never lingers in the output set.
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doFreq) {
-  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubNPCs)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubNPCs, $PubLocation)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   Get-ChildItem -LiteralPath $PubAll -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEffig -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNotes -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubBounty -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNPCs -File -ErrorAction SilentlyContinue | Remove-Item -Force
+  Get-ChildItem -LiteralPath $PubLocation -File -ErrorAction SilentlyContinue | Remove-Item -Force
   if (Test-Path -LiteralPath $PubByPlayer) { Remove-Item -LiteralPath $PubByPlayer -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $PubByPlayer | Out-Null
 
@@ -510,6 +512,31 @@ if ($doFreq) {
       }
     }
     [System.IO.File]::WriteAllText((Join-Path $PubNotes ($guid + '.json')), $pn, $utf8)
+  }
+
+  # ── player-location/<guid>.json (live world position, one per player) ────────
+  # Mirrors player-notes above but for Translation/Rotation, via pal_team_reader.py's
+  # lightweight "locations" mode. /api/player-locations always answers {players:[...]}
+  # (even scoped to one guid, to match the admin "all players" shape) -- unwrap to that
+  # one player's flat {x,y,z,yawDeg} object here, since the Worker/public client expects
+  # a single object per file (same convention as every other per-player route).
+  Write-Step "building data/player-location/*.json"
+  foreach ($p in @($paldeckObj.players)) {
+    $guid = [string]$p.guid
+    if (-not $guid) { continue }
+    $pl = Get-DashJson ('/api/player-locations?guid=' + $guid)
+    if (-not $pl) {
+      try {
+        $pl = Invoke-Reader @((Join-Path $Root 'pal_team_reader.py'), $saveDir, 'locations', $guid)
+      } catch {
+        Write-Step "  skipped location for $guid ($($_.Exception.Message))"
+        continue
+      }
+    }
+    $one = $null
+    try { $one = @(($pl | ConvertFrom-Json).players)[0] } catch {}
+    $body = if ($one) { [ordered]@{ x = $one.x; y = $one.y; z = $one.z; yawDeg = $one.yawDeg } } else { [ordered]@{} }
+    [System.IO.File]::WriteAllText((Join-Path $PubLocation ($guid + '.json')), ($body | ConvertTo-Json -Compress), $utf8)
   }
 
   # ── player-bounties/<guid>.json (bounty-boss / named-Alpha defeat state, one per player) ─

@@ -22,6 +22,7 @@
 #   all/pals.json  all/paldeck.json  all/eggs.json            (admin set)
 #   by-player/<GUID>/{pals,paldeck,eggs}.json                 (per-player scoped)
 #   player-effigies/<GUID>.json                               (per-player)
+#   player-location/<GUID>.json                                (per-player, live position)
 #   settings.json                                             (shared, redacted)
 #
 # Credentials (read from the environment by wrangler; never stored in this repo):

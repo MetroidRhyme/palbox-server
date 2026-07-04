@@ -4327,7 +4327,16 @@ var playerLocations=null;
 async function fetchPlayerLocations(){
   try{
     var data=await api('/api/player-locations');
-    playerLocations=data.players||[];
+    // The route's own name resolution (playtime steamid map + live REST players) only
+    // covers online/recently-tracked players; overlay the already-loaded paldeck roster's
+    // names (from Level.sav NickName, always available) so offline players show their real
+    // name instead of falling back to a raw guid prefix.
+    var nameByGuid={};
+    if(paldeckData&&paldeckData.players) paldeckData.players.forEach(function(p){nameByGuid[p.guid]=p.name;});
+    playerLocations=(data.players||[]).map(function(pl){
+      if(nameByGuid[pl.guid]) pl.name=nameByGuid[pl.guid];
+      return pl;
+    });
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
     if(!playerLocations) playerLocations=[];

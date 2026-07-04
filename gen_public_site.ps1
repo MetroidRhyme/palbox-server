@@ -287,6 +287,54 @@ $html = $html.Replace(
 $html = $html.Replace(
   "'/api/player-npcs?guid='+encodeURIComponent(guid)",
   "'data/player-npcs/'+encodeURIComponent(guid)+'.json'")
+
+# (5b) Player locations (PUBLIC ONLY). The admin build's fetchPlayerLocations() calls one
+# unscoped route returning EVERY player's live position, for the "all players on the map"
+# admin feature. The public build may only ever see its own (Access-scoped) player -- there
+# is no roster to pick from, just the single entry the scoped /data/paldeck.json already
+# gave it -- so this is a whole-function-body replace (not a simple URL swap like the
+# repoints above): different endpoint shape entirely (one player's fields vs an array).
+# Matched via regex (not a literal multi-line string) so this survives if
+# PalWorldServerManager.ps1's line endings ever change -- .*? with Singleline spans the
+# CRLF-vs-LF question entirely; only the single-line start/end anchors need to match exactly.
+$pubFetchPlayerLocations = @'
+async function fetchPlayerLocations(){
+  var sel=document.getElementById('effigy-player');
+  var guid=sel?sel.value:'';
+  if(!guid){ if(effigyLeaflet) renderEffigyMap(); return; }
+  try{
+    var r=await fetch('data/player-location/'+encodeURIComponent(guid)+'.json',{cache:'no-store'});
+    var d=r.ok?await r.json():{};
+    var nm=(sel.options[sel.selectedIndex]||{}).text||guid;
+    playerLocations=(typeof d.x==='number')?[{guid:guid,name:nm,x:d.x,y:d.y,z:d.z,yawDeg:d.yawDeg}]:[];
+  }catch(e){
+    playerLocations=[];
+  }
+  if(effigyLeaflet) renderEffigyMap();
+}
+'@
+$before = $html
+$html = [System.Text.RegularExpressions.Regex]::Replace(
+  $html,
+  'async function fetchPlayerLocations\(\)\{.*?\r?\n\}',
+  $pubFetchPlayerLocations.Trim(),
+  $rxOpts)
+if ($html -eq $before) { throw "player-locations: fetchPlayerLocations override not found" }
+
+# Re-fetch the (own) player's position whenever fetchEffigyPlayer settles the selected
+# player -- covers initEffigyView's own fetchPlayerLocations() call possibly racing ahead
+# of the effigy-player dropdown actually being populated/selected on first load.
+$before = $html
+$html = $html.Replace(
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);return;}",
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);fetchPlayerLocations();return;}")
+if ($html -eq $before) { throw "player-locations: fetchEffigyPlayer empty-guid hook not found" }
+$before = $html
+$html = $html.Replace(
+  "  fetchNPCPlayer(guid);",
+  "  fetchNPCPlayer(guid);fetchPlayerLocations();")
+if ($html -eq $before) { throw "player-locations: fetchEffigyPlayer main-guid hook not found" }
+
 # Portraits: 3 distinct call sites cover all 4 usages (palPortrait body + paldeck row,
 # spawn-modal header img, alpha/boss icon).
 $html = $html.Replace(
@@ -497,6 +545,8 @@ if ($html.Contains("'/api/server-messages'")) { throw "server-messages fetch was
 if ($html.Contains('/api/palicon')) { throw "a palicon reference was left unrewritten" }
 if ($html.Contains("'/api/journals'")) { throw "journals fetch was not repointed" }
 if ($html.Contains("'/api/player-notes?guid='")) { throw "player-notes fetch was not repointed" }
+if ($html.Contains('/api/player-locations')) { throw "player-locations admin route leaked into public output" }
+if (-not $html.Contains('data/player-location/')) { throw "player-locations public override did not land" }
 if ($html.Contains('function kickPlayer')) { throw "admin JS block was not removed" }
 if ($html.Contains('/api/kick') -or $html.Contains('/api/shutdown')) { throw "admin endpoint URL left in output" }
 if ($html.Contains("switchView('pals')") -eq $false) { throw "boot was clobbered by admin strip" }
