@@ -310,7 +310,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         if ($null -eq $script:confirmedLocations) {
             $f = "$ServerDir\confirmed_locations.json"
             if (Test-Path -LiteralPath $f) {
-                try { $script:confirmedLocations = @(Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json) }
+                # NOTE: do NOT wrap the pipeline in @() here -- under Windows PowerShell 5.1
+                # (what this Manager runs under), ConvertFrom-Json emits an already-parsed
+                # JSON array as a SINGLE pipeline object rather than enumerating it, so @()
+                # re-wraps that one object into a bogus 1-element array (confirmed via direct
+                # test: a 47-element journal_locations.json collapsed to Count=1, which then
+                # threw "cannot call a method on a null-valued expression" once code assumed
+                # a normal array). Plain assignment handles 0/1/N-element JSON arrays correctly
+                # on both PS 5.1 and PS 7.
+                try { $script:confirmedLocations = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json }
                 catch { $script:confirmedLocations = @() }
             } else {
                 $script:confirmedLocations = @()
@@ -349,7 +357,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
 
     function Merge-ConfirmedJournals([string]$json) {
         $confirmed = Get-ConfirmedLocations
-        try { $arr = @($json | ConvertFrom-Json) } catch { $arr = @() }
+        # No @() wrap -- see the note on Get-ConfirmedLocations above.
+        try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
+        if ($null -eq $arr) { $arr = @() }
         $byKey = @{}
         foreach ($c in $confirmed) { $byKey[$c.key.ToUpper()] = $c }
         $result = @()
@@ -382,7 +392,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         $anonFile = "$ServerDir\anonymous_boss_keys.json"
         if (Test-Path -LiteralPath $anonFile) {
             try {
-                foreach ($e in @(Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                foreach ($e in (Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
                     if ($e.key -and $e.species) { $anonMap[$e.key.ToUpper()] = $e.species }
                 }
             } catch {}
@@ -392,7 +402,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
 
     function Merge-ConfirmedBounty([string]$json) {
         $confirmed = Get-ConfirmedLocations
-        try { $arr = @($json | ConvertFrom-Json) } catch { $arr = @() }
+        # No @() wrap -- see the note on Get-ConfirmedLocations above.
+        try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
+        if ($null -eq $arr) { $arr = @() }
         $anonMap = Get-AnonymousBossKeyMap
         $bySpecies = @{}
         foreach ($entry in $arr) { if ($entry.species) { $bySpecies[$entry.species.ToUpper()] = $entry } }
@@ -426,7 +438,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         $synFile = "$ServerDir\syndicate_bosses.json"
         if (Test-Path -LiteralPath $synFile) {
             try {
-                foreach ($e in @(Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                foreach ($e in (Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
                     if ($e.key) { $roster[$e.key.ToUpper()] = $e.label }
                 }
             } catch {}
@@ -460,7 +472,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         $journalFile = "$ServerDir\journal_locations.json"
         if (Test-Path -LiteralPath $journalFile) {
             try {
-                foreach ($e in @(Get-Content -LiteralPath $journalFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                foreach ($e in (Get-Content -LiteralPath $journalFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
                     if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
                 }
             } catch {}
@@ -470,7 +482,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         $bountySpecies = @{}
         if (Test-Path -LiteralPath $bountyFile) {
             try {
-                foreach ($e in @(Get-Content -LiteralPath $bountyFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                foreach ($e in (Get-Content -LiteralPath $bountyFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
                     if ($e.species) { $bountySpecies[$e.species.ToUpper()] = $true }
                 }
             } catch {}
@@ -483,7 +495,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         $synFile = "$ServerDir\syndicate_bosses.json"
         if (Test-Path -LiteralPath $synFile) {
             try {
-                foreach ($e in @(Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                foreach ($e in (Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
                     if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
                 }
             } catch {}
