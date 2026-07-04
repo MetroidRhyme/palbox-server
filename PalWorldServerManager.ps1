@@ -326,29 +326,33 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return @{ x = ($gy * 459) - 123888; y = ($gx * 459) + 158000 }
     }
 
+    # Anthony wants ONLY his own confirmed locations on the map -- these Merge-Confirmed*
+    # functions FILTER the base public/wiki-sourced data down to matches only (not overlay
+    # onto the full set). NOTE: build with -InputObject rather than piping into
+    # ConvertTo-Json -- piping a PowerShell array with exactly one element unwraps it into
+    # a bare JSON object instead of a 1-item array (confirmed via direct test), which would
+    # break the client's .forEach() the moment a filtered list happens to have one entry.
     function Merge-ConfirmedEffigies([string]$json) {
         $confirmed = Get-ConfirmedLocations
-        if (-not $confirmed.Count) { return $json }
-        try { $obj = $json | ConvertFrom-Json } catch { return $json }
+        try { $obj = $json | ConvertFrom-Json } catch { $obj = $null }
         $props = @{}
-        foreach ($p in $obj.PSObject.Properties) { $props[$p.Name.ToUpper()] = $p.Name }
+        if ($obj) { foreach ($p in $obj.PSObject.Properties) { $props[$p.Name.ToUpper()] = $p.Name } }
+        $result = [ordered]@{}
         foreach ($c in $confirmed) {
-            $propName = $props[$c.key.ToUpper()]
-            if ($propName) {
+            if ($props.ContainsKey($c.key.ToUpper())) {
                 $xy = ConvertTo-WorldXY $c.gx $c.gy
-                $obj.$propName.x = $xy.x
-                $obj.$propName.y = $xy.y
+                $result[$c.key] = @{ x = $xy.x; y = $xy.y; z = 0 }
             }
         }
-        return ($obj | ConvertTo-Json -Depth 6 -Compress)
+        return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)
     }
 
     function Merge-ConfirmedJournals([string]$json) {
         $confirmed = Get-ConfirmedLocations
-        if (-not $confirmed.Count) { return $json }
-        try { $arr = @($json | ConvertFrom-Json) } catch { return $json }
+        try { $arr = @($json | ConvertFrom-Json) } catch { $arr = @() }
         $byKey = @{}
         foreach ($c in $confirmed) { $byKey[$c.key.ToUpper()] = $c }
+        $result = @()
         foreach ($entry in $arr) {
             if (-not $entry.key) { continue }
             $c = $byKey[$entry.key.ToUpper()]
@@ -361,19 +365,19 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 # Anthony's script is the source of truth -- override the name too,
                 # not just the coordinates, if it has one for this key.
                 if ($c.name) { $entry.name = $c.name }
+                $result += $entry
             }
         }
-        return ($arr | ConvertTo-Json -Depth 6)
+        return (ConvertTo-Json -InputObject @($result) -Depth 6)
     }
 
-    function Merge-ConfirmedBounty([string]$json) {
-        $confirmed = Get-ConfirmedLocations
-        if (-not $confirmed.Count) { return $json }
-        try { $arr = @($json | ConvertFrom-Json) } catch { return $json }
-        # Resolve a confirmed key to a species via anonymous_boss_keys.json (the
-        # world map is fixed, so a confirmed key/species pair holds for every
-        # save -- see the palbox-bounty-tracker skill) plus literal species-named
-        # keys (BlueDragon/FairyDragon, the two that self-name-tag in the save).
+    # Resolve a confirmed key to a bounty species via anonymous_boss_keys.json (the world
+    # map is fixed, so a confirmed key/species pair holds for every save -- see the
+    # palbox-bounty-tracker skill) plus literal species-named keys (BlueDragon/FairyDragon,
+    # the two that self-name-tag in the save). Shared by Merge-ConfirmedBounty and
+    # Get-ConfirmedLandmarks (which needs to know a key is already claimed as a bounty
+    # species so it doesn't ALSO show up as a landmark).
+    function Get-AnonymousBossKeyMap {
         $anonMap = @{}
         $anonFile = "$ServerDir\anonymous_boss_keys.json"
         if (Test-Path -LiteralPath $anonFile) {
@@ -383,8 +387,16 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
             } catch {}
         }
+        return $anonMap
+    }
+
+    function Merge-ConfirmedBounty([string]$json) {
+        $confirmed = Get-ConfirmedLocations
+        try { $arr = @($json | ConvertFrom-Json) } catch { $arr = @() }
+        $anonMap = Get-AnonymousBossKeyMap
         $bySpecies = @{}
         foreach ($entry in $arr) { if ($entry.species) { $bySpecies[$entry.species.ToUpper()] = $entry } }
+        $result = @()
         foreach ($c in $confirmed) {
             $species = $anonMap[$c.key.ToUpper()]
             if (-not $species) { $species = $c.key }
@@ -394,9 +406,97 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 $entry.x = $xy.x
                 $entry.y = $xy.y
                 if ($c.name) { $entry.name = $c.name }
+                $result += $entry
             }
         }
-        return ($arr | ConvertTo-Json -Depth 6)
+        return (ConvertTo-Json -InputObject @($result) -Depth 6)
+    }
+
+    # "Human Bounties" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
+    # BOSS_MALE_SOLDIER02) that Anthony has personally located. Unlike bounty bosses these
+    # carry no location at all in the base roster, so this is entirely sourced from
+    # confirmed_locations.json, matched against the syndicate roster just to confirm the
+    # key really is a human/Syndicate boss (not some other kind of flag) and to borrow its
+    # roster label as a name fallback. No per-player found/unfound state (that would need
+    # /api/player-datamine, which is admin-only and has no public-site route) -- static
+    # named pins only, same as Landmarks below.
+    function Get-ConfirmedHumanBounties {
+        $confirmed = Get-ConfirmedLocations
+        $roster = @{}
+        $synFile = "$ServerDir\syndicate_bosses.json"
+        if (Test-Path -LiteralPath $synFile) {
+            try {
+                foreach ($e in @(Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.key) { $roster[$e.key.ToUpper()] = $e.label }
+                }
+            } catch {}
+        }
+        $result = @()
+        foreach ($c in $confirmed) {
+            if ($roster.ContainsKey($c.key.ToUpper())) {
+                $xy = ConvertTo-WorldXY $c.gx $c.gy
+                $name = if ($c.name) { $c.name } else { $roster[$c.key.ToUpper()] }
+                $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+            }
+        }
+        return (ConvertTo-Json -InputObject @($result) -Depth 6)
+    }
+
+    # "Landmarks" -- everything else in confirmed_locations.json that isn't already
+    # plotted as an effigy, journal note, bounty boss, or human bounty: fast-travel points
+    # (e.g. Eagle Statues), discovered-area markers, and any other named spot Anthony has
+    # confirmed. A catch-all so a new category of confirmed location doesn't need its own
+    # plumbing to show up somewhere on the map.
+    function Get-ConfirmedLandmarks {
+        $confirmed = Get-ConfirmedLocations
+        $claimed = New-Object System.Collections.Generic.HashSet[string]
+        $effFile = "$ServerDir\effigies.json"
+        if (Test-Path -LiteralPath $effFile) {
+            try {
+                $effObj = Get-Content -LiteralPath $effFile -Raw -Encoding UTF8 | ConvertFrom-Json
+                foreach ($p in $effObj.PSObject.Properties) { [void]$claimed.Add($p.Name.ToUpper()) }
+            } catch {}
+        }
+        $journalFile = "$ServerDir\journal_locations.json"
+        if (Test-Path -LiteralPath $journalFile) {
+            try {
+                foreach ($e in @(Get-Content -LiteralPath $journalFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+                }
+            } catch {}
+        }
+        $anonMap = Get-AnonymousBossKeyMap
+        $bountyFile = "$ServerDir\bounty_bosses.json"
+        $bountySpecies = @{}
+        if (Test-Path -LiteralPath $bountyFile) {
+            try {
+                foreach ($e in @(Get-Content -LiteralPath $bountyFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.species) { $bountySpecies[$e.species.ToUpper()] = $true }
+                }
+            } catch {}
+        }
+        foreach ($c in $confirmed) {
+            $species = $anonMap[$c.key.ToUpper()]
+            if (-not $species) { $species = $c.key }
+            if ($bountySpecies.ContainsKey($species.ToUpper())) { [void]$claimed.Add($c.key.ToUpper()) }
+        }
+        $synFile = "$ServerDir\syndicate_bosses.json"
+        if (Test-Path -LiteralPath $synFile) {
+            try {
+                foreach ($e in @(Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                    if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+                }
+            } catch {}
+        }
+        $result = @()
+        foreach ($c in $confirmed) {
+            if (-not $claimed.Contains($c.key.ToUpper())) {
+                $xy = ConvertTo-WorldXY $c.gx $c.gy
+                $name = if ($c.name) { $c.name } else { $c.key }
+                $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+            }
+        }
+        return (ConvertTo-Json -InputObject @($result) -Depth 6)
     }
 
     # ── Save-management helpers ───────────────────────────────────────────────
@@ -1206,6 +1306,8 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
           <span id="journal-summary" style="color:var(--muted);font-size:11px;" title="Journal / diary notes collected, from the save (individual notes on the map aren't matched to specific locations yet)"></span>
           <button id="eff-filt-bounty" onclick="toggleEffigyFilter('bounty')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide named Alpha boss (Bounty Token) locations"><span style="color:#e3b341;">&#9679;</span> Bounties</button>
           <span id="bounty-summary" style="color:var(--muted);font-size:11px;" title="Named legendary Alpha bosses defeated, from the save"></span>
+          <button id="eff-filt-human" onclick="toggleEffigyFilter('human')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide human / Syndicate boss locations"><span style="color:#f85149;">&#9679;</span> Human Bounties</button>
+          <button id="eff-filt-landmark" onclick="toggleEffigyFilter('landmark')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide other confirmed landmarks (fast-travel points, discovered areas, etc.)"><span style="color:#a371f7;">&#9679;</span> Landmarks</button>
         </span>
         <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
       </div>
@@ -3789,6 +3891,19 @@ function bountyBossIcon(name,found){
     iconAnchor:[BOUNTY_ICON_SZ/2,BOUNTY_ICON_SZ/2]
   });
 }
+// Human Bounties (NPC/Syndicate bosses) and Landmarks (fast-travel points, discovered
+// areas, etc.) have no dedicated art -- plain colored-dot divIcons, same sizing as the
+// acorn/book glyphs, distinguished by color only (see the toggle buttons' legend dots).
+function simpleDotIcon(colorHex){
+  return L.divIcon({
+    className:'eff-map-marker',
+    html:'<div style="width:100%;height:100%;border-radius:50%;background:'+colorHex+';border:2px solid #fff;box-sizing:border-box;"></div>',
+    iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
+    iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
+  });
+}
+function humanBountyIcon(){ return simpleDotIcon('#f85149'); }
+function landmarkIcon(){ return simpleDotIcon('#a371f7'); }
 
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
 // from /api/journals and overlaid on the same map as blue dots.
@@ -3804,22 +3919,12 @@ var journalLocations=null;
 var journalCollected=[], journalCollectedCount=null;
 var JOURNAL_MAX=49;
 
-// Species NormalBossDefeatFlag can actually confirm automatically, two ways: (1) name-tagged
-// directly in the flag map -- across every save inspected so far, only BlueDragon and
-// FairyDragon ever appeared this way; or (2) an anonymous zone-numbered key ("<zone>_<n>_
-// <biome>_FBOSS_<n>") manually confirmed to a species and recorded in anonymous_boss_keys.json
-// -- the world map is fixed, so a confirmed key/species pair holds for every player/save on
-// this server. See the palbox-bounty-tracker skill's "auto-detection limitation" section and
-// extract_bounty_data/load_anonymous_boss_keys in pal_save_reader.py. The Effigy map only
-// plots species in this list -- showing the rest as permanently "not defeated" markers would
-// be misleading busywork since neither the save nor (on admin) a click can ever confirm them.
-var AUTO_TRACKED_BOUNTY_SPECIES=['BlueDragon','FairyDragon','GrassMammoth','CaptainPenguin','KingAlpaca','SakuraSaurus_Water','Ronin','Kirin','PlantSlime','Mutant'];
-
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
 // loaded once from /api/bounty-bosses (see bounty_bosses.json). Each entry has {species,
 // name, x, y, z}; "species" is what NormalBossDefeatFlag entries in the save are matched
-// against (see extract_bounty_data in pal_save_reader.py). Filtered to AUTO_TRACKED_BOUNTY_
-// SPECIES for the map -- the Data Mine tab fetches the full unfiltered roster separately.
+// against (see extract_bounty_data in pal_save_reader.py). The server already filters this
+// down to Anthony's own confirmed species (see Merge-ConfirmedBounty) -- the Data Mine tab
+// fetches the full unfiltered roster separately via a different route.
 var bossLocations=null;
 // Per-player defeat state: list of species codes, from NormalBossDefeatFlag.
 var bossCollected=[];
@@ -3851,18 +3956,22 @@ function toggleBountyManual(species){
 // map. This is a VIEW filter only -- it never changes a Pal's actual found state (which comes
 // solely from the save). Both default on. effigyShowJournal/effigyShowBounty are independent
 // toggles for the journal-note / bounty-boss overlays (unrelated to found/new).
-var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true;
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowHuman=true, effigyShowLandmark=true;
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-human'), bl=document.getElementById('eff-filt-landmark');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
   if(bj) bj.style.opacity=effigyShowJournal?'1':'0.4';
   if(bb) bb.style.opacity=effigyShowBounty?'1':'0.4';
+  if(bh) bh.style.opacity=effigyShowHuman?'1':'0.4';
+  if(bl) bl.style.opacity=effigyShowLandmark?'1':'0.4';
 }
 function toggleEffigyFilter(which){
   if(which==='found') effigyShowFound=!effigyShowFound;
   else if(which==='journal') effigyShowJournal=!effigyShowJournal;
   else if(which==='bounty') effigyShowBounty=!effigyShowBounty;
+  else if(which==='human') effigyShowHuman=!effigyShowHuman;
+  else if(which==='landmark') effigyShowLandmark=!effigyShowLandmark;
   else effigyShowNew=!effigyShowNew;
   setEffigyFilterBtns();
   renderEffigyMap();
@@ -3910,7 +4019,7 @@ function collectPrefs(){
   if(prefsApplied.effigy) o.bountyManual=bountyManual;
   var players={};
   if(PREFS&&PREFS.players){ players.paldeck=PREFS.players.paldeck; players.effigy=PREFS.players.effigy; }
-  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty};
+  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,human:effigyShowHuman,landmark:effigyShowLandmark};
   // Skip persisting while a watch is mid-edit-preview (palEditId/eggEditId set): the filter
   // controls hold that watch's criteria for live preview only, not the user's real standing
   // filter, and must not overwrite it just because a render happened to fire (e.g. clicking a
@@ -3978,7 +4087,7 @@ function maybeApplyEffigyPrefs(){
   if(prefsApplied.effigy||!prefsReady)return;
   prefsApplied.effigy=true;
   var e=PREFS&&PREFS.effigy;
-  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; effigyShowBounty=e.bounty!==false; setEffigyFilterBtns(); }
+  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; effigyShowBounty=e.bounty!==false; effigyShowHuman=e.human!==false; effigyShowLandmark=e.landmark!==false; setEffigyFilterBtns(); }
   if(PREFS&&PREFS.bountyManual&&typeof PREFS.bountyManual==='object') bountyManual=PREFS.bountyManual;
   var pe=PREFS&&PREFS.players&&PREFS.players.effigy;
   var sel=document.getElementById('effigy-player');
@@ -4037,6 +4146,8 @@ function initEffigyView(){
       fetchEffigyLocations();
       fetchJournalLocations();
       fetchBossLocations();
+      fetchHumanBounties();
+      fetchLandmarks();
     });
   });
 }
@@ -4077,11 +4188,36 @@ async function fetchJournalLocations(){
 async function fetchBossLocations(){
   if(bossLocations)return;
   try{
-    var all=await api('/api/bounty-bosses');
-    bossLocations=all.filter(function(b){return AUTO_TRACKED_BOUNTY_SPECIES.indexOf(b.species)!==-1;});
+    bossLocations=await api('/api/bounty-bosses');
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
     bossLocations=[];
+  }
+}
+
+// "Human Bounties" (NPC/Syndicate boss locations) and "Landmarks" (fast-travel points,
+// discovered areas, everything else) -- both static, game-world-fixed, sourced entirely
+// from Anthony's own confirmed_locations.json (see Get-ConfirmedHumanBounties/
+// Get-ConfirmedLandmarks). Same loading convention as journals/bounty bosses: loaded
+// once, failures are silent rather than blocking the rest of the effigy map.
+var humanBountyLocations=null;
+async function fetchHumanBounties(){
+  if(humanBountyLocations)return;
+  try{
+    humanBountyLocations=await api('/api/human-bounties');
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    humanBountyLocations=[];
+  }
+}
+var landmarkLocations=null;
+async function fetchLandmarks(){
+  if(landmarkLocations)return;
+  try{
+    landmarkLocations=await api('/api/landmarks');
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    landmarkLocations=[];
   }
 }
 
@@ -4469,6 +4605,34 @@ function renderEffigyMap(){
         bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
       }
       effigyMarkerCluster.addLayer(bm);
+    });
+  }
+
+  // Human Bounties (NPC/Syndicate bosses) and Landmarks (fast-travel points, discovered
+  // areas, etc.) -- both static named pins with no found/unfound state (see
+  // fetchHumanBounties/fetchLandmarks above for why). {key,name,x,y} shape.
+  if(effigyShowHuman&&humanBountyLocations&&humanBountyLocations.length){
+    humanBountyLocations.forEach(function(h){
+      var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:humanBountyIcon(),interactive:true});
+      var cx=Math.round((h.y-158000)/459), cy=Math.round((h.x+123888)/459);
+      hm.bindTooltip('<b style="color:#f85149">'+h.name+'</b>'
+        +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
+        {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+      hm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
+      hm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+      effigyMarkerCluster.addLayer(hm);
+    });
+  }
+  if(effigyShowLandmark&&landmarkLocations&&landmarkLocations.length){
+    landmarkLocations.forEach(function(lm){
+      var lmk=L.marker(effigyRposToLatLng(lm.x,lm.y),{icon:landmarkIcon(),interactive:true});
+      var cx=Math.round((lm.y-158000)/459), cy=Math.round((lm.x+123888)/459);
+      lmk.bindTooltip('<b style="color:#a371f7">'+lm.name+'</b>'
+        +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
+        {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+      lmk.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
+      lmk.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+      effigyMarkerCluster.addLayer(lmk);
     });
   }
 
@@ -6384,6 +6548,36 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                             $script:bountyBossData = Merge-ConfirmedBounty $raw
                         }
                         Send-Response $res 200 "application/json" $script:bountyBossData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/human-bounties' -and $method -eq 'GET') {
+                    # Anthony's own confirmed locations for NPC/Syndicate "boss" defeat-flag
+                    # keys (see Get-ConfirmedHumanBounties above) -- static named pins, no
+                    # public/wiki-sourced base data exists for these at all.
+                    try {
+                        if (-not $script:humanBountyData) {
+                            $script:humanBountyData = Get-ConfirmedHumanBounties
+                        }
+                        Send-Response $res 200 "application/json" $script:humanBountyData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/landmarks' -and $method -eq 'GET') {
+                    # Anthony's own confirmed locations that aren't an effigy, journal note,
+                    # bounty boss, or human bounty (fast-travel points/Eagle Statues, discovered
+                    # areas, etc.) -- see Get-ConfirmedLandmarks above.
+                    try {
+                        if (-not $script:landmarkData) {
+                            $script:landmarkData = Get-ConfirmedLandmarks
+                        }
+                        Send-Response $res 200 "application/json" $script:landmarkData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }

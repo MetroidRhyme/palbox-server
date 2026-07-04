@@ -95,29 +95,33 @@ function ConvertTo-WorldXY([int]$gx, [int]$gy) {
   return @{ x = ($gy * 459) - 123888; y = ($gx * 459) + 158000 }
 }
 
+# Anthony wants ONLY his own confirmed locations on the map -- these Merge-Confirmed*
+# functions FILTER the base public/wiki-sourced data down to matches only (not overlay
+# onto the full set). NOTE: build with -InputObject rather than piping into
+# ConvertTo-Json -- piping a PowerShell array with exactly one element unwraps it into a
+# bare JSON object instead of a 1-item array (confirmed via direct test), which would
+# break the client's .forEach() the moment a filtered list happens to have one entry.
 function Merge-ConfirmedEffigies([string]$json) {
   $confirmed = Get-ConfirmedLocations
-  if (-not $confirmed.Count) { return $json }
-  try { $obj = $json | ConvertFrom-Json } catch { return $json }
+  try { $obj = $json | ConvertFrom-Json } catch { $obj = $null }
   $props = @{}
-  foreach ($p in $obj.PSObject.Properties) { $props[$p.Name.ToUpper()] = $p.Name }
+  if ($obj) { foreach ($p in $obj.PSObject.Properties) { $props[$p.Name.ToUpper()] = $p.Name } }
+  $result = [ordered]@{}
   foreach ($c in $confirmed) {
-    $propName = $props[$c.key.ToUpper()]
-    if ($propName) {
+    if ($props.ContainsKey($c.key.ToUpper())) {
       $xy = ConvertTo-WorldXY $c.gx $c.gy
-      $obj.$propName.x = $xy.x
-      $obj.$propName.y = $xy.y
+      $result[$c.key] = @{ x = $xy.x; y = $xy.y; z = 0 }
     }
   }
-  return ($obj | ConvertTo-Json -Depth 6 -Compress)
+  return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)
 }
 
 function Merge-ConfirmedJournals([string]$json) {
   $confirmed = Get-ConfirmedLocations
-  if (-not $confirmed.Count) { return $json }
-  try { $arr = @($json | ConvertFrom-Json) } catch { return $json }
+  try { $arr = @($json | ConvertFrom-Json) } catch { $arr = @() }
   $byKey = @{}
   foreach ($c in $confirmed) { $byKey[$c.key.ToUpper()] = $c }
+  $result = @()
   foreach ($entry in $arr) {
     if (-not $entry.key) { continue }
     $c = $byKey[$entry.key.ToUpper()]
@@ -130,15 +134,19 @@ function Merge-ConfirmedJournals([string]$json) {
       # Anthony's script is the source of truth -- override the name too, not
       # just the coordinates, if it has one for this key.
       if ($c.name) { $entry.name = $c.name }
+      $result += $entry
     }
   }
-  return ($arr | ConvertTo-Json -Depth 6)
+  return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
-function Merge-ConfirmedBounty([string]$json) {
-  $confirmed = Get-ConfirmedLocations
-  if (-not $confirmed.Count) { return $json }
-  try { $arr = @($json | ConvertFrom-Json) } catch { return $json }
+# Resolve a confirmed key to a bounty species via anonymous_boss_keys.json (the world map
+# is fixed, so a confirmed key/species pair holds for every save -- see the
+# palbox-bounty-tracker skill) plus literal species-named keys (BlueDragon/FairyDragon,
+# the two that self-name-tag in the save). Shared by Merge-ConfirmedBounty and
+# Get-ConfirmedLandmarks (which needs to know a key is already claimed as a bounty
+# species so it doesn't ALSO show up as a landmark).
+function Get-AnonymousBossKeyMap {
   $anonMap = @{}
   $anonFile = Join-Path $Root 'anonymous_boss_keys.json'
   if (Test-Path -LiteralPath $anonFile) {
@@ -148,8 +156,16 @@ function Merge-ConfirmedBounty([string]$json) {
       }
     } catch {}
   }
+  return $anonMap
+}
+
+function Merge-ConfirmedBounty([string]$json) {
+  $confirmed = Get-ConfirmedLocations
+  try { $arr = @($json | ConvertFrom-Json) } catch { $arr = @() }
+  $anonMap = Get-AnonymousBossKeyMap
   $bySpecies = @{}
   foreach ($entry in $arr) { if ($entry.species) { $bySpecies[$entry.species.ToUpper()] = $entry } }
+  $result = @()
   foreach ($c in $confirmed) {
     $species = $anonMap[$c.key.ToUpper()]
     if (-not $species) { $species = $c.key }
@@ -159,9 +175,94 @@ function Merge-ConfirmedBounty([string]$json) {
       $entry.x = $xy.x
       $entry.y = $xy.y
       if ($c.name) { $entry.name = $c.name }
+      $result += $entry
     }
   }
-  return ($arr | ConvertTo-Json -Depth 6)
+  return (ConvertTo-Json -InputObject @($result) -Depth 6)
+}
+
+# "Human Bounties" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
+# BOSS_MALE_SOLDIER02) that Anthony has personally located. Unlike bounty bosses these
+# carry no location at all in the base roster, so this is entirely sourced from
+# confirmed_locations.json, matched against the syndicate roster just to confirm the key
+# really is a human/Syndicate boss (not some other kind of flag) and to borrow its roster
+# label as a name fallback. No per-player found/unfound state -- static named pins only,
+# same as Landmarks below.
+function Get-ConfirmedHumanBounties {
+  $confirmed = Get-ConfirmedLocations
+  $roster = @{}
+  $synFile = Join-Path $Root 'syndicate_bosses.json'
+  if (Test-Path -LiteralPath $synFile) {
+    try {
+      foreach ($e in @(Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.key) { $roster[$e.key.ToUpper()] = $e.label }
+      }
+    } catch {}
+  }
+  $result = @()
+  foreach ($c in $confirmed) {
+    if ($roster.ContainsKey($c.key.ToUpper())) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $name = if ($c.name) { $c.name } else { $roster[$c.key.ToUpper()] }
+      $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+    }
+  }
+  return (ConvertTo-Json -InputObject @($result) -Depth 6)
+}
+
+# "Landmarks" -- everything else in confirmed_locations.json that isn't already plotted
+# as an effigy, journal note, bounty boss, or human bounty: fast-travel points (e.g. Eagle
+# Statues), discovered-area markers, and any other named spot Anthony has confirmed.
+function Get-ConfirmedLandmarks {
+  $confirmed = Get-ConfirmedLocations
+  $claimed = New-Object System.Collections.Generic.HashSet[string]
+  $effFile = Join-Path $Root 'effigies.json'
+  if (Test-Path -LiteralPath $effFile) {
+    try {
+      $effObj = Get-Content -LiteralPath $effFile -Raw -Encoding UTF8 | ConvertFrom-Json
+      foreach ($p in $effObj.PSObject.Properties) { [void]$claimed.Add($p.Name.ToUpper()) }
+    } catch {}
+  }
+  $journalFile = Join-Path $Root 'journal_locations.json'
+  if (Test-Path -LiteralPath $journalFile) {
+    try {
+      foreach ($e in @(Get-Content -LiteralPath $journalFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+      }
+    } catch {}
+  }
+  $anonMap = Get-AnonymousBossKeyMap
+  $bountyFile = Join-Path $Root 'bounty_bosses.json'
+  $bountySpecies = @{}
+  if (Test-Path -LiteralPath $bountyFile) {
+    try {
+      foreach ($e in @(Get-Content -LiteralPath $bountyFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.species) { $bountySpecies[$e.species.ToUpper()] = $true }
+      }
+    } catch {}
+  }
+  foreach ($c in $confirmed) {
+    $species = $anonMap[$c.key.ToUpper()]
+    if (-not $species) { $species = $c.key }
+    if ($bountySpecies.ContainsKey($species.ToUpper())) { [void]$claimed.Add($c.key.ToUpper()) }
+  }
+  $synFile = Join-Path $Root 'syndicate_bosses.json'
+  if (Test-Path -LiteralPath $synFile) {
+    try {
+      foreach ($e in @(Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+      }
+    } catch {}
+  }
+  $result = @()
+  foreach ($c in $confirmed) {
+    if (-not $claimed.Contains($c.key.ToUpper())) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $name = if ($c.name) { $c.name } else { $c.key }
+      $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+    }
+  }
+  return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
 # ── Run a Python reader and return its stdout as a single string ───────────────
@@ -440,6 +541,18 @@ if ($doStatic) {
     Write-Step "WARNING: bounty_bosses.json missing; bounty-boss overlay will be empty"
     [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), '[]', $utf8)
   }
+
+  # ── human-bounties.json (Anthony's confirmed NPC/Syndicate boss locations) ───
+  # Entirely sourced from confirmed_locations.json -- no public/wiki base data exists for
+  # these at all. The dashboard serves the same JSON at /api/human-bounties.
+  Write-Step "building data/human-bounties.json"
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'human-bounties.json'), (Get-ConfirmedHumanBounties), $utf8)
+
+  # ── landmarks.json (Anthony's other confirmed locations: fast-travel points, areas, etc.) ──
+  # Entirely sourced from confirmed_locations.json -- catch-all for anything not already an
+  # effigy/journal/bounty/human-bounty. The dashboard serves the same JSON at /api/landmarks.
+  Write-Step "building data/landmarks.json"
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'landmarks.json'), (Get-ConfirmedLandmarks), $utf8)
 
   # ── pal-species.json (curated species data: type/work/skills/stats) ──────────
   # Built once by build_pal_species.py; bundled as a static file. The dashboard serves
