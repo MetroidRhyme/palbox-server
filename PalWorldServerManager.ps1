@@ -3576,32 +3576,14 @@ var palMapLeaflet=null,palMapMarkers=[],palMapTime='dayTimeLocations',palMapCurr
 var palSpawnLocs=[], palZoneLayers=[], palZoneTight=0.01;
 
 function loadLeaflet(cb){
-  // Marker clustering (leaflet.markercluster) ships as a separate bundle loaded after core
-  // Leaflet, since it extends window.L -- needed once the effigy/journal/bounty map can have
-  // 700+ markers on screen at once (see renderEffigyMap).
-  function loadCluster(){
-    if(window.L.markerClusterGroup){cb();return;}
-    var mcCss=document.createElement('link');
-    mcCss.rel='stylesheet';
-    mcCss.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css';
-    document.head.appendChild(mcCss);
-    var mcDefaultCss=document.createElement('link');
-    mcDefaultCss.rel='stylesheet';
-    mcDefaultCss.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css';
-    document.head.appendChild(mcDefaultCss);
-    var mcJs=document.createElement('script');
-    mcJs.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js';
-    mcJs.onload=cb;
-    document.head.appendChild(mcJs);
-  }
-  if(window.L){loadCluster();return;}
+  if(window.L){cb();return;}
   var css=document.createElement('link');
   css.rel='stylesheet';
   css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
   document.head.appendChild(css);
   var js=document.createElement('script');
   js.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
-  js.onload=loadCluster;
+  js.onload=cb;
   document.head.appendChild(js);
 }
 
@@ -3863,7 +3845,7 @@ function setPalMapTime(t){
 }
 
 // ── Effigy Tracker ────────────────────────────────────────────────────────────
-var effigyLeaflet=null, effigyMarkerCluster=null, effigyLocations=null, effigyCollected=[], effigyInited=false;
+var effigyLeaflet=null, effigyMarkerLayer=null, effigyLocations=null, effigyCollected=[], effigyInited=false;
 var _effigyAwaitingRoster=false;
 var _effigyPrefsWaitTries=0;
 var EFFIGY_MAX_RANK=353;
@@ -4132,26 +4114,13 @@ function initEffigyView(){
         L.tileLayer('/api/palmaptile?z={z}&x={x}&y={y}',{
           bounds:bounds,maxNativeZoom:4,tileSize:512,keepBuffer:4
         }).addTo(effigyLeaflet);
-        // Effigies+journal+bounty combined can top 700 markers; clustering keeps the map
-        // smooth by only rendering a count bubble for tightly-packed groups until zoomed in.
-        effigyMarkerCluster=L.markerClusterGroup({
-          showCoverageOnHover:false,maxClusterRadius:25,
-          // Default plugin bubbles are 40px and were swallowing nearby icons / touching each
-          // other at this marker density -- shrink to 26px, keeping the same small/medium/
-          // large color tiers for the outer halo (still styled by MarkerCluster.Default.css).
-          // The inner count div/span sizing is set inline here rather than via a ".marker-
-          // cluster div" CSS rule: that stylesheet is injected dynamically (loadCluster, below)
-          // AFTER this page's own <style> block, so on a tie its 30px/5px-margin default was
-          // winning the cascade and floating a mismatched second circle inside our 26px bubble.
-          iconCreateFunction:function(cluster){
-            var n=cluster.getChildCount();
-            var cls=n>=100?'marker-cluster-large':(n>=10?'marker-cluster-medium':'marker-cluster-small');
-            var inner='<div style="width:18px;height:18px;margin:4px 0 0 4px;border-radius:9px;line-height:18px;">'
-              +'<span style="line-height:18px;font-size:11px;font-weight:700;color:#000;">'+n+'</span></div>';
-            return new L.DivIcon({html:inner,className:'marker-cluster '+cls,iconSize:new L.Point(26,26)});
-          }
-        });
-        effigyLeaflet.addLayer(effigyMarkerCluster);
+        // Plain layer group, no clustering -- every marker shows individually regardless of
+        // how many are on screen or how tightly packed (Anthony asked to remove the
+        // "nearby icons merge into a circle" behavior now that the confirmed-location set
+        // is small, ~74 total across all categories, not the 700+ the old clustering was
+        // sized for).
+        effigyMarkerLayer=L.layerGroup();
+        effigyLeaflet.addLayer(effigyMarkerLayer);
       } else {
         effigyLeaflet.invalidateSize();
       }
@@ -4532,8 +4501,8 @@ function renderDataMine(){
 }
 
 function renderEffigyMap(){
-  if(!effigyLeaflet||!effigyLocations||!effigyMarkerCluster) return;
-  effigyMarkerCluster.clearLayers();
+  if(!effigyLeaflet||!effigyLocations||!effigyMarkerLayer) return;
+  effigyMarkerLayer.clearLayers();
 
   var collectedSet=new Set(effigyCollected.map(function(s){return s.toUpperCase();}));
   var ids=Object.keys(effigyLocations);
@@ -4555,7 +4524,7 @@ function renderEffigyMap(){
     m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
     m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
     m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
-    effigyMarkerCluster.addLayer(m);
+    effigyMarkerLayer.addLayer(m);
   });
 
   // Journal / diary note locations -- static, game-world-fixed. Entries that carry a "key"
@@ -4577,7 +4546,7 @@ function renderEffigyMap(){
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       jm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       jm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
-      effigyMarkerCluster.addLayer(jm);
+      effigyMarkerLayer.addLayer(jm);
     });
   }
 
@@ -4616,7 +4585,7 @@ function renderEffigyMap(){
         bm.on('click',function(){toggleBountyManual(b.species);});
         bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
       }
-      effigyMarkerCluster.addLayer(bm);
+      effigyMarkerLayer.addLayer(bm);
     });
   }
 
@@ -4632,7 +4601,7 @@ function renderEffigyMap(){
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       hm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       hm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
-      effigyMarkerCluster.addLayer(hm);
+      effigyMarkerLayer.addLayer(hm);
     });
   }
   if(effigyShowLandmark&&landmarkLocations&&landmarkLocations.length){
@@ -4644,7 +4613,7 @@ function renderEffigyMap(){
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       lmk.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       lmk.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
-      effigyMarkerCluster.addLayer(lmk);
+      effigyMarkerLayer.addLayer(lmk);
     });
   }
 
