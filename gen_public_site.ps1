@@ -104,13 +104,19 @@ $html = $html.Replace(
 # read-only site from advertising a control that doesn't apply.
 $html = $html.Replace(
   '<button class="btn btn-green" id="btn-start-hdr" onclick="startServer()" style="display:none">&#9654; Start Server</button>', '')
-# Repurpose the live "Updated ... refresh in 5:00" span into a static data-age indicator.
-# Drop the hdr-mid class (it's hidden on mobile) so players see the data's age on phones
-# too. renderDataAge() (injected below) fills #last-updated from the generation stamp.
+# Repurpose the live "Updated ... refresh in 5:00 ... sync status" span into a static
+# data-age indicator. Drop the hdr-mid class (it's hidden on mobile) so players see the
+# data's age on phones too. renderDataAge() (injected below) fills #last-updated from the
+# generation stamp. The sync-status pill is admin-ops-only (R2 sync health), meaningless
+# to players, so it's dropped along with the countdown rather than carried over.
+$before = $html
 $html = $html.Replace(
-  '<span class="hdr-mid">Updated <b id="last-updated">-</b> &bull; refresh in <b id="countdown">5:00</b></span>',
+  '<span class="hdr-mid">Updated <b id="last-updated">-</b> &bull; refresh in <b id="countdown">5:00</b> &bull; <span id="sync-pill" class="sync-pill-ok">-</span></span>',
   '<span id="data-fresh" style="color:var(--muted);font-size:12px;white-space:nowrap;">Updated <b id="last-updated">-</b></span>')
-$html = $html.Replace('<button class="btn-icon" onclick="refreshAll()">&#8635; Refresh</button>', '')
+if ($html -eq $before) { throw "hdr-mid span (Updated/refresh/sync-pill) was not repointed" }
+$before = $html
+$html = $html.Replace('<button class="btn btn-ghost hdr-more-row" onclick="refreshAll();closeAllOverflowMenus();">&#8635; Refresh now</button>', '')
+if ($html -eq $before) { throw "header 'Refresh now' row was not removed" }
 
 # (2b) Remove the per-view "Reload" buttons (Pals / Paldeck / Effigies). On the static
 # site they only re-fetch the same generated JSON -- there's no live server to pull
@@ -561,7 +567,7 @@ if ($html.Contains('data-tab="datamine"')) { throw "Data Mine nav tab was not re
 if ($html.Contains('function fetchDataMine(') -or $html.Contains('function renderDataMine(')) { throw "Data Mine JS block was not removed" }
 if ($html.Contains('function kickPlayer')) { throw "admin JS block was not removed" }
 if ($html.Contains("switchView('pals')") -eq $false) { throw "boot was clobbered by admin strip" }
-if ($html.Contains('onclick="refreshAll()"')) { throw "header Refresh button was not removed" }
+if ($html.Contains('Refresh now')) { throw "header Refresh row was not removed" }
 if ($html.Contains('onclick="fetchPals()"') -or $html.Contains('onclick="fetchPaldeck()"') -or $html.Contains('onclick="reloadEffigyView()"')) { throw "a per-view Reload button was not removed" }
 if (-not $html.Contains('data-tab="settings"')) { throw "Settings nav tab was not injected" }
 if (-not $html.Contains('id="view-settings"')) { throw "Settings view was not injected" }

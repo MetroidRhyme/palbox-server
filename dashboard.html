@@ -258,6 +258,15 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 .pf-badge{background:#58a6ff;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:0 5px;margin-left:5px;}
 .pf-panel{display:none;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface);}
 .pf-panel.open{display:block;}
+/* "..." overflow menu: toolbar controls that don't need to be always-visible (Pals/Eggs
+   sort/location/watch/clear/reload, the header's msglog/sound/refresh cluster). */
+.overflow-toggle-wrap{position:relative;display:inline-block;}
+.overflow-menu{display:none;position:absolute;top:100%;right:0;margin-top:4px;z-index:1000;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);flex-direction:column;gap:6px;min-width:170px;}
+.overflow-menu.open{display:flex;}
+.overflow-menu select,.overflow-menu button{width:100%;text-align:left;}
+/* Header's overflow rows: full-height, labeled touch targets (44px is the standard
+   minimum touch-target size) rather than the compact icon-only buttons they replace. */
+.hdr-more-row{display:flex;align-items:center;gap:10px;min-height:44px;box-sizing:border-box;}
 .pf-grid{display:flex;flex-wrap:wrap;gap:18px;}
 .pf-group{display:flex;flex-direction:column;gap:7px;}
 .pf-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;}
@@ -295,11 +304,16 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <button class="nav-tab" data-tab="datamine" onclick="switchView('datamine')">Data Mine</button>
   </nav>
   <div class="hdr-right">
-    <button class="btn-icon" id="msglog-toggle" onclick="toggleMsgLog()" title="Server message history (last 24h)">&#128220;</button>
-    <button class="btn-icon" id="snd-toggle" onclick="toggleChatSound()" title="Notification sound for server messages">&#128276;</button>
     <button class="btn btn-green" id="btn-start-hdr" onclick="startServer()" style="display:none">&#9654; Start Server</button>
     <span class="hdr-mid">Updated <b id="last-updated">-</b> &bull; refresh in <b id="countdown">5:00</b> &bull; <span id="sync-pill" class="sync-pill-ok">-</span></span>
-    <button class="btn-icon" onclick="refreshAll()">&#8635; Refresh</button>
+    <div class="overflow-toggle-wrap">
+      <button class="btn-icon" onclick="toggleOverflowMenu('hdr-more')" title="More options">&#8942;</button>
+      <div id="hdr-more" class="overflow-menu">
+        <button class="btn btn-ghost hdr-more-row" id="msglog-toggle" onclick="toggleMsgLog();closeAllOverflowMenus();" title="Server message history (last 24h)">&#128220; Message log</button>
+        <button class="btn btn-ghost hdr-more-row" onclick="toggleChatSound();closeAllOverflowMenus();" title="Notification sound for server messages"><span id="snd-toggle-icon">&#128276;</span> Notification sound</button>
+        <button class="btn btn-ghost hdr-more-row" onclick="refreshAll();closeAllOverflowMenus();">&#8635; Refresh now</button>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -601,22 +615,27 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       <span>Pal Box</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <select id="pals-player" onchange="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:110px;"></select>
-        <select id="pals-location" onchange="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:110px;"></select>
-        <select id="pals-sort" onchange="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;">
-          <option value="iv">Sort: Best IVs</option>
-          <option value="work">Sort: Work Suitability</option>
-          <option value="level">Sort: Level</option>
-          <option value="paldex">Sort: Paldex No.</option>
-          <option value="name">Sort: Name</option>
-          <option value="slot">Sort: Box Slot</option>
-        </select>
-        <input id="pals-search" type="text" placeholder="Search name / passive..." oninput="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;width:180px;">
+        <input id="pals-search" type="text" placeholder="Search name / passive..." oninput="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;flex:1;min-width:120px;">
         <button class="btn btn-ghost" onclick="togglePalFilters()" style="position:relative;">Filters<span id="pals-filter-count" class="pf-badge" style="display:none;">0</span></button>
-        <button id="pals-clear" class="btn btn-ghost" onclick="clearPalFilters()" style="display:none;">Clear</button>
-        <button id="pals-watch-btn" class="btn btn-ghost" onclick="savePalWatch()" title="Save the current filter as a watch - matching pals get pinned at the top">&#9733; Watch filter</button>
-        <button id="pals-cancel-edit" class="btn btn-ghost" onclick="cancelPalEdit()" style="display:none;">Cancel edit</button>
         <span id="pals-summary" style="color:var(--muted);font-size:12px;"></span>
-        <button class="btn btn-ghost" onclick="fetchPals()">&#8635; Reload</button>
+        <div class="overflow-toggle-wrap">
+          <button class="btn btn-ghost" onclick="toggleOverflowMenu('pals-more')" title="More options">&#8942;</button>
+          <div id="pals-more" class="overflow-menu">
+            <select id="pals-location" onchange="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;"></select>
+            <select id="pals-sort" onchange="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;">
+              <option value="iv">Sort: Best IVs</option>
+              <option value="work">Sort: Work Suitability</option>
+              <option value="level">Sort: Level</option>
+              <option value="paldex">Sort: Paldex No.</option>
+              <option value="name">Sort: Name</option>
+              <option value="slot">Sort: Box Slot</option>
+            </select>
+            <button id="pals-clear" class="btn btn-ghost" onclick="clearPalFilters()" style="display:none;">Clear</button>
+            <button id="pals-watch-btn" class="btn btn-ghost" onclick="savePalWatch()" title="Save the current filter as a watch - matching pals get pinned at the top">&#9733; Watch filter</button>
+            <button id="pals-cancel-edit" class="btn btn-ghost" onclick="cancelPalEdit()" style="display:none;">Cancel edit</button>
+            <button class="btn btn-ghost" onclick="fetchPals()">&#8635; Reload</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="pals-filters" class="pf-panel">
@@ -717,27 +736,32 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       <span>Eggs</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <select id="eggs-owner" onchange="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:110px;"></select>
-        <select id="eggs-location" onchange="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:110px;">
-          <option value="">All locations</option>
-          <option value="incubator">Incubators</option>
-          <option value="breedfarm">Breeding Farm</option>
-          <option value="storage">Storage</option>
-          <option value="inventory">Inventory</option>
-        </select>
-        <select id="eggs-sort" onchange="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;">
-          <option value="iv">Sort: Best IVs</option>
-          <option value="work">Sort: Work Suitability</option>
-          <option value="rarity">Sort: Rarity</option>
-          <option value="species">Sort: Species</option>
-          <option value="element">Sort: Element</option>
-        </select>
-        <input id="eggs-search" type="text" placeholder="Search name / passive..." oninput="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;width:180px;">
+        <input id="eggs-search" type="text" placeholder="Search name / passive..." oninput="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;flex:1;min-width:120px;">
         <button class="btn btn-ghost" onclick="toggleEggFilters()" style="position:relative;">Filters<span id="eggs-filter-count" class="pf-badge" style="display:none;">0</span></button>
-        <button id="eggs-clear" class="btn btn-ghost" onclick="clearEggFilters()" style="display:none;">Clear</button>
-        <button id="eggs-watch-btn" class="btn btn-ghost" onclick="saveEggWatch()" title="Save the current filter as a watch - matching eggs get pinned at the top">&#9733; Watch filter</button>
-        <button id="eggs-cancel-edit" class="btn btn-ghost" onclick="cancelEggEdit()" style="display:none;">Cancel edit</button>
         <span id="eggs-summary" style="color:var(--muted);font-size:12px;"></span>
-        <button class="btn btn-ghost" onclick="fetchEggs()">&#8635; Reload</button>
+        <div class="overflow-toggle-wrap">
+          <button class="btn btn-ghost" onclick="toggleOverflowMenu('eggs-more')" title="More options">&#8942;</button>
+          <div id="eggs-more" class="overflow-menu">
+            <select id="eggs-location" onchange="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;">
+              <option value="">All locations</option>
+              <option value="incubator">Incubators</option>
+              <option value="breedfarm">Breeding Farm</option>
+              <option value="storage">Storage</option>
+              <option value="inventory">Inventory</option>
+            </select>
+            <select id="eggs-sort" onchange="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;">
+              <option value="iv">Sort: Best IVs</option>
+              <option value="work">Sort: Work Suitability</option>
+              <option value="rarity">Sort: Rarity</option>
+              <option value="species">Sort: Species</option>
+              <option value="element">Sort: Element</option>
+            </select>
+            <button id="eggs-clear" class="btn btn-ghost" onclick="clearEggFilters()" style="display:none;">Clear</button>
+            <button id="eggs-watch-btn" class="btn btn-ghost" onclick="saveEggWatch()" title="Save the current filter as a watch - matching eggs get pinned at the top">&#9733; Watch filter</button>
+            <button id="eggs-cancel-edit" class="btn btn-ghost" onclick="cancelEggEdit()" style="display:none;">Cancel edit</button>
+            <button class="btn btn-ghost" onclick="fetchEggs()">&#8635; Reload</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="eggs-watches" class="egg-watches" style="display:none;"></div>
@@ -1055,7 +1079,7 @@ function chatSoundOn(){ try{ return localStorage.getItem('palbox_chat_sound')!==
 function toggleChatSound(){
   var on=!chatSoundOn();
   try{ localStorage.setItem('palbox_chat_sound', on?'on':'off'); }catch(e){}
-  var b=document.getElementById('snd-toggle'); if(b) b.innerHTML=on?'&#128276;':'&#128277;';
+  var b=document.getElementById('snd-toggle-icon'); if(b) b.innerHTML=on?'&#128276;':'&#128277;';
   if(on) playChime();   // confirmation beep when (re)enabling
 }
 function playChime(){
@@ -1129,6 +1153,25 @@ document.addEventListener('click',function(e){
   if(p.contains(e.target))return;
   var btn=document.getElementById('msglog-toggle'); if(btn&&btn.contains(e.target))return;
   p.style.display='none';
+});
+
+// Generic "..." overflow menu (Pals/Eggs toolbars, header icon cluster): one open at a
+// time, closes on an outside click, same toggle-panel pattern as the message log above.
+function toggleOverflowMenu(id){
+  document.querySelectorAll('.overflow-menu').forEach(function(m){ if(m.id!==id) m.classList.remove('open'); });
+  var m=document.getElementById(id); if(!m) return;
+  m.classList.toggle('open');
+}
+function closeAllOverflowMenus(){
+  document.querySelectorAll('.overflow-menu.open').forEach(function(m){ m.classList.remove('open'); });
+}
+document.addEventListener('click',function(e){
+  document.querySelectorAll('.overflow-menu.open').forEach(function(m){
+    if(m.contains(e.target)) return;
+    var wrap=m.closest('.overflow-toggle-wrap');
+    if(wrap&&wrap.contains(e.target)) return;
+    m.classList.remove('open');
+  });
 });
 
 // Remember the last-opened tab across browser reloads. Captured BEFORE the boot
@@ -4605,7 +4648,7 @@ loadPassives();
 // the document is still parsing), so it survives the generator's boot rewrite too.
 document.addEventListener('DOMContentLoaded',restoreView);
 // Server-message chat banner: reflect the saved mute state on the bell, then poll.
-(function(){ var b=document.getElementById('snd-toggle'); if(b) b.innerHTML=chatSoundOn()?'&#128276;':'&#128277;'; })();
+(function(){ var b=document.getElementById('snd-toggle-icon'); if(b) b.innerHTML=chatSoundOn()?'&#128276;':'&#128277;'; })();
 pollServerMessages(); setInterval(pollServerMessages,8000);
 // Canvas pixel dimensions are sized from offsetWidth at draw time, so a window
 // resize leaves them stale (blurry/stretched). Re-render the charts, debounced.
