@@ -144,6 +144,18 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
 $html = [System.Text.RegularExpressions.Regex]::Replace(
   $html, '<div id="view-datamine" class="page" style="display:none">.*?(?=<div id="view-pals")', '', $rxOpts)
 
+# (3c) Remove the Data Mine tab's own JS (fetchDataMine/renderDataMine + their roster
+# vars) -- unlike #view-dashboard's admin JS, this isn't inside the refreshAll-to-
+# fetchPaldeck strip in step (6) below, so it survived as dead code calling
+# /api/syndicate-bosses and /api/player-datamine (routes with no public equivalent --
+# caught by the leaked-route scan further down). switchView's own call site is a
+# typeof-guarded no-op once this is gone (see the shared source), same as the vdm null
+# guard already covers its display-toggle line.
+$before = $html
+$html = [System.Text.RegularExpressions.Regex]::Replace(
+  $html, 'var dmBountyRoster=null;.*?(?=function renderEffigyMap\(\))', '', $rxOpts)
+if ($html -eq $before) { throw "Data Mine JS block was not found to remove" }
+
 # (4) Replace the boot sequence: no live polling, just load the data views. The data-age
 # indicator (#last-updated) is filled by renderDataAge() in the injected script below
 # from the real generation stamp -- NOT page-load time, which would be misleading.
@@ -545,18 +557,8 @@ if ($html.Contains('id="view-dashboard"')) { throw "view-dashboard was not remov
 if ($html.Contains("getElementById('view-dashboard')")) { throw "switchView still references removed view-dashboard" }
 if ($html.Contains('id="view-datamine"')) { throw "view-datamine was not removed" }
 if ($html.Contains('data-tab="datamine"')) { throw "Data Mine nav tab was not removed" }
-if ($html.Contains("'/api/pals'")) { throw "pals fetch was not repointed" }
-if ($html.Contains("'/api/eggs'")) { throw "eggs fetch was not repointed" }
-if ($html.Contains("'/api/server-messages'")) { throw "server-messages fetch was not repointed" }
-if ($html.Contains('/api/palicon')) { throw "a palicon reference was left unrewritten" }
-if ($html.Contains("'/api/journals'")) { throw "journals fetch was not repointed" }
-if ($html.Contains("'/api/player-notes?guid='")) { throw "player-notes fetch was not repointed" }
-if ($html.Contains("'/api/player-fugitives?guid='")) { throw "player-fugitives fetch was not repointed" }
-if ($html.Contains("'/api/player-eagles?guid='")) { throw "player-eagles fetch was not repointed" }
-if ($html.Contains('/api/player-locations')) { throw "player-locations admin route leaked into public output" }
-if (-not $html.Contains('data/player-location/')) { throw "player-locations public override did not land" }
+if ($html.Contains('function fetchDataMine(') -or $html.Contains('function renderDataMine(')) { throw "Data Mine JS block was not removed" }
 if ($html.Contains('function kickPlayer')) { throw "admin JS block was not removed" }
-if ($html.Contains('/api/kick') -or $html.Contains('/api/shutdown')) { throw "admin endpoint URL left in output" }
 if ($html.Contains("switchView('pals')") -eq $false) { throw "boot was clobbered by admin strip" }
 if ($html.Contains('onclick="refreshAll()"')) { throw "header Refresh button was not removed" }
 if ($html.Contains('onclick="fetchPals()"') -or $html.Contains('onclick="fetchPaldeck()"') -or $html.Contains('onclick="reloadEffigyView()"')) { throw "a per-view Reload button was not removed" }
@@ -573,6 +575,37 @@ if (-not $html.Contains('!revealedSet.has(id.toUpperCase())')) { throw "effigy s
 if (-not $html.Contains('var PREFS_ENABLED=true;')) { throw "prefs: were not enabled for the public site" }
 if (-not $html.Contains('fetchPaldeck();loadPrefs();')) { throw "prefs: loadPrefs was not wired into boot" }
 if ($html.Contains('__GEN_TS__')) { throw "data-age generation stamp placeholder was not substituted" }
+
+# Generic leaked-route scan: catches ANY admin-only /api/* reference left in the output,
+# not just the handful of routes the old asserts named one-by-one (that list had already
+# fallen behind -- it missed /api/paldeck, /api/effigies, /api/bounty-bosses, /api/npcs,
+# /api/landmarks, /api/pal-species, and more). A route added to the admin dashboard without
+# a matching repoint here would previously gen clean and 404 silently on whichever public
+# tab hit it; this covers every route by construction instead of needing a new named assert
+# each time one is added. Only the two Pages Functions routes and the Worker's prefs route
+# are meant to survive into the public output.
+$apiWhitelist = @('/api/palmaptile', '/api/palspawn', '/api/prefs')
+foreach ($m in [regex]::Matches($html, '/api/[A-Za-z0-9_-]+')) {
+  if ($apiWhitelist -notcontains $m.Value) { throw "leaked admin route in public output: $($m.Value)" }
+}
+
+# Expected data/*.json references must all be present -- catches a repoint whose source
+# string quietly stopped matching (Replace() no-ops instead of erroring, e.g. after an
+# unrelated admin-JS reformat) just as surely as one that was never added, since either way
+# the tab ends up fetching nothing.
+$expectedDataRefs = @(
+  'data/pals.json', 'data/eggs.json', 'data/server-messages.json', 'data/paldeck.json',
+  'data/effigies.json', 'data/journals.json', 'data/bounty-bosses.json',
+  'data/wanted-fugitives.json', 'data/eagle-statues.json', 'data/npcs.json',
+  'data/landmarks.json', 'data/pal-species.json', 'data/pal-skills.json',
+  'data/pal-passives.json', 'data/settings.json', 'data/meta.json',
+  'data/player-location/', 'data/player-effigies/', 'data/player-notes/',
+  'data/player-bounties/', 'data/player-npcs/', 'data/player-fugitives/', 'data/player-eagles/'
+)
+foreach ($ref in $expectedDataRefs) {
+  if (-not $html.Contains($ref)) { throw "expected data reference missing from output: $ref" }
+}
+
 foreach ($ch in $html.ToCharArray()) { if ([int]$ch -gt 127) { throw ("non-ASCII char U+{0:X4} left in output" -f [int]$ch) } }
 
 [System.IO.File]::WriteAllText((Join-Path $Pub 'index.html'), $html, [System.Text.UTF8Encoding]::new($false))

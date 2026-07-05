@@ -49,9 +49,19 @@ $ErrorActionPreference = 'Stop'
 # $PSScriptRoot fallback as a last resort so a log gets written even if it does.)
 if (-not $Root) { $Root = $PSScriptRoot }
 $LogFile = if ($Root) { Join-Path $Root 'sync_public_data.log' } else { Join-Path $env:TEMP 'sync_public_data.log' }
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
 trap {
   $entry = "[{0:yyyy-MM-dd HH:mm:ss}] FAILED: {1}`n{2}`n{3}`n" -f (Get-Date), $_.Exception.Message, $_.InvocationInfo.PositionMessage, $_.ScriptStackTrace
   try { Add-Content -LiteralPath $LogFile -Value $entry -Encoding UTF8 } catch {}
+  # Surface the failure to the dashboard's sync-status pill too -- previously the log held
+  # only failures with no way to tell "healthy no-op" from "hasn't run in a week" without
+  # inspecting this state file's mtime by hand (that blindness is why the 2026-07-02 outage
+  # ran silently for ~15h before anyone noticed).
+  try {
+    $s = Get-State
+    $s.lastError = @{ at = (Get-Date -Format o); message = $_.Exception.Message }
+    Save-State $s
+  } catch {}
   Write-Host $entry
   exit 1
 }
@@ -81,20 +91,23 @@ foreach ($v in 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID') {
 $mutex = New-Object System.Threading.Mutex($false, 'PalBoxR2Sync')
 if (-not $mutex.WaitOne(0)) { Write-Step 'another sync run is in progress; skipping.'; exit 0 }
 
-# ── State: { levelStamp: <Level.sav ticks>, files: { "<key>": "<sha256>" } } ────
+# ── State: { levelStamp, files: {...}, lastSuccess, lastError } ────────────────
 # levelStamp is bumped only after a fully successful sync, so a partial/failed run is
 # retried next poll. files{} is updated per uploaded key, so completed uploads persist
-# even if a later one fails.
+# even if a later one fails. lastSuccess/lastError (both set below) are what the
+# dashboard's /api/sync-status route reads for its "Public data: synced/FAILING" pill.
 function Get-State {
   if (Test-Path -LiteralPath $StateFile) {
     try {
       $s = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
       $files = @{}
       if ($s.files) { foreach ($p in $s.files.PSObject.Properties) { $files[$p.Name] = [string]$p.Value } }
-      return [pscustomobject]@{ levelStamp = [string]$s.levelStamp; files = $files }
+      $lastError = $null
+      if ($s.lastError) { $lastError = @{ at = [string]$s.lastError.at; message = [string]$s.lastError.message } }
+      return [pscustomobject]@{ levelStamp = [string]$s.levelStamp; files = $files; lastSuccess = [string]$s.lastSuccess; lastError = $lastError }
     } catch {}
   }
-  return [pscustomobject]@{ levelStamp = ''; files = @{} }
+  return [pscustomobject]@{ levelStamp = ''; files = @{}; lastSuccess = ''; lastError = $null }
 }
 function Save-State($s) {
   # Write via temp file + rename (atomic on the same volume) rather than Set-Content
@@ -102,9 +115,9 @@ function Save-State($s) {
   # call below), so a mid-write interruption (e.g. the nightly maintenance window killing
   # the game server, disk hiccup, etc.) landing exactly here would otherwise leave truncated/
   # corrupt JSON that every subsequent sync attempt has to parse.
-  $obj = [ordered]@{ levelStamp = $s.levelStamp; files = $s.files }
+  $obj = [ordered]@{ levelStamp = $s.levelStamp; files = $s.files; lastSuccess = $s.lastSuccess; lastError = $s.lastError }
   $tmp = "$StateFile.tmp"
-  ($obj | ConvertTo-Json -Compress) | Set-Content -LiteralPath $tmp -Encoding UTF8
+  ($obj | ConvertTo-Json -Compress -Depth 4) | Set-Content -LiteralPath $tmp -Encoding UTF8
   Move-Item -LiteralPath $tmp -Destination $StateFile -Force
 }
 
@@ -113,12 +126,22 @@ $m = Select-String -LiteralPath $IniPath -Pattern 'DedicatedServerName=([0-9A-Fa
 if (-not $m) { throw "Could not find DedicatedServerName in $IniPath" }
 $guid = $m.Matches[0].Groups[1].Value
 $levelSav = Join-Path (Join-Path $SaveGamesRoot $guid) 'Level.sav'
-if (-not (Test-Path -LiteralPath $levelSav)) { throw "Level.sav not found: $levelSav" }
+if (-not (Test-Path -LiteralPath $levelSav)) {
+  # Expected, not a failure: a brand-new world (via Save Manager) has no Level.sav until
+  # the first in-game save. Previously this threw -> logged as FAILED every ~60s until the
+  # first save, training the log to be ignored right when a real failure (like 2026-07-02)
+  # most needed to stand out.
+  Write-Step "Level.sav not found yet (new world, not saved once) - nothing to sync."
+  exit 0
+}
 $stamp = [string]([System.IO.File]::GetLastWriteTimeUtc($levelSav).Ticks)
 
 $state = Get-State
 if (-not $Force -and $stamp -eq $state.levelStamp) {
   Write-Step "Level.sav unchanged since last sync; nothing to do."
+  $state.lastSuccess = (Get-Date -Format o)
+  $state.lastError = $null
+  Save-State $state
   exit 0
 }
 
@@ -201,5 +224,12 @@ $mcode = Invoke-Wrangler @('r2', 'object', 'put', "$Bucket/meta.json", '--file',
 if ($mcode -ne 0) { throw "wrangler r2 object put failed for meta.json (exit $mcode)" }
 
 $state.levelStamp = $stamp
+$state.lastSuccess = (Get-Date -Format o)
+$state.lastError = $null
 Save-State $state
-Write-Step "sync complete: $uploaded uploaded, $skipped unchanged, $deleted deleted."
+$sw.Stop()
+$summary = "sync complete: $uploaded uploaded, $skipped unchanged, $deleted deleted, $([math]::Round($sw.Elapsed.TotalSeconds,1))s"
+Write-Step $summary
+# One line per non-gated run (the cheap no-op path above doesn't log) so the log can
+# finally answer "is this healthy?" without inspecting the state file's mtime by hand.
+try { Add-Content -LiteralPath $LogFile -Value ("[{0:yyyy-MM-dd HH:mm:ss}] SUCCESS: {1}" -f (Get-Date), $summary) -Encoding UTF8 } catch {}

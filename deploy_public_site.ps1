@@ -164,6 +164,29 @@ Write-Step "deploying: $reason"
 & (Join-Path $Root 'gen_public_site.ps1') -Root $Root
 if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "gen_public_site.ps1 failed (exit $LASTEXITCODE)" }
 
+# ── Smoke test: node --check every inline <script> block before shipping ───────
+# gen_public_site.ps1's own asserts only check STRING presence/absence in the
+# transformed HTML -- a transform landing mid-expression (or a future edit to one of
+# its .Replace()/regex anchors) could corrupt the JS while still passing every one of
+# those string checks, shipping a syntax error straight to players with a blank page
+# and no warning here. node is already required for this project (site_src\_worker.js
+# is node --check'd during dev, see docs/04-public-site.md), so this costs nothing
+# extra to run before every deploy.
+$indexPath = Join-Path $Pub 'index.html'
+$indexHtml = [System.IO.File]::ReadAllText($indexPath)
+$scriptBlocks = [regex]::Matches($indexHtml, '(?s)<script>(.*?)</script>')
+Write-Step "smoke test: node --check on $($scriptBlocks.Count) inline <script> block(s)"
+for ($i = 0; $i -lt $scriptBlocks.Count; $i++) {
+  $tmpJs = Join-Path $env:TEMP "palbox-gen-smoketest-$i.js"
+  try {
+    [System.IO.File]::WriteAllText($tmpJs, $scriptBlocks[$i].Groups[1].Value, (New-Object System.Text.UTF8Encoding($false)))
+    & node --check $tmpJs
+    if ($LASTEXITCODE -ne 0) { throw "generated <script> block $i failed node --check (exit $LASTEXITCODE)" }
+  } finally {
+    Remove-Item -LiteralPath $tmpJs -Force -ErrorAction SilentlyContinue
+  }
+}
+
 $wrangler = Get-Command wrangler -ErrorAction SilentlyContinue
 if ($wrangler) {
   & wrangler pages deploy $Pub --project-name=$Project

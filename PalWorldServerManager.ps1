@@ -1148,6 +1148,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 .status-dot.online{background:var(--green);box-shadow:0 0 6px var(--green);}
 .status-dot.offline{background:var(--red);}
 .hdr-right{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;}
+.sync-pill-ok{color:var(--muted);}
+.sync-pill-fail{color:var(--red);font-weight:600;}
 .btn-icon{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;}
 .btn-icon:hover{background:var(--border);}
 
@@ -1399,7 +1401,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <button class="btn-icon" id="msglog-toggle" onclick="toggleMsgLog()" title="Server message history (last 24h)">&#128220;</button>
     <button class="btn-icon" id="snd-toggle" onclick="toggleChatSound()" title="Notification sound for server messages">&#128276;</button>
     <button class="btn btn-green" id="btn-start-hdr" onclick="startServer()" style="display:none">&#9654; Start Server</button>
-    <span class="hdr-mid">Updated <b id="last-updated">-</b> &bull; refresh in <b id="countdown">5:00</b></span>
+    <span class="hdr-mid">Updated <b id="last-updated">-</b> &bull; refresh in <b id="countdown">5:00</b> &bull; <span id="sync-pill" class="sync-pill-ok">-</span></span>
     <button class="btn-icon" onclick="refreshAll()">&#8635; Refresh</button>
   </div>
 </header>
@@ -2140,8 +2142,8 @@ function initChartHover(){
 // ── Server-message chat banner + notification sound ─────────────────────────────
 // Polls the recent server broadcasts (egg alerts, maintenance/reboot countdowns, manual
 // broadcasts) and pops a transient top banner + a short chime for each NEW one. Shared by
-// admin and public: the admin reads /api/server-messages, the public the generator
-// repoints to data/server-messages.json (the R2 mirror). PalWorld has no chat-read API, so
+// admin and public: the admin reads the live route, the public build's generator repoints
+// this call to data/server-messages.json (the R2 mirror). PalWorld has no chat-read API, so
 // this only surfaces what the SERVER sends -- there is no player chat. Sound is a WebAudio
 // chime (no asset to host) muteable via the header bell, persisted per-browser.
 var _chatLastId=0, _chatInit=false, _msgLog=[];
@@ -2252,7 +2254,7 @@ function switchView(name){
   if(name==='effigies') initEffigyView();
   if(name==='pals' && !palsData) fetchPals();
   if(name==='eggs') fetchEggs();
-  if(name==='datamine') fetchDataMine();
+  if(name==='datamine' && typeof fetchDataMine==='function') fetchDataMine();
   try{localStorage.setItem('palbox_active_tab',name);}catch(e){}
   // Player positions move in real time, unlike the rest of the Map tab's mostly-static
   // overlays -- poll faster than the 5-minute refreshAll cadence, but only while the tab
@@ -2521,7 +2523,7 @@ function loadSpecies(){
 }
 function speciesOf(p){return (palSpecies&&p&&palSpecies[p.species])||null;}
 // Per active-skill metadata (element/power/cooldown/status/desc) for the tap-a-skill popup.
-// Bundled static on the public site; served at /api/pal-skills on the admin dashboard.
+// Bundled static on the public site; served from the admin dashboard's own live route.
 var palSkills=null;
 function loadSkills(){
   return fetch('/api/pal-skills').then(function(r){return r.ok?r.json():{};})
@@ -2529,7 +2531,7 @@ function loadSkills(){
     .catch(function(){palSkills={};});
 }
 // Per-passive effect text + rating rank for the tap-a-passive popup. Bundled static on the
-// public site; served at /api/pal-passives on the admin dashboard.
+// public site; served from the admin dashboard's own live route.
 var palPassives=null;
 function loadPassives(){
   return fetch('/api/pal-passives').then(function(r){return r.ok?r.json():{};})
@@ -4234,7 +4236,7 @@ function eagleStatueIcon(found){ return simpleDotIcon('#e8b339',found); }
 function npcIcon(found){ return simpleDotIcon('#39c5bb',found); }
 
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
-// from /api/journals and overlaid on the same map as blue dots.
+// from the journals route and overlaid on the same map as blue dots.
 var journalLocations=null;
 // Per-player journal collection state, from NoteObtainForInstanceFlag in the save (same
 // mechanism as effigies' RelicObtainForInstanceFlag). The in-game Notes/Journal count (49)
@@ -4255,7 +4257,7 @@ var npcCollected=[], npcCollectedCount=null;
 var fugitiveCollected=[], eagleCollected=[];
 
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
-// loaded once from /api/bounty-bosses (see bounty_bosses.json). Each entry has {species,
+// loaded once from the bounty-bosses route (see bounty_bosses.json). Each entry has {species,
 // name, x, y, z}; "species" is what NormalBossDefeatFlag entries in the save are matched
 // against (see extract_bounty_data in pal_save_reader.py). The server already filters this
 // down to Anthony's own confirmed species (see Merge-ConfirmedBounty) -- the Data Mine tab
@@ -4764,7 +4766,7 @@ function renderBountySummary(){
 // (bounty_bosses.json, known location), Syndicate/NPC "boss" fights (syndicate_bosses.json,
 // flat keys, no location), and anonymous zone-numbered field-alpha spawns (no roster at all --
 // auto-discovered per player). See extract_datamine_data in pal_save_reader.py. Journal/diary
-// notes (NoteObtainForInstanceFlag, /api/journals + /api/player-notes) are folded in
+// notes (NoteObtainForInstanceFlag, the journals + player-notes routes) are folded in
 // alongside these -- same "raw key, no roster" shape as the anonymous section, cross-
 // referenced against journal_locations.json's confirmed pins. See palbox-journal-overlay skill.
 var dmBountyRoster=null;    // [{species,name,x,y,z}, ...] from bounty_bosses.json
@@ -5138,7 +5140,7 @@ async function reloadEffigyView(){
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 async function refreshAll(){
   resetCountdown();
-  await Promise.allSettled([fetchInfo(),fetchMetrics(),fetchPlayers(),fetchHistory(),fetchPlaytime(),fetchMaintenanceInfo(),fetchMaintLog(),fetchSaves(),fetchPaldeck()]);
+  await Promise.allSettled([fetchInfo(),fetchMetrics(),fetchPlayers(),fetchHistory(),fetchPlaytime(),fetchMaintenanceInfo(),fetchMaintLog(),fetchSaves(),fetchPaldeck(),fetchSyncStatus()]);
   if(!sLoaded) fetchFileSettings();
   loadEggNotify();
   setText('last-updated',new Date().toLocaleTimeString());
@@ -5287,6 +5289,26 @@ async function fetchMaintenanceInfo(){
     var hEl=document.getElementById('maint-hour'),mEl=document.getElementById('maint-min');
     if(d.maintHour!=null && document.activeElement!==hEl) hEl.value=d.maintHour;
     if(d.maintMinute!=null && document.activeElement!==mEl) mEl.value=String(d.maintMinute).padStart(2,'0');
+  }catch(e){}
+}
+async function fetchSyncStatus(){
+  var el=document.getElementById('sync-pill'); if(!el) return;
+  try{
+    var d=await api('/api/sync-status');
+    if(d.lastError){
+      el.textContent='Public data sync FAILING since '+fmtTs(d.lastError.at);
+      el.className='sync-pill-fail';
+      el.title=d.lastError.message||'';
+    }else if(d.lastSuccess){
+      var mins=Math.max(0,Math.round((Date.now()-new Date(d.lastSuccess).getTime())/60000));
+      el.textContent='Public data synced '+(mins<1?'just now':mins+'m ago');
+      el.className='sync-pill-ok';
+      el.title='';
+    }else{
+      el.textContent='Public data: no sync yet';
+      el.className='sync-pill-ok';
+      el.title='';
+    }
   }catch(e){}
 }
 async function fetchMaintLog(){
@@ -6301,6 +6323,27 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     if ($now -ge $nextM) { $nextM = $nextM.AddDays(1) }
                     $info = @{ nextMaint=$nextM.ToString('yyyy-MM-ddTHH:mm:ss'); skipPending=(Test-Path $SkipFlagFile); maintHour=$mh; maintMinute=$mm }
                     Send-Response $res 200 "application/json" (ConvertTo-Json $info -Compress)
+                    break
+                }
+
+                ($path -eq '/api/sync-status' -and $method -eq 'GET') {
+                    # Reads the R2 sync state sync_public_data.ps1 maintains -- lastSuccess/
+                    # lastError there is what used to require inspecting the state file's mtime
+                    # by hand to tell "healthy no-op" from "hasn't run in a week" (same blindness
+                    # that let the 2026-07-02 outage run silently for ~15h). See its own comments
+                    # for exactly when each field is written.
+                    $info = @{ lastSuccess = $null; lastError = $null }
+                    try {
+                        $f = "$ServerDir\.palbox_r2_sync_state.json"
+                        if (Test-Path -LiteralPath $f) {
+                            $s = Get-Content -LiteralPath $f -Raw | ConvertFrom-Json
+                            if ($s.PSObject.Properties['lastSuccess']) { $info.lastSuccess = $s.lastSuccess }
+                            if ($s.PSObject.Properties['lastError'] -and $s.lastError) {
+                                $info.lastError = @{ at = $s.lastError.at; message = $s.lastError.message }
+                            }
+                        }
+                    } catch {}
+                    Send-Response $res 200 "application/json" (ConvertTo-Json $info -Compress -Depth 4)
                     break
                 }
 
