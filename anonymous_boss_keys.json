@@ -70,5 +70,33 @@
   {
     "key": "81_1_FOREST_FBOSS_4",
     "species": "VioletFairy"
+  },
+  {
+    "key": "81_1_GRASS_FBOSS_18",
+    "species": "NaughtyCat"
+  },
+  {
+    "key": "81_2_DESSERT_FBOSS_3",
+    "species": "DarkScorpion"
+  },
+  {
+    "key": "81_3_VOLCANO_FBOSS_1",
+    "species": "JetDragon"
+  },
+  {
+    "key": "81_3_VOLCANO_FBOSS_3",
+    "species": "KingBahamut"
+  },
+  {
+    "key": "81_5_YAMIJIMA_FBOSS_18",
+    "species": "HerculesBeetle_Ground"
+  },
+  {
+    "key": "81_5_YAMIJIMA_FBOSS_20",
+    "species": "RaijinDaughter_Water"
+  },
+  {
+    "key": "81_5_YAMIJIMA_FBOSS_15",
+    "species": "PurpleSpider"
   }
 ]

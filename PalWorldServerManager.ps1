@@ -307,9 +307,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # below, applied inside the /api/effigies, /api/journals, and
     # /api/bounty-bosses handlers.
     function Get-ConfirmedLocations {
-        if ($null -eq $script:confirmedLocations) {
-            $f = "$ServerDir\confirmed_locations.json"
-            if (Test-Path -LiteralPath $f) {
+        $f = "$ServerDir\confirmed_locations.json"
+        # Re-read whenever the file's mtime has moved on from what we last loaded, so
+        # edits from the companion save-watching script (palworld-dataminer) show up on
+        # the next API poll instead of requiring a Manager restart.
+        $mtime = if (Test-Path -LiteralPath $f) { (Get-Item -LiteralPath $f).LastWriteTimeUtc } else { $null }
+        if ($null -eq $script:confirmedLocations -or $mtime -ne $script:confirmedLocationsMtime) {
+            if ($null -ne $mtime) {
                 # NOTE: do NOT wrap the pipeline in @() here -- under Windows PowerShell 5.1
                 # (what this Manager runs under), ConvertFrom-Json emits an already-parsed
                 # JSON array as a SINGLE pipeline object rather than enumerating it, so @()
@@ -323,6 +327,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
             } else {
                 $script:confirmedLocations = @()
             }
+            $script:confirmedLocationsMtime = $mtime
         }
         return $script:confirmedLocations
     }
@@ -400,6 +405,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return $anonMap
     }
 
+    # Human/Syndicate boss keys (syndicate_bosses.json, e.g. BOSS_MALE_SOLDIER02) never
+    # carry a zone-number prefix, unlike Field Boss species keys (e.g.
+    # "81_2_DESSERT_FBOSS_3") -- used below to tell the two apart from key shape alone
+    # when a NormalBossDefeatFlag-sourced confirmed entry hasn't been added to either
+    # roster yet.
+    function Test-SyndicateKeyShape([string]$key) { return $key -match '^BOSS_' }
+
     function Merge-ConfirmedBounty([string]$json) {
         $confirmed = Get-ConfirmedLocations
         # No @() wrap -- see the note on Get-ConfirmedLocations above.
@@ -413,12 +425,21 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
             $species = $anonMap[$c.key.ToUpper()]
             if (-not $species) { $species = $c.key }
             $entry = $bySpecies[$species.ToUpper()]
+            $xy = ConvertTo-WorldXY $c.gx $c.gy
             if ($entry) {
-                $xy = ConvertTo-WorldXY $c.gx $c.gy
                 $entry.x = $xy.x
                 $entry.y = $xy.y
                 if ($c.name) { $entry.name = $c.name }
                 $result += $entry
+            } elseif ($c.source -eq 'NormalBossDefeatFlag' -and -not (Test-SyndicateKeyShape $c.key)) {
+                # Anthony's dataminer script already told us (via confirmed_locations.json's
+                # "source" field) that this key is a NormalBossDefeatFlag hit, and its shape
+                # says Field Boss, not Wanted Fugitive -- show it now from his own confirmed
+                # name/coords rather than waiting on a manual anonymous_boss_keys.json edit.
+                # No per-player found/unfound fade until a species gets assigned there (same
+                # static-pin limitation Wanted Fugitive/Eagle Statue/Landmarks already have).
+                $name = if ($c.name) { $c.name } else { $c.key }
+                $result += @{ species = $c.key; name = $name; x = $xy.x; y = $xy.y }
             }
         }
         return (ConvertTo-Json -InputObject @($result) -Depth 6)
@@ -427,11 +448,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # "Wanted Fugitive" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
     # BOSS_MALE_SOLDIER02) that Anthony has personally located. Unlike bounty bosses these
     # carry no location at all in the base roster, so this is entirely sourced from
-    # confirmed_locations.json, matched against the syndicate roster just to confirm the
-    # key really is a human/Syndicate boss (not some other kind of flag) and to borrow its
-    # roster label as a name fallback. No per-player found/unfound state (that would need
-    # /api/player-datamine, which is admin-only and has no public-site route) -- static
-    # named pins only, same as Landmarks below.
+    # confirmed_locations.json. Primary classifier is the "source" field Anthony's dataminer
+    # script now stamps on each entry (source == NormalBossDefeatFlag + syndicate key shape,
+    # see Test-SyndicateKeyShape) -- the syndicate_bosses.json roster match is kept only as a
+    # fallback for entries confirmed before "source" existed, and as a name-label source. No
+    # per-player found/unfound state (that would need /api/player-datamine, which is
+    # admin-only and has no public-site route) -- static named pins only, same as Landmarks
+    # below.
     function Get-ConfirmedWantedFugitives {
         $confirmed = Get-ConfirmedLocations
         $roster = @{}
@@ -445,19 +468,24 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         }
         $result = @()
         foreach ($c in $confirmed) {
-            if ($roster.ContainsKey($c.key.ToUpper())) {
+            $isFugitive = $roster.ContainsKey($c.key.ToUpper()) -or
+                ($c.source -eq 'NormalBossDefeatFlag' -and (Test-SyndicateKeyShape $c.key))
+            if ($isFugitive) {
                 $xy = ConvertTo-WorldXY $c.gx $c.gy
                 $name = if ($c.name) { $c.name } else { $roster[$c.key.ToUpper()] }
+                if (-not $name) { $name = $c.key }
                 $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
             }
         }
         return (ConvertTo-Json -InputObject @($result) -Depth 6)
     }
 
-    # "Eagle Statues" -- fast-travel points (FastTravelPointUnlockFlag), matched against
-    # fast_travel_keys.json (a roster of confirmed fast-travel point GUIDs, grown from real
-    # save data -- see pal_save_reader.py's extract_fast_travel_data). Static named pins
-    # only, same as Landmarks -- Anthony didn't ask for per-player unlock tracking on these.
+    # "Eagle Statues" -- fast-travel points (FastTravelPointUnlockFlag). Primary classifier
+    # is the "source" field (see Merge-ConfirmedBounty's comment above); fast_travel_keys.json
+    # (a roster of confirmed fast-travel point GUIDs, grown from real save data -- see
+    # pal_save_reader.py's extract_fast_travel_data) is kept as a fallback for entries
+    # confirmed before "source" existed. Static named pins only, same as Landmarks --
+    # Anthony didn't ask for per-player unlock tracking on these.
     function Get-ConfirmedEagleStatues {
         $confirmed = Get-ConfirmedLocations
         $roster = New-Object System.Collections.Generic.HashSet[string]
@@ -471,7 +499,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         }
         $result = @()
         foreach ($c in $confirmed) {
-            if ($roster.Contains($c.key.ToUpper())) {
+            $isEagle = ($c.source -eq 'FastTravelPointUnlockFlag') -or $roster.Contains($c.key.ToUpper())
+            if ($isEagle) {
                 $xy = ConvertTo-WorldXY $c.gx $c.gy
                 $name = if ($c.name) { $c.name } else { $c.key }
                 $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
@@ -480,11 +509,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return (ConvertTo-Json -InputObject @($result) -Depth 6)
     }
 
-    # "NPC" -- NPCTalkCountMap keys, matched against npc_keys.json (a roster of confirmed
-    # NPC GUIDs, grown from real save data -- see pal_save_reader.py's extract_npc_data).
-    # Unlike Eagle Statues/Landmarks, this DOES get per-player tracking: /api/player-npcs
-    # (below) marks an NPC "found" once its key shows up in that player's own
-    # NPCTalkCountMap, same mechanism as effigies/journals/bounty.
+    # "NPC" -- NPCTalkCountMap keys. Primary classifier is the "source" field (see
+    # Merge-ConfirmedBounty's comment above); npc_keys.json (a roster of confirmed NPC GUIDs,
+    # grown from real save data -- see pal_save_reader.py's extract_npc_data) is kept as a
+    # fallback for entries confirmed before "source" existed. Unlike Eagle Statues/Landmarks,
+    # this DOES get per-player tracking: /api/player-npcs (below) marks an NPC "found" once
+    # its key shows up in that player's own NPCTalkCountMap, same mechanism as
+    # effigies/journals/bounty.
     function Get-ConfirmedNPCs {
         $confirmed = Get-ConfirmedLocations
         $roster = New-Object System.Collections.Generic.HashSet[string]
@@ -498,7 +529,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         }
         $result = @()
         foreach ($c in $confirmed) {
-            if ($roster.Contains($c.key.ToUpper())) {
+            $isNpc = ($c.source -eq 'NPCTalkCountMap') -or $roster.Contains($c.key.ToUpper())
+            if ($isNpc) {
                 $xy = ConvertTo-WorldXY $c.gx $c.gy
                 $name = if ($c.name) { $c.name } else { $c.key }
                 $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
@@ -568,6 +600,21 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
                 }
             } catch {}
+        }
+        # Anthony's dataminer script stamps a "source" (raw save-flag name) on every newly
+        # confirmed entry now -- trust it directly instead of waiting on a roster-file edit.
+        # FastTravelPointUnlockFlag/NPCTalkCountMap always resolve into Eagle Statues/NPCs
+        # above; NormalBossDefeatFlag always resolves into either Wanted Fugitive or Field
+        # Boss above (species-matched or not -- Merge-ConfirmedBounty's fallback branch shows
+        # it either way), so any of these three sources means it's claimed even before the
+        # roster files above catch up. Only FindAreaFlagMap (genuine discovered-zone
+        # landmarks) and entries with no "source" at all (pre-dating this field) fall through
+        # to Landmarks below.
+        foreach ($c in $confirmed) {
+            if ($c.source -eq 'FastTravelPointUnlockFlag' -or $c.source -eq 'NPCTalkCountMap' -or
+                $c.source -eq 'NormalBossDefeatFlag') {
+                [void]$claimed.Add($c.key.ToUpper())
+            }
         }
         $result = @()
         foreach ($c in $confirmed) {
@@ -6803,23 +6850,25 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
 
                 ($path -eq '/api/effigies' -and $method -eq 'GET') {
                     try {
-                        if (-not $script:effigyData) {
-                            # Prefer the LOCAL copy (python gen_pal_assets.py); only fall
-                            # back to GitHub if it is missing, so the tracker keeps working
-                            # offline / if the upstream repo changes.
-                            $localEffigies = "$ServerDir\effigies.json"
-                            if (Test-Path -LiteralPath $localEffigies) {
-                                $raw = [System.IO.File]::ReadAllText($localEffigies)
-                            } else {
-                                $wc = New-Object System.Net.WebClient
-                                $wc.Headers.Add('User-Agent', 'Mozilla/5.0')
-                                $raw = $wc.DownloadString(
-                                    'https://raw.githubusercontent.com/oMaN-Rod/palworld-save-pal/main/data/json/effigies.json')
-                            }
-                            # Overlay Anthony's own live-play-confirmed coordinates on top of
-                            # the public/upstream data -- see Merge-ConfirmedEffigies above.
-                            $script:effigyData = Merge-ConfirmedEffigies $raw
+                        # Recomputed every request (not cached) so edits to
+                        # confirmed_locations.json show up immediately -- see
+                        # Get-ConfirmedLocations' own mtime-based cache above, which this
+                        # relies on to avoid re-reading that file from disk needlessly.
+                        # Prefer the LOCAL copy (python gen_pal_assets.py); only fall
+                        # back to GitHub if it is missing, so the tracker keeps working
+                        # offline / if the upstream repo changes.
+                        $localEffigies = "$ServerDir\effigies.json"
+                        if (Test-Path -LiteralPath $localEffigies) {
+                            $raw = [System.IO.File]::ReadAllText($localEffigies)
+                        } else {
+                            $wc = New-Object System.Net.WebClient
+                            $wc.Headers.Add('User-Agent', 'Mozilla/5.0')
+                            $raw = $wc.DownloadString(
+                                'https://raw.githubusercontent.com/oMaN-Rod/palworld-save-pal/main/data/json/effigies.json')
                         }
+                        # Overlay Anthony's own live-play-confirmed coordinates on top of
+                        # the public/upstream data -- see Merge-ConfirmedEffigies above.
+                        $script:effigyData = Merge-ConfirmedEffigies $raw
                         Send-Response $res 200 "application/json" $script:effigyData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -6833,18 +6882,17 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     # coords with the same formula the effigy tooltip uses in reverse
                     # (cx=(y-158000)/459, cy=(x+123888)/459). The public site bundles this
                     # as a static file; here we serve it from the same JSON so both match.
+                    # Recomputed every request, not cached -- see the /api/effigies note above.
                     try {
-                        if (-not $script:journalData) {
-                            $f = "$ServerDir\journal_locations.json"
-                            if (Test-Path -LiteralPath $f) {
-                                $raw = [System.IO.File]::ReadAllText($f)
-                            } else {
-                                $raw = '[]'
-                            }
-                            # Overlay Anthony's own live-play-confirmed coordinates/names on
-                            # top of the wiki-sourced base data -- see Merge-ConfirmedJournals.
-                            $script:journalData = Merge-ConfirmedJournals $raw
+                        $f = "$ServerDir\journal_locations.json"
+                        if (Test-Path -LiteralPath $f) {
+                            $raw = [System.IO.File]::ReadAllText($f)
+                        } else {
+                            $raw = '[]'
                         }
+                        # Overlay Anthony's own live-play-confirmed coordinates/names on
+                        # top of the wiki-sourced base data -- see Merge-ConfirmedJournals.
+                        $script:journalData = Merge-ConfirmedJournals $raw
                         Send-Response $res 200 "application/json" $script:journalData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -6858,18 +6906,17 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     # one fixed world location (see bounty_bosses.json). The public site
                     # bundles this as a static file; here we serve it from the same JSON so
                     # both dashboards match.
+                    # Recomputed every request, not cached -- see the /api/effigies note above.
                     try {
-                        if (-not $script:bountyBossData) {
-                            $f = "$ServerDir\bounty_bosses.json"
-                            if (Test-Path -LiteralPath $f) {
-                                $raw = [System.IO.File]::ReadAllText($f)
-                            } else {
-                                $raw = '[]'
-                            }
-                            # Overlay Anthony's own live-play-confirmed coordinates/names on
-                            # top of the paldb-sourced base data -- see Merge-ConfirmedBounty.
-                            $script:bountyBossData = Merge-ConfirmedBounty $raw
+                        $f = "$ServerDir\bounty_bosses.json"
+                        if (Test-Path -LiteralPath $f) {
+                            $raw = [System.IO.File]::ReadAllText($f)
+                        } else {
+                            $raw = '[]'
                         }
+                        # Overlay Anthony's own live-play-confirmed coordinates/names on
+                        # top of the paldb-sourced base data -- see Merge-ConfirmedBounty.
+                        $script:bountyBossData = Merge-ConfirmedBounty $raw
                         Send-Response $res 200 "application/json" $script:bountyBossData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -6881,10 +6928,9 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     # Anthony's own confirmed locations for NPC/Syndicate "boss" defeat-flag
                     # keys (see Get-ConfirmedWantedFugitives above) -- static named pins, no
                     # public/wiki-sourced base data exists for these at all.
+                    # Recomputed every request, not cached -- see the /api/effigies note above.
                     try {
-                        if (-not $script:wantedFugitiveData) {
-                            $script:wantedFugitiveData = Get-ConfirmedWantedFugitives
-                        }
+                        $script:wantedFugitiveData = Get-ConfirmedWantedFugitives
                         Send-Response $res 200 "application/json" $script:wantedFugitiveData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -6896,10 +6942,9 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     # Anthony's own confirmed fast-travel point locations (see
                     # Get-ConfirmedEagleStatues above) -- static named pins, no public/wiki
                     # base data exists for these at all.
+                    # Recomputed every request, not cached -- see the /api/effigies note above.
                     try {
-                        if (-not $script:eagleStatueData) {
-                            $script:eagleStatueData = Get-ConfirmedEagleStatues
-                        }
+                        $script:eagleStatueData = Get-ConfirmedEagleStatues
                         Send-Response $res 200 "application/json" $script:eagleStatueData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -6911,10 +6956,9 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     # Anthony's own confirmed NPC locations (see Get-ConfirmedNPCs above) --
                     # static named pins; per-player found state comes from a separate route,
                     # /api/player-npcs?guid=, below.
+                    # Recomputed every request, not cached -- see the /api/effigies note above.
                     try {
-                        if (-not $script:npcData) {
-                            $script:npcData = Get-ConfirmedNPCs
-                        }
+                        $script:npcData = Get-ConfirmedNPCs
                         Send-Response $res 200 "application/json" $script:npcData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -6926,10 +6970,9 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                     # Anthony's own confirmed locations that aren't an effigy, journal note,
                     # bounty boss, Wanted Fugitive, Eagle Statue, or NPC -- discovered areas
                     # etc. -- see Get-ConfirmedLandmarks above.
+                    # Recomputed every request, not cached -- see the /api/effigies note above.
                     try {
-                        if (-not $script:landmarkData) {
-                            $script:landmarkData = Get-ConfirmedLandmarks
-                        }
+                        $script:landmarkData = Get-ConfirmedLandmarks
                         Send-Response $res 200 "application/json" $script:landmarkData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)

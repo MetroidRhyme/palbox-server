@@ -174,6 +174,12 @@ function Get-AnonymousBossKeyMap {
   return $anonMap
 }
 
+# Human/Syndicate boss keys (syndicate_bosses.json, e.g. BOSS_MALE_SOLDIER02) never carry a
+# zone-number prefix, unlike Field Boss species keys (e.g. "81_2_DESSERT_FBOSS_3") -- used
+# below to tell the two apart from key shape alone when a NormalBossDefeatFlag-sourced
+# confirmed entry hasn't been added to either roster yet.
+function Test-SyndicateKeyShape([string]$key) { return $key -match '^BOSS_' }
+
 function Merge-ConfirmedBounty([string]$json) {
   $confirmed = Get-ConfirmedLocations
   # No @() wrap -- see the note on Get-ConfirmedLocations above.
@@ -187,12 +193,21 @@ function Merge-ConfirmedBounty([string]$json) {
     $species = $anonMap[$c.key.ToUpper()]
     if (-not $species) { $species = $c.key }
     $entry = $bySpecies[$species.ToUpper()]
+    $xy = ConvertTo-WorldXY $c.gx $c.gy
     if ($entry) {
-      $xy = ConvertTo-WorldXY $c.gx $c.gy
       $entry.x = $xy.x
       $entry.y = $xy.y
       if ($c.name) { $entry.name = $c.name }
       $result += $entry
+    } elseif ($c.source -eq 'NormalBossDefeatFlag' -and -not (Test-SyndicateKeyShape $c.key)) {
+      # Anthony's dataminer script already told us (via confirmed_locations.json's "source"
+      # field) that this key is a NormalBossDefeatFlag hit, and its shape says Field Boss,
+      # not Wanted Fugitive -- show it now from his own confirmed name/coords rather than
+      # waiting on a manual anonymous_boss_keys.json edit. No per-player found/unfound fade
+      # until a species gets assigned there (same static-pin limitation Wanted
+      # Fugitive/Eagle Statue/Landmarks already have).
+      $name = if ($c.name) { $c.name } else { $c.key }
+      $result += @{ species = $c.key; name = $name; x = $xy.x; y = $xy.y }
     }
   }
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
@@ -201,10 +216,11 @@ function Merge-ConfirmedBounty([string]$json) {
 # "Wanted Fugitive" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
 # BOSS_MALE_SOLDIER02) that Anthony has personally located. Unlike bounty bosses these
 # carry no location at all in the base roster, so this is entirely sourced from
-# confirmed_locations.json, matched against the syndicate roster just to confirm the key
-# really is a human/Syndicate boss (not some other kind of flag) and to borrow its roster
-# label as a name fallback. No per-player found/unfound state -- static named pins only,
-# same as Landmarks below.
+# confirmed_locations.json. Primary classifier is the "source" field Anthony's dataminer
+# script now stamps on each entry (source == NormalBossDefeatFlag + syndicate key shape, see
+# Test-SyndicateKeyShape) -- the syndicate_bosses.json roster match is kept only as a
+# fallback for entries confirmed before "source" existed, and as a name-label source. No
+# per-player found/unfound state -- static named pins only, same as Landmarks below.
 function Get-ConfirmedWantedFugitives {
   $confirmed = Get-ConfirmedLocations
   $roster = @{}
@@ -218,18 +234,23 @@ function Get-ConfirmedWantedFugitives {
   }
   $result = @()
   foreach ($c in $confirmed) {
-    if ($roster.ContainsKey($c.key.ToUpper())) {
+    $isFugitive = $roster.ContainsKey($c.key.ToUpper()) -or
+      ($c.source -eq 'NormalBossDefeatFlag' -and (Test-SyndicateKeyShape $c.key))
+    if ($isFugitive) {
       $xy = ConvertTo-WorldXY $c.gx $c.gy
       $name = if ($c.name) { $c.name } else { $roster[$c.key.ToUpper()] }
+      if (-not $name) { $name = $c.key }
       $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
     }
   }
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
-# "Eagle Statues" -- fast-travel points (FastTravelPointUnlockFlag), matched against
-# fast_travel_keys.json (a roster of confirmed fast-travel point GUIDs, grown from real
-# save data -- see pal_save_reader.py's extract_fast_travel_data). Static named pins only.
+# "Eagle Statues" -- fast-travel points (FastTravelPointUnlockFlag). Primary classifier is
+# the "source" field (see Merge-ConfirmedBounty's comment above); fast_travel_keys.json (a
+# roster of confirmed fast-travel point GUIDs, grown from real save data -- see
+# pal_save_reader.py's extract_fast_travel_data) is kept as a fallback for entries confirmed
+# before "source" existed. Static named pins only.
 function Get-ConfirmedEagleStatues {
   $confirmed = Get-ConfirmedLocations
   $roster = New-Object System.Collections.Generic.HashSet[string]
@@ -243,7 +264,8 @@ function Get-ConfirmedEagleStatues {
   }
   $result = @()
   foreach ($c in $confirmed) {
-    if ($roster.Contains($c.key.ToUpper())) {
+    $isEagle = ($c.source -eq 'FastTravelPointUnlockFlag') -or $roster.Contains($c.key.ToUpper())
+    if ($isEagle) {
       $xy = ConvertTo-WorldXY $c.gx $c.gy
       $name = if ($c.name) { $c.name } else { $c.key }
       $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
@@ -252,9 +274,11 @@ function Get-ConfirmedEagleStatues {
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
-# "NPC" -- NPCTalkCountMap keys, matched against npc_keys.json (a roster of confirmed NPC
-# GUIDs, grown from real save data -- see pal_save_reader.py's extract_npc_data). Gets
-# per-player tracking via /api/player-npcs, bundled separately in the Frequent branch below.
+# "NPC" -- NPCTalkCountMap keys. Primary classifier is the "source" field (see
+# Merge-ConfirmedBounty's comment above); npc_keys.json (a roster of confirmed NPC GUIDs,
+# grown from real save data -- see pal_save_reader.py's extract_npc_data) is kept as a
+# fallback for entries confirmed before "source" existed. Gets per-player tracking via
+# /api/player-npcs, bundled separately in the Frequent branch below.
 function Get-ConfirmedNPCs {
   $confirmed = Get-ConfirmedLocations
   $roster = New-Object System.Collections.Generic.HashSet[string]
@@ -268,7 +292,8 @@ function Get-ConfirmedNPCs {
   }
   $result = @()
   foreach ($c in $confirmed) {
-    if ($roster.Contains($c.key.ToUpper())) {
+    $isNpc = ($c.source -eq 'NPCTalkCountMap') -or $roster.Contains($c.key.ToUpper())
+    if ($isNpc) {
       $xy = ConvertTo-WorldXY $c.gx $c.gy
       $name = if ($c.name) { $c.name } else { $c.key }
       $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
@@ -336,6 +361,20 @@ function Get-ConfirmedLandmarks {
         if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
       }
     } catch {}
+  }
+  # Anthony's dataminer script stamps a "source" (raw save-flag name) on every newly
+  # confirmed entry now -- trust it directly instead of waiting on a roster-file edit.
+  # FastTravelPointUnlockFlag/NPCTalkCountMap always resolve into Eagle Statues/NPCs above;
+  # NormalBossDefeatFlag always resolves into either Wanted Fugitive or Field Boss above
+  # (species-matched or not -- Merge-ConfirmedBounty's fallback branch shows it either way),
+  # so any of these three sources means it's claimed even before the roster files above catch
+  # up. Only FindAreaFlagMap (genuine discovered-zone landmarks) and entries with no "source"
+  # at all (pre-dating this field) fall through to Landmarks below.
+  foreach ($c in $confirmed) {
+    if ($c.source -eq 'FastTravelPointUnlockFlag' -or $c.source -eq 'NPCTalkCountMap' -or
+        $c.source -eq 'NormalBossDefeatFlag') {
+      [void]$claimed.Add($c.key.ToUpper())
+    }
   }
   $result = @()
   foreach ($c in $confirmed) {
