@@ -1376,28 +1376,35 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 <div id="view-effigies" class="page" style="display:none;height:calc(100vh - 52px);overflow:hidden;box-sizing:border-box;">
   <div class="panel" style="flex:1;min-height:0;">
     <div class="panel-header">
-      <span>Lifmunk Effigy Tracker</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <select id="effigy-player" onchange="fetchEffigyPlayer()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:120px;"></select>
         <span id="effigy-summary" style="color:var(--muted);font-size:12px;"></span>
-        <span style="font-size:11px;display:inline-flex;gap:6px;align-items:center;">
-          <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide effigies you have not found yet"><span style="color:#3fb950;">&#9679;</span> New</button>
-          <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide effigies you have already found"><span style="color:#484f58;">&#9679;</span> Found</button>
-          <button id="eff-filt-journal" onclick="toggleEffigyFilter('journal')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide journal / diary note locations"><span style="color:#3399ff;">&#9679;</span> Journals</button>
-          <span id="journal-summary" style="color:var(--muted);font-size:11px;" title="Journal / diary notes collected, from the save (individual notes on the map aren't matched to specific locations yet)"></span>
-          <button id="eff-filt-bounty" onclick="toggleEffigyFilter('bounty')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide named Alpha boss (Bounty Token) locations"><span style="color:#e3b341;">&#9679;</span> Field Boss</button>
-          <span id="bounty-summary" style="color:var(--muted);font-size:11px;" title="Named legendary Alpha bosses defeated, from the save"></span>
-          <button id="eff-filt-fugitive" onclick="toggleEffigyFilter('fugitive')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide human/Syndicate boss (Wanted Fugitive) locations"><span style="color:#f85149;">&#9679;</span> Wanted Fugitive</button>
-          <button id="eff-filt-eagle" onclick="toggleEffigyFilter('eagle')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide fast-travel point (Eagle Statue) locations"><span style="color:#e8b339;">&#9679;</span> Eagle Statues</button>
-          <button id="eff-filt-npc" onclick="toggleEffigyFilter('npc')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide NPC locations"><span style="color:#39c5bb;">&#9679;</span> NPCs</button>
-          <span id="npc-summary" style="color:var(--muted);font-size:11px;" title="NPCs talked to, from the save"></span>
-          <button id="eff-filt-landmark" onclick="toggleEffigyFilter('landmark')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide other confirmed landmarks (discovered areas, etc.)"><span style="color:#a371f7;">&#9679;</span> Landmarks</button>
-          <button id="eff-filt-players" onclick="toggleEffigyFilter('players')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" title="Show / hide every player's live position (from their own save's Translation/Rotation)"><span style="color:#58a6ff;">&#9679;</span> Players</button>
-        </span>
-        <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
       </div>
+      <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
     </div>
-    <div id="effigy-leaflet-map" style="flex:1;min-height:0;"></div>
+    <div style="position:relative;flex:1;min-height:0;">
+      <div id="eff-filter-panel" style="position:absolute;top:8px;left:8px;z-index:1000;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;flex-direction:column;gap:5px;box-shadow:0 4px 16px rgba(0,0,0,.35);">
+        <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have not found yet"><span style="color:#3fb950;">&#9679;</span> Lifmunk Effigies</button>
+        <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have already found"><span style="color:#484f58;">&#9679;</span> Found</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-journal" onclick="toggleEffigyFilter('journal')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide journal / diary note locations"><span style="color:#3399ff;">&#9679;</span> Journals</button>
+          <span id="journal-summary" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Journal / diary notes collected, from the save (individual notes on the map aren't matched to specific locations yet)"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-bounty" onclick="toggleEffigyFilter('bounty')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide named Alpha boss (Bounty Token) locations"><span style="color:#e3b341;">&#9679;</span> Field Boss</button>
+          <span id="bounty-summary" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Named legendary Alpha bosses defeated, from the save"></span>
+        </div>
+        <button id="eff-filt-fugitive" onclick="toggleEffigyFilter('fugitive')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide human/Syndicate boss (Wanted Fugitive) locations"><span style="color:#f85149;">&#9679;</span> Wanted Fugitive</button>
+        <button id="eff-filt-eagle" onclick="toggleEffigyFilter('eagle')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide fast-travel point (Eagle Statue) locations"><span style="color:#e8b339;">&#9679;</span> Eagle Statues</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-npc" onclick="toggleEffigyFilter('npc')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide NPC locations"><span style="color:#39c5bb;">&#9679;</span> NPCs</button>
+          <span id="npc-summary" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="NPCs talked to, from the save"></span>
+        </div>
+        <button id="eff-filt-landmark" onclick="toggleEffigyFilter('landmark')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide other confirmed landmarks (discovered areas, etc.)"><span style="color:#a371f7;">&#9679;</span> Landmarks</button>
+        <button id="eff-filt-players" onclick="toggleEffigyFilter('players')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide every player's live position (from their own save's Translation/Rotation)"><span style="color:#58a6ff;">&#9679;</span> Players</button>
+      </div>
+      <div id="effigy-leaflet-map" style="position:absolute;inset:0;"></div>
+    </div>
   </div>
 </div>
 
@@ -3969,8 +3976,9 @@ function bountyBossIcon(name,found){
 // Landmarks (discovered areas, everything else) have no dedicated art -- plain
 // colored-dot divIcons, same sizing as the acorn/book glyphs, distinguished by color only
 // (see the toggle buttons' legend dots). `found` grays the dot out, same convention as
-// effigies/journals -- only NPC currently passes a real found value; the others have no
-// per-player state so always render in color.
+// effigies/journals -- Wanted Fugitive (NormalBossDefeatFlag, exact key) and Eagle Statue
+// (FastTravelPointUnlockFlag) now track per-player state the same way NPC does; Landmarks
+// have no per-player state so always render in color.
 function simpleDotIcon(colorHex,found){
   return L.divIcon({
     className:'eff-map-marker'+(found?' eff-map-found':''),
@@ -3979,7 +3987,7 @@ function simpleDotIcon(colorHex,found){
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
 }
-function wantedFugitiveIcon(){ return simpleDotIcon('#f85149'); }
+function wantedFugitiveIcon(found){ return simpleDotIcon('#f85149',found); }
 function landmarkIcon(){ return simpleDotIcon('#a371f7'); }
 // Live player position marker: a colored dot, plus (if the save has a current Rotation --
 // it's briefly absent right after a teleport/spawn, see /palworld-dataminer) a small
@@ -4009,7 +4017,7 @@ function playerMarkerIcon(yawDeg){
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
 }
-function eagleStatueIcon(){ return simpleDotIcon('#e8b339'); }
+function eagleStatueIcon(found){ return simpleDotIcon('#e8b339',found); }
 function npcIcon(found){ return simpleDotIcon('#39c5bb',found); }
 
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
@@ -4028,6 +4036,10 @@ var JOURNAL_MAX=49;
 // Per-player NPC talked-to state, from NPCTalkCountMap (a count map, not a bool flag --
 // "collected" here means the player has talked to that NPC at least once).
 var npcCollected=[], npcCollectedCount=null;
+// Per-player Wanted Fugitive defeat state (raw NormalBossDefeatFlag keys, matched exactly --
+// see extract_fugitive_data) and Eagle Statue unlock state (FastTravelPointUnlockFlag keys --
+// see extract_fast_travel_data). Same convention as npcCollected above.
+var fugitiveCollected=[], eagleCollected=[];
 
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
 // loaded once from /api/bounty-bosses (see bounty_bosses.json). Each entry has {species,
@@ -4433,7 +4445,7 @@ function populateEffigyPlayerDropdown(){
 async function fetchEffigyPlayer(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
-  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);return;}
+  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);return;}
   document.getElementById('effigy-summary').textContent='Loading...';
   try{
     var data=await api('/api/player-effigies?guid='+encodeURIComponent(guid));
@@ -4446,6 +4458,8 @@ async function fetchEffigyPlayer(){
   fetchJournalPlayer(guid);
   fetchBossPlayer(guid);
   fetchNPCPlayer(guid);
+  fetchFugitivePlayer(guid);
+  fetchEaglePlayer(guid);
 }
 
 // NPC talked-to state for the selected player (see npcCollected comment above).
@@ -4467,6 +4481,30 @@ function renderNpcSummary(){
   if(!el)return;
   var total=npcLocations?npcLocations.length:0;
   el.textContent=(npcCollectedCount===null||!total)?'':(npcCollectedCount+' / '+total+' met');
+}
+
+// Wanted Fugitive defeat state for the selected player (see fugitiveCollected comment above).
+async function fetchFugitivePlayer(guid){
+  if(!guid){fugitiveCollected=[];if(effigyLeaflet)renderEffigyMap();return;}
+  try{
+    var data=await api('/api/player-fugitives?guid='+encodeURIComponent(guid));
+    fugitiveCollected=data.collected||[];
+  }catch(e){
+    fugitiveCollected=[];
+  }
+  if(effigyLeaflet) renderEffigyMap();
+}
+
+// Eagle Statue unlock state for the selected player (see eagleCollected comment above).
+async function fetchEaglePlayer(guid){
+  if(!guid){eagleCollected=[];if(effigyLeaflet)renderEffigyMap();return;}
+  try{
+    var data=await api('/api/player-eagles?guid='+encodeURIComponent(guid));
+    eagleCollected=data.collected||[];
+  }catch(e){
+    eagleCollected=[];
+  }
+  if(effigyLeaflet) renderEffigyMap();
 }
 
 // Journal collection state for the selected player (see journalCollected comment above).
@@ -4783,15 +4821,18 @@ function renderEffigyMap(){
     });
   }
 
-  // Wanted Fugitive (human/Syndicate bosses), Eagle Statue (fast-travel points), and
-  // Landmarks (discovered areas, everything else) -- all static named pins with no
-  // found/unfound state (see fetchWantedFugitives/fetchEagleStatues/fetchLandmarks above
-  // for why). {key,name,x,y} shape.
+  // Wanted Fugitive (human/Syndicate bosses) -- static named pins, matched by exact key
+  // against NormalBossDefeatFlag (see extract_fugitive_data / fetchFugitivePlayer). Same
+  // found/new fade convention as effigies/bounty: grey+faded once defeated.
   if(effigyShowFugitive&&wantedFugitiveLocations&&wantedFugitiveLocations.length){
+    var fugitiveCollectedSet=new Set(fugitiveCollected.map(function(s){return s.toUpperCase();}));
     wantedFugitiveLocations.forEach(function(h){
-      var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(),interactive:true});
+      var hGot=h.key&&fugitiveCollectedSet.has(h.key.toUpperCase());
+      if(hGot&&!effigyShowFound) return;
+      var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hGot),interactive:true});
       var cx=Math.round((h.y-158000)/459), cy=Math.round((h.x+123888)/459);
-      hm.bindTooltip('<b style="color:#f85149">'+h.name+'</b>'
+      var hStatus=hGot?'<span style="color:#5a6573">&#10003; Defeated</span>':'<b style="color:#f85149">Wanted Fugitive</b>';
+      hm.bindTooltip('<b style="color:#111;">'+h.name+'</b><br>'+hStatus
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       hm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
@@ -4799,11 +4840,18 @@ function renderEffigyMap(){
       effigyMarkerLayer.addLayer(hm);
     });
   }
+  // Eagle Statue (fast-travel points) -- static named pins, matched by exact key against
+  // FastTravelPointUnlockFlag (see extract_fast_travel_data / fetchEaglePlayer). Same
+  // found/new fade convention as effigies/bounty: grey+faded once unlocked.
   if(effigyShowEagle&&eagleStatueLocations&&eagleStatueLocations.length){
+    var eagleCollectedSet=new Set(eagleCollected.map(function(s){return s.toUpperCase();}));
     eagleStatueLocations.forEach(function(es){
-      var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(),interactive:true});
+      var esGot=es.key&&eagleCollectedSet.has(es.key.toUpperCase());
+      if(esGot&&!effigyShowFound) return;
+      var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esGot),interactive:true});
       var cx=Math.round((es.y-158000)/459), cy=Math.round((es.x+123888)/459);
-      esm.bindTooltip('<b style="color:#e8b339">'+es.name+'</b>'
+      var esStatus=esGot?'<span style="color:#5a6573">&#10003; Unlocked</span>':'<b style="color:#e8b339">Not yet unlocked</b>';
+      esm.bindTooltip('<b style="color:#111;">'+es.name+'</b><br>'+esStatus
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       esm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
@@ -7040,6 +7088,45 @@ window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir npcs $guid 2>$null
+                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/player-fugitives' -and $method -eq 'GET') {
+                    # Wanted Fugitive (human/Syndicate boss) defeat state, read from
+                    # NormalBossDefeatFlag in the player's save -- same flag as bounty bosses,
+                    # but matched by exact key (see extract_fugitive_data in
+                    # pal_save_reader.py), not resolved to a species.
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir fugitives $guid 2>$null
+                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/player-eagles' -and $method -eq 'GET') {
+                    # Eagle Statue (fast-travel point) unlock state, read from
+                    # FastTravelPointUnlockFlag in the player's save (see
+                    # extract_fast_travel_data in pal_save_reader.py).
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir eagles $guid 2>$null
                         if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                         Send-Response $res 200 "application/json" ($rawJson -join '')
                     } catch {

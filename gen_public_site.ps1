@@ -287,6 +287,12 @@ $html = $html.Replace(
 $html = $html.Replace(
   "'/api/player-npcs?guid='+encodeURIComponent(guid)",
   "'data/player-npcs/'+encodeURIComponent(guid)+'.json'")
+$html = $html.Replace(
+  "'/api/player-fugitives?guid='+encodeURIComponent(guid)",
+  "'data/player-fugitives/'+encodeURIComponent(guid)+'.json'")
+$html = $html.Replace(
+  "'/api/player-eagles?guid='+encodeURIComponent(guid)",
+  "'data/player-eagles/'+encodeURIComponent(guid)+'.json'")
 
 # (5b) Player locations (PUBLIC ONLY). The admin build's fetchPlayerLocations() calls one
 # unscoped route returning EVERY player's live position, for the "all players on the map"
@@ -326,8 +332,8 @@ if ($html -eq $before) { throw "player-locations: fetchPlayerLocations override 
 # of the effigy-player dropdown actually being populated/selected on first load.
 $before = $html
 $html = $html.Replace(
-  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);return;}",
-  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);fetchPlayerLocations();return;}")
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);return;}",
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchPlayerLocations();return;}")
 if ($html -eq $before) { throw "player-locations: fetchEffigyPlayer empty-guid hook not found" }
 $before = $html
 $html = $html.Replace(
@@ -545,6 +551,8 @@ if ($html.Contains("'/api/server-messages'")) { throw "server-messages fetch was
 if ($html.Contains('/api/palicon')) { throw "a palicon reference was left unrewritten" }
 if ($html.Contains("'/api/journals'")) { throw "journals fetch was not repointed" }
 if ($html.Contains("'/api/player-notes?guid='")) { throw "player-notes fetch was not repointed" }
+if ($html.Contains("'/api/player-fugitives?guid='")) { throw "player-fugitives fetch was not repointed" }
+if ($html.Contains("'/api/player-eagles?guid='")) { throw "player-eagles fetch was not repointed" }
 if ($html.Contains('/api/player-locations')) { throw "player-locations admin route leaked into public output" }
 if (-not $html.Contains('data/player-location/')) { throw "player-locations public override did not land" }
 if ($html.Contains('function kickPlayer')) { throw "admin JS block was not removed" }

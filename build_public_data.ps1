@@ -38,6 +38,8 @@ $PubNotes = Join-Path $PubData 'player-notes'
 $PubBounty = Join-Path $PubData 'player-bounties'
 $PubNPCs = Join-Path $PubData 'player-npcs'
 $PubLocation = Join-Path $PubData 'player-location'
+$PubFugitives = Join-Path $PubData 'player-fugitives'
+$PubEagles = Join-Path $PubData 'player-eagles'
 
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 
@@ -365,13 +367,15 @@ New-Item -ItemType Directory -Force -Path $PubData | Out-Null
 # player never lingers in the output set.
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doFreq) {
-  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubNPCs, $PubLocation)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubNPCs, $PubLocation, $PubFugitives, $PubEagles)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   Get-ChildItem -LiteralPath $PubAll -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEffig -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNotes -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubBounty -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNPCs -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubLocation -File -ErrorAction SilentlyContinue | Remove-Item -Force
+  Get-ChildItem -LiteralPath $PubFugitives -File -ErrorAction SilentlyContinue | Remove-Item -Force
+  Get-ChildItem -LiteralPath $PubEagles -File -ErrorAction SilentlyContinue | Remove-Item -Force
   if (Test-Path -LiteralPath $PubByPlayer) { Remove-Item -LiteralPath $PubByPlayer -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $PubByPlayer | Out-Null
 
@@ -576,6 +580,44 @@ if ($doFreq) {
       }
     }
     [System.IO.File]::WriteAllText((Join-Path $PubNPCs ($guid + '.json')), $pnpc, $utf8)
+  }
+
+  # ── player-fugitives/<guid>.json (Wanted Fugitive defeat state, one per player) ─
+  # Mirrors player-npcs above but for NormalBossDefeatFlag matched by exact key, via
+  # pal_save_reader.py's extract_fugitive_data.
+  Write-Step "building data/player-fugitives/*.json"
+  foreach ($p in @($paldeckObj.players)) {
+    $guid = [string]$p.guid
+    if (-not $guid) { continue }
+    $pf = Get-DashJson ('/api/player-fugitives?guid=' + $guid)
+    if (-not $pf) {
+      try {
+        $pf = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'fugitives', $guid)
+      } catch {
+        Write-Step "  skipped fugitives for $guid ($($_.Exception.Message))"
+        continue
+      }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $PubFugitives ($guid + '.json')), $pf, $utf8)
+  }
+
+  # ── player-eagles/<guid>.json (Eagle Statue unlock state, one per player) ──────
+  # Mirrors player-npcs above but for FastTravelPointUnlockFlag, via pal_save_reader.py's
+  # extract_fast_travel_data.
+  Write-Step "building data/player-eagles/*.json"
+  foreach ($p in @($paldeckObj.players)) {
+    $guid = [string]$p.guid
+    if (-not $guid) { continue }
+    $pea = Get-DashJson ('/api/player-eagles?guid=' + $guid)
+    if (-not $pea) {
+      try {
+        $pea = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'eagles', $guid)
+      } catch {
+        Write-Step "  skipped eagles for $guid ($($_.Exception.Message))"
+        continue
+      }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $PubEagles ($guid + '.json')), $pea, $utf8)
   }
 
   # ── Server settings (read-only view) ─────────────────────────────────────────

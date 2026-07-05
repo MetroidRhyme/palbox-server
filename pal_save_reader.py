@@ -140,6 +140,20 @@ def extract_fast_travel_data(sav_path):
     return parse_name_bool_map(raw, p)
 
 
+def extract_fugitive_data(sav_path):
+    """Return the raw list of ALL true NormalBossDefeatFlag keys (uppercased), unfiltered --
+    used to check whether a specific confirmed Wanted Fugitive key (syndicate_bosses.json /
+    confirmed_locations.json) has been defeated. Unlike extract_bounty_data this doesn't
+    resolve to a bounty species by suffix -- Wanted Fugitives are matched by exact key."""
+    raw = decompress_save(sav_path)
+    pos = find_property(raw, "NormalBossDefeatFlag")
+    if pos == -1:
+        return []
+    _, p = read_fstring(raw, pos)
+    _, p = read_fstring(raw, p)
+    return parse_name_bool_map(raw, p)
+
+
 def extract_npc_data(sav_path):
     """Return list of uppercase hex GUID strings for NPCs the player has talked to at
     least once. NPCTalkCountMap is a Name->Int map (talk count per NPC instance), not a
@@ -468,6 +482,34 @@ def main():
             _, p = read_fstring(raw, pos)
             _, p = read_fstring(raw, p)
             collected = parse_name_bool_map(raw, p)
+            print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
+        return
+
+    # fugitives mode: python pal_save_reader.py <save_dir> fugitives <guid>
+    if len(sys.argv) > 2 and sys.argv[2] == "fugitives":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            collected = extract_fugitive_data(sav_path)
+            print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
+        return
+
+    # eagles mode: python pal_save_reader.py <save_dir> eagles <guid>
+    if len(sys.argv) > 2 and sys.argv[2] == "eagles":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            collected = extract_fast_travel_data(sav_path)
             print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))

@@ -362,6 +362,26 @@ export default {
       return noStore(json({ collected: [] }, 200));
     }
 
+    // Per-player Wanted Fugitive defeat state: same scoping as player-effigies above.
+    if (path.startsWith('/data/player-fugitives/')) {
+      const g = path.slice('/data/player-fugitives/'.length).replace(/\.json$/i, '');
+      if (scope === 'all' || (scope && g.toLowerCase() === scope.toLowerCase())) {
+        const keyGuid = (scope === 'all') ? g.toUpperCase() : scope;
+        return noStore(await r2Serve(env, 'player-fugitives/' + keyGuid + '.json', json({ collected: [] }, 200)));
+      }
+      return noStore(json({ collected: [] }, 200));
+    }
+
+    // Per-player Eagle Statue unlock state: same scoping as player-effigies above.
+    if (path.startsWith('/data/player-eagles/')) {
+      const g = path.slice('/data/player-eagles/'.length).replace(/\.json$/i, '');
+      if (scope === 'all' || (scope && g.toLowerCase() === scope.toLowerCase())) {
+        const keyGuid = (scope === 'all') ? g.toUpperCase() : scope;
+        return noStore(await r2Serve(env, 'player-eagles/' + keyGuid + '.json', json({ collected: [] }, 200)));
+      }
+      return noStore(json({ collected: [] }, 200));
+    }
+
     // Per-player live world position (Translation/Rotation): same scoping as
     // player-effigies above. A scoped (non-admin) user can only ever request their own
     // guid anyway (the public page never shows anyone else's), but the Worker enforces

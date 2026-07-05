@@ -45,5 +45,7 @@
   { "name": "Bjorn Seligsson's Diary - 2", "x": -660918, "y": -287230, "gx": -970, "gy": -1170 },
   { "name": "Bjorn Seligsson's Diary - 3", "x": -680196, "y": -227560, "gx": -840, "gy": -1212 },
   { "name": "Bjorn Seligsson's Diary - 4", "x": -554430, "y": -144940, "gx": -660, "gy": -938 },
-  { "name": "Bjorn Seligsson's Diary - 5", "x": -897303, "y": -440995, "gx": -1305, "gy": -1685 }
+  { "name": "Bjorn Seligsson's Diary - 5", "x": -897303, "y": -440995, "gx": -1305, "gy": -1685 },
+  { "name": "Castaway's Journal - Day 1-1", "x": -363486, "y": 276881, "gx": 259, "gy": -522, "key": "DAY1-1" },
+  { "name": "Victor Ashford's Diary - 1", "x": -42186, "y": 118067, "gx": -87, "gy": 178, "key": "SNOWBOSS1" }
 ]
