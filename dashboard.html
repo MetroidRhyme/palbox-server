@@ -135,7 +135,7 @@ textarea{resize:vertical;min-height:58px;}
 .setting-info{flex:1;min-width:0;}
 .setting-name{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .setting-desc{font-size:11px;color:var(--muted);margin-top:2px;}
-.setting-def{font-size:10px;color:var(--border);margin-top:1px;}
+.setting-def{font-size:10px;color:var(--muted);margin-top:1px;}
 .setting-ctrl{flex-shrink:0;display:flex;align-items:center;}
 .setting-ctrl input[type=text],.setting-ctrl input[type=number]{width:110px;padding:4px 6px;font-size:12px;}
 .setting-ctrl select{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 6px;color:var(--text);font-family:inherit;font-size:12px;cursor:pointer;outline:none;}
@@ -166,7 +166,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 
 /* Toasts */
 #toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
-.toast{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 15px;font-size:13px;max-width:340px;animation:fadeIn .18s ease;}
+.toast{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 15px;font-size:13px;max-width:340px;animation:fadeIn .18s ease;cursor:pointer;}
 .toast.success{border-left:3px solid var(--green);}
 .toast.error{border-left:3px solid var(--red);}
 .toast.info{border-left:3px solid var(--blue);}
@@ -482,7 +482,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
   </div>
 </div>
 
-<div id="view-effigies" class="page" style="display:none;height:calc(100vh - 52px);overflow:hidden;box-sizing:border-box;">
+<div id="view-effigies" class="page" style="display:none;height:calc(100dvh - 52px);overflow:hidden;box-sizing:border-box;">
   <div class="panel" style="flex:1;min-height:0;">
     <div class="panel-header">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -798,7 +798,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     </div>
   </div>
 </div>
-<div id="toasts"></div>
+<div id="toasts" aria-live="polite"></div>
 <div id="chart-tooltip" style="position:fixed;background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:4px 8px;border-radius:4px;font-size:11px;pointer-events:none;display:none;z-index:100;white-space:nowrap;"></div>
 <footer style="padding:14px 16px;text-align:center;font-size:11px;color:var(--muted);">
   <a href="https://www.flaticon.com/free-icons/acorn" title="acorn icons" style="color:inherit;" target="_blank" rel="noopener">Acorn icons created by Freepik - Flaticon</a>
@@ -907,11 +907,13 @@ var CATS = ['Server','Gameplay','Rates','Damage','Player','Pal','Building','Item
 
 // -- Toast ---------------------------------------------------------------------
 function toast(msg, type, ms) {
-  type = type||'info'; ms = ms||4500;
+  type = type||'info'; ms = ms||(type==='error'?9000:4500);
   var el = document.createElement('div');
   el.className = 'toast '+type; el.textContent = msg;
+  el.title = 'Tap to dismiss';
+  var timer = setTimeout(function(){ el.remove(); }, ms);
+  el.addEventListener('click', function(){ clearTimeout(timer); el.remove(); });
   document.getElementById('toasts').appendChild(el);
-  setTimeout(function(){ el.remove(); }, ms);
 }
 
 // -- API -----------------------------------------------------------------------
@@ -3350,6 +3352,10 @@ function initEffigyView(){
         var blockSize=131072;
         if(!window._palMapCfg) window._palMapCfg={blockSize:blockSize,realMin:{X:-999940,Y:-737262},realMax:{X:447900,Y:710578}};
         effigyLeaflet=L.map('effigy-leaflet-map',{minZoom:0,maxZoom:8,zoom:1,crs:L.CRS.Simple,zoomControl:false});
+        // Default top-left position would collide with this tab's filter panel/player
+        // select; bottom-right is clear on both desktop and phone layouts. Paldeck's spawn
+        // map keeps Leaflet's own default (top-left, no conflicting UI there).
+        L.control.zoom({position:'bottomright'}).addTo(effigyLeaflet);
         var sw=effigyLeaflet.unproject([0,blockSize],8);
         var ne=effigyLeaflet.unproject([blockSize,0],8);
         var bounds=L.latLngBounds(sw,ne);
@@ -4566,6 +4572,20 @@ pollServerMessages(); setInterval(pollServerMessages,8000);
 // resize leaves them stale (blurry/stretched). Re-render the charts, debounced.
 var _rszT;
 window.addEventListener('resize',function(){clearTimeout(_rszT);_rszT=setTimeout(renderCharts,200);});
+
+// The Map tab's height was a hardcoded calc(100vh - 52px), but the header wraps onto two
+// rows on phones (nav tabs drop below the logo/updated row) and can render well past 52px
+// tall -- the bottom of the map ended up unreachable under the wrapped header. Measure the
+// header's ACTUAL rendered height instead of assuming a fixed number, and use 100dvh (not
+// 100vh) so a mobile browser's URL bar showing/hiding doesn't leave a gap either.
+function syncEffigyViewHeight(){
+  var hdr=document.querySelector('header'), v=document.getElementById('view-effigies');
+  if(!hdr||!v) return;
+  v.style.height='calc(100dvh - '+hdr.offsetHeight+'px)';
+}
+syncEffigyViewHeight();
+var _rszT2;
+window.addEventListener('resize',function(){clearTimeout(_rszT2);_rszT2=setTimeout(syncEffigyViewHeight,200);});
 </script>
 <style>
 /* Server-message chat banner (shared admin + public) */

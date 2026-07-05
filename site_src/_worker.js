@@ -94,7 +94,7 @@ async function handleSpawn(url, ctx) {
   });
 }
 
-// ── Identity / Access config (from Cloudflare Pages environment variables) ──────
+// -- Identity / Access config (from Cloudflare Pages environment variables) ------
 // Set these as Pages -> Settings -> Environment variables (Production). Keeping them in
 // the environment (not in this file) means no secrets/PII live in the repo, so this Worker
 // is byte-for-byte the one you deploy.
@@ -249,7 +249,7 @@ function noStore(resp) {
   return new Response(resp.body, { status: resp.status, statusText: resp.statusText, headers: h });
 }
 
-// ── Per-user UI preferences (cross-device) ──────────────────────────────────────
+// -- Per-user UI preferences (cross-device) --------------------------------------
 // A tiny read/write store so a player's filter / sort / selected-player choices follow
 // them across refreshes, sessions AND devices. Keyed by the verified Access email. This
 // is the ONLY write path on the site, and it stores opaque view preferences only -- never

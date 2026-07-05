@@ -424,9 +424,16 @@ $settingsBlock = @'
     var el=document.getElementById('last-updated'); if(!el) return;
     var t=Date.parse(DATA_TS);
     if(isNaN(t)){ el.textContent='-'; return; }
-    el.textContent=relAge(Date.now()-t);
+    var ageMs=Date.now()-t;
+    el.textContent=relAge(ageMs);
     var box=document.getElementById('data-fresh');
-    if(box) box.title='Data generated '+new Date(t).toLocaleString();
+    if(box){
+      box.title='Data generated '+new Date(t).toLocaleString();
+      // Tint the "Updated ... ago" text so stale data is visible at a glance instead of
+      // reading identically whether it's 3 minutes or 6 hours old.
+      var mins=ageMs/60000;
+      box.style.color=mins>60?'var(--red)':mins>15?'var(--yellow)':'var(--muted)';
+    }
   }
   function svLookup(map,k){
     if(!map) return undefined;
