@@ -162,6 +162,12 @@
     "gy": -85
   },
   {
+    "key": "81_1_GRASS_FBOSS_18",
+    "name": "Grintale",
+    "gx": 356,
+    "gy": -246
+  },
+  {
     "key": "81_1_GRASS_FBOSS_2",
     "name": "Kingpaca",
     "gx": 50,
@@ -214,6 +220,12 @@
     "name": "Bounty Intel Dealer",
     "gx": 148,
     "gy": -209
+  },
+  {
+    "key": "866881DB443444AA7F4E7C8E5DCDAA29",
+    "name": "Marsh Island Church Ruins",
+    "gx": 399,
+    "gy": -277
   },
   {
     "key": "8BCDE3654504C5823162BE83EB674216",
