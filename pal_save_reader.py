@@ -216,6 +216,30 @@ def load_excluded_boss_keys():
         return set()
 
 
+def _bounty_from_flags(flags):
+    """Given an already-parsed NormalBossDefeatFlag list (uppercased true keys), return the
+    list of bounty-boss species defeated. Split out of extract_bounty_data so playerall mode
+    (which parses NormalBossDefeatFlag once and needs both the bounty view and the raw
+    fugitive view of it) doesn't have to parse it twice."""
+    flag_set = set(flags)
+    excluded = load_excluded_boss_keys()
+    defeated = []
+    # Anonymous exact-key overrides take priority over suffix-matching, since a key can carry
+    # a misleading suffix (e.g. "..._BOSS_FAIRYDRAGON" confirmed to actually be WeaselDragon) --
+    # claiming it here first stops the suffix loop below from also misattributing it.
+    claimed_keys = set()
+    for key, species in load_anonymous_boss_keys().items():
+        if key not in excluded and key in flag_set:
+            if species not in defeated:
+                defeated.append(species)
+            claimed_keys.add(key)
+    for species in load_bounty_species():
+        suffix = "_BOSS_" + species.upper()
+        if any(k.endswith(suffix) for k in flags if k not in excluded and k not in claimed_keys):
+            defeated.append(species)
+    return defeated
+
+
 def extract_bounty_data(sav_path):
     """Return the list of bounty-boss species codes this player has defeated.
 
@@ -234,23 +258,7 @@ def extract_bounty_data(sav_path):
     _, p = read_fstring(raw, pos)
     _, p = read_fstring(raw, p)
     flags = parse_name_bool_map(raw, p)  # already-true, uppercased keys
-    flag_set = set(flags)
-    excluded = load_excluded_boss_keys()
-    defeated = []
-    # Anonymous exact-key overrides take priority over suffix-matching, since a key can carry
-    # a misleading suffix (e.g. "..._BOSS_FAIRYDRAGON" confirmed to actually be WeaselDragon) --
-    # claiming it here first stops the suffix loop below from also misattributing it.
-    claimed_keys = set()
-    for key, species in load_anonymous_boss_keys().items():
-        if key not in excluded and key in flag_set:
-            if species not in defeated:
-                defeated.append(species)
-            claimed_keys.add(key)
-    for species in load_bounty_species():
-        suffix = "_BOSS_" + species.upper()
-        if any(k.endswith(suffix) for k in flags if k not in excluded and k not in claimed_keys):
-            defeated.append(species)
-    return defeated
+    return _bounty_from_flags(flags)
 
 
 def extract_datamine_data(sav_path):
@@ -346,21 +354,17 @@ def extract_player_data(sav_path):
     return {"tribeCaptureCount": tribe_total, "counts": counts}
 
 
-def find_player_names(level_sav_path, player_guids):
-    """Read Level.sav and return {guid: display_name} for known player GUIDs.
+def find_player_names_raw(raw, player_guids):
+    """Core logic behind find_player_names, operating on an ALREADY-DECOMPRESSED Level.sav
+    buffer. Split out so a caller that already holds that buffer for another reason (e.g.
+    pal_egg_reader.py, which GVAS-parses the same Level.sav) doesn't have to decompress it a
+    second time just to resolve names -- decompression, not the byte-scan below, is the
+    expensive part.
 
     Player NickName properties in Level.sav are preceded by the player's GUID
     bytes (first 4 bytes, little-endian) within ~1000 bytes. This locates
     names without needing a full GVAS parse.
     """
-    if not os.path.isfile(level_sav_path):
-        return {}
-
-    try:
-        raw = decompress_save(level_sav_path)
-    except Exception:
-        return {}
-
     # Build GUID -> 4-byte LE search pattern for each known player
     guid_patterns = {}
     for guid in player_guids:
@@ -428,9 +432,71 @@ def find_player_names(level_sav_path, player_guids):
     return names
 
 
+def find_player_names(level_sav_path, player_guids):
+    """Read Level.sav and return {guid: display_name} for known player GUIDs. See
+    find_player_names_raw for the actual matching logic -- this just adds the
+    decompress-from-path step for callers that don't already hold the buffer."""
+    if not os.path.isfile(level_sav_path):
+        return {}
+    try:
+        raw = decompress_save(level_sav_path)
+    except Exception:
+        return {}
+    return find_player_names_raw(raw, player_guids)
+
+
 def main():
     save_dir = sys.argv[1] if len(sys.argv) > 1 else \
         r"PATH\TO\Pal\Saved\SaveGames\0\<WorldGUID>"  # fallback for manual runs; the dashboard passes the real save folder as argv[1]
+
+    # playerall mode: python pal_save_reader.py <save_dir> playerall <guid>
+    # Emits effigies/notes/bounties/fugitives/npcs/eagles in ONE decompress instead of the
+    # six separate process spawns build_public_data.ps1 used to make per player, per sync
+    # tick, each re-decompressing the same small per-player .sav. bounties and fugitives
+    # both come from the same NormalBossDefeatFlag map -- parsed once here and shared via
+    # _bounty_from_flags, rather than two more independent decompresses of the same file
+    # for the same underlying flag data. Output shapes match the six individual modes
+    # exactly ({"guid":...,"collected":[...]} each) so the builder just splits this one
+    # response into the same six files it always wrote.
+    if len(sys.argv) > 2 and sys.argv[2] == "playerall":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            raw = decompress_save(sav_path)
+
+            def flags_for(prop_name):
+                pos = find_property(raw, prop_name)
+                if pos == -1:
+                    return []
+                _, p = read_fstring(raw, pos)
+                _, p = read_fstring(raw, p)
+                return parse_name_bool_map(raw, p)
+
+            boss_flags = flags_for("NormalBossDefeatFlag")
+            npcs = []
+            npcs_pos = find_property(raw, "NPCTalkCountMap")
+            if npcs_pos != -1:
+                _, p = read_fstring(raw, npcs_pos)
+                _, p = read_fstring(raw, p)
+                counts = parse_name_int_map(raw, p)
+                npcs = [name.upper() for name, count in counts.items() if count > 0]
+
+            print(json.dumps({
+                "guid": guid,
+                "effigies": flags_for("RelicObtainForInstanceFlag"),
+                "notes": flags_for("NoteObtainForInstanceFlag"),
+                "bounties": _bounty_from_flags(boss_flags),
+                "fugitives": boss_flags,
+                "npcs": npcs,
+                "eagles": flags_for("FastTravelPointUnlockFlag"),
+            }, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "effigies": [], "notes": [], "bounties": [],
+                               "fugitives": [], "npcs": [], "eagles": [], "error": str(e)}))
+        return
 
     # effigies mode: python pal_save_reader.py <save_dir> effigies <guid>
     if len(sys.argv) > 2 and sys.argv[2] == "effigies":

@@ -832,6 +832,28 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         [IO.File]::WriteAllText($GameUserSettings, $c, (New-Object Text.UTF8Encoding($false)))
     }
 
+    # -- Reader-backed route response cache ------------------------------------
+    # /api/pals, /api/paldeck, /api/eggs, /api/player-locations, and the 7 per-player
+    # routes below each used to spawn Python + do a full PS 5.1 JSON round-trip on EVERY
+    # request, even though the underlying .sav hasn't changed between polls (the Map tab
+    # alone polls /api/player-locations every 15s). This caches the RAW reader output --
+    # NOT any live-enriched response built on top of it, since online-player names come
+    # from a separate always-fresh REST poll each route does after calling this, and must
+    # never be served stale -- keyed on the relevant file's own LastWriteTimeUtc ticks, so
+    # a request between saves is a dictionary lookup instead of a process spawn. The cache
+    # stores the STRING only; each caller re-parses it fresh via ConvertFrom-Json, so a
+    # route that mutates its own $data in place (name enrichment, Add-Member, ...) never
+    # corrupts what's cached for the next request.
+    $script:readerCache = @{}
+    function Get-CachedReaderOutput([string]$CacheKey, [string]$StampPath, [scriptblock]$Producer) {
+        $stamp = if (Test-Path -LiteralPath $StampPath) { [string]([System.IO.File]::GetLastWriteTimeUtc($StampPath).Ticks) } else { '' }
+        $entry = $script:readerCache[$CacheKey]
+        if ($entry -and $entry.stamp -eq $stamp) { return $entry.json }
+        $json = & $Producer
+        $script:readerCache[$CacheKey] = [pscustomobject]@{ stamp = $stamp; json = $json }
+        return $json
+    }
+
     # robocopy is used for the world copies: fast, handles the deep backup\ tree,
     # and treats long paths well. Exit codes < 8 are success.
     function Copy-WorldTree([string]$src, [string]$dst, [switch]$Mirror) {
@@ -1821,9 +1843,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                        $data = ($rawJson -join '') | ConvertFrom-Json
+                        $rawJson = Get-CachedReaderOutput "paldeck:$activeGuid" (Join-Path $saveDir 'Level.sav') {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        $data = $rawJson | ConvertFrom-Json
                         # Build GUID->name from playtime steamid (populated when players connect)
                         $guidToName = @{}
                         foreach ($entry in $script:playtime.GetEnumerator()) {
@@ -1867,13 +1892,17 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $guidParam = $req.QueryString['guid']
-                        if ($guidParam) {
-                            $rawJson = & python "$ServerDir\pal_team_reader.py" $saveDir locations $guidParam 2>$null
-                        } else {
-                            $rawJson = & python "$ServerDir\pal_team_reader.py" $saveDir locations 2>$null
+                        $cacheKey = "locations:${activeGuid}:" + $(if ($guidParam) { $guidParam } else { 'ALL' })
+                        $rawJson = Get-CachedReaderOutput $cacheKey (Join-Path $saveDir 'Level.sav') {
+                            if ($guidParam) {
+                                $j = & python "$ServerDir\pal_team_reader.py" $saveDir locations $guidParam 2>$null
+                            } else {
+                                $j = & python "$ServerDir\pal_team_reader.py" $saveDir locations 2>$null
+                            }
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_team_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
                         }
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_team_reader.py failed (exit $LASTEXITCODE)" }
-                        $data = ($rawJson -join '') | ConvertFrom-Json
+                        $data = $rawJson | ConvertFrom-Json
 
                         # Same name-resolution as /api/paldeck: playtime steamid map, then live
                         # REST API for anyone currently online.
@@ -1912,9 +1941,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_team_reader.py" $saveDir 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_team_reader.py failed (exit $LASTEXITCODE)" }
-                        $data = ($rawJson -join '') | ConvertFrom-Json
+                        $rawJson = Get-CachedReaderOutput "pals:$activeGuid" (Join-Path $saveDir 'Level.sav') {
+                            $j = & python "$ServerDir\pal_team_reader.py" $saveDir 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_team_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        $data = $rawJson | ConvertFrom-Json
 
                         # Prefer richer display names (live REST / accumulated playtime)
                         # over the in-save NickName, keyed by the 8-hex UID prefix.
@@ -1948,9 +1980,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_egg_reader.py" $saveDir 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_egg_reader.py failed (exit $LASTEXITCODE)" }
-                        $data = ($rawJson -join '') | ConvertFrom-Json
+                        $rawJson = Get-CachedReaderOutput "eggs:$activeGuid" (Join-Path $saveDir 'Level.sav') {
+                            $j = & python "$ServerDir\pal_egg_reader.py" $saveDir 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_egg_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        $data = $rawJson | ConvertFrom-Json
 
                         # Resolve owner prefix -> display name (same source as /api/pals).
                         $prefixToName = @{}
@@ -2403,9 +2438,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir effigies $guid 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                        $rawJson = Get-CachedReaderOutput "effigies:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir effigies $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2425,9 +2463,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir notes $guid 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                        $rawJson = Get-CachedReaderOutput "notes:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir notes $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2446,9 +2487,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir bounties $guid 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                        $rawJson = Get-CachedReaderOutput "bounties:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir bounties $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2465,9 +2509,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir npcs $guid 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                        $rawJson = Get-CachedReaderOutput "npcs:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir npcs $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2485,9 +2532,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir fugitives $guid 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                        $rawJson = Get-CachedReaderOutput "fugitives:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir fugitives $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2504,9 +2554,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir eagles $guid 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                        $rawJson = Get-CachedReaderOutput "eagles:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir eagles $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2526,9 +2579,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = & python "$ServerDir\pal_save_reader.py" $saveDir datamine $guid 2>$null
-                        if ($LASTEXITCODE -ne 0 -or -not $rawJson) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                        Send-Response $res 200 "application/json" ($rawJson -join '')
+                        $rawJson = Get-CachedReaderOutput "datamine:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir datamine $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }

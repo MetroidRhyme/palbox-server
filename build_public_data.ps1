@@ -57,9 +57,14 @@ function Get-ActiveSaveDir {
 }
 
 # ── Fetch raw JSON text from the live dashboard (or $null on any failure) ───────
+# Only /api/file-settings still goes through this -- everything else below now invokes
+# its reader directly (see the Frequent block), since this builder runs INSIDE the same
+# poll cycle that would otherwise call back into the dashboard's own single-threaded
+# HTTP listener for no benefit. -TimeoutSec dropped from 180 to 30 accordingly: the one
+# remaining caller is a cheap settings-file read, not a full save-reader parse.
 function Get-DashJson($pathAndQuery) {
   try {
-    $r = Invoke-WebRequest -Uri ($DashBase + $pathAndQuery) -UseBasicParsing -TimeoutSec 180
+    $r = Invoke-WebRequest -Uri ($DashBase + $pathAndQuery) -UseBasicParsing -TimeoutSec 30
     if ($r.StatusCode -eq 200 -and $r.Content) { return [string]$r.Content }
   } catch {
     Write-Step "live dashboard unreachable for $pathAndQuery ($($_.Exception.Message)); will use reader fallback"
@@ -436,23 +441,22 @@ if ($doFreq) {
   Write-Step "active save dir: $saveDir"
 
   # ── Fetch full data sets ─────────────────────────────────────────────────────
+  # Invoke the readers directly rather than trying the live dashboard's HTTP API first --
+  # this builder IS the thing the dashboard's own routes call under the hood, so going
+  # through HTTP here just adds a round-trip (and a stall risk on the single-threaded
+  # listener) for no benefit. Get-DashJson is kept only for /api/file-settings below,
+  # which has no reader equivalent to call directly.
   Write-Step "fetching pals + paldeck"
-  $palsJson = Get-DashJson '/api/pals'
-  if (-not $palsJson) {
-    # Reader output is the same shape the /api/pals handler emits (sans live-name enrichment).
-    $palsJson = Invoke-Reader @((Join-Path $Root 'pal_team_reader.py'), $saveDir)
-  }
-  $paldeckJson = Get-DashJson '/api/paldeck'
-  if (-not $paldeckJson) {
-    # Fallback: pal_save_reader emits {players:[{guid,name,tribeCaptureCount,counts}]};
-    # the dashboard handler reshapes tribeCaptureCount -> total, so we do the same.
-    $raw = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir) | ConvertFrom-Json
-    $outPlayers = @($raw.players | ForEach-Object {
-        $name = if ($_.PSObject.Properties['name'] -and $_.name) { [string]$_.name } else { ([string]$_.guid).Substring(0, 8) }
-        [ordered]@{ guid = [string]$_.guid; name = $name; total = [int]$_.tribeCaptureCount; counts = $_.counts }
-      })
-    $paldeckJson = (@{ players = $outPlayers } | ConvertTo-Json -Depth 6 -Compress)
-  }
+  # Reader output is the same shape the /api/pals handler emits (sans live-name enrichment).
+  $palsJson = Invoke-Reader @((Join-Path $Root 'pal_team_reader.py'), $saveDir)
+  # pal_save_reader emits {players:[{guid,name,tribeCaptureCount,counts}]}; the dashboard
+  # handler reshapes tribeCaptureCount -> total, so we do the same.
+  $rawPlayers = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir) | ConvertFrom-Json
+  $outPlayers = @($rawPlayers.players | ForEach-Object {
+      $name = if ($_.PSObject.Properties['name'] -and $_.name) { [string]$_.name } else { ([string]$_.guid).Substring(0, 8) }
+      [ordered]@{ guid = [string]$_.guid; name = $name; total = [int]$_.tribeCaptureCount; counts = $_.counts }
+    })
+  $paldeckJson = (@{ players = $outPlayers } | ConvertTo-Json -Depth 6 -Compress)
 
   $palsObj = $palsJson | ConvertFrom-Json
   $paldeckObj = $paldeckJson | ConvertFrom-Json
@@ -492,25 +496,33 @@ if ($doFreq) {
   # every egg (incl. ghost/orphaned ones); each player's scoped set has only the eggs
   # they own. Owner is the 8-hex player prefix, matching the by-player guid prefix.
   Write-Step "writing data/all/eggs.json + by-player eggs"
-  $eggsJson = Get-DashJson '/api/eggs'
-  if (-not $eggsJson) {
-    $eggsJson = Invoke-Reader @((Join-Path $Root 'pal_egg_reader.py'), $saveDir)
-  }
+  # --no-names: this builder already has an authoritative guid->name roster from
+  # paldeckObj above (pal_save_reader.py's own name resolution) -- letting the egg reader
+  # resolve names too would decompress + NickName-scan Level.sav a second time for data
+  # this script immediately overwrites anyway. Names are backfilled from that roster below.
+  $eggsJson = Invoke-Reader @((Join-Path $Root 'pal_egg_reader.py'), $saveDir, '--no-names')
   if ($eggsJson) {
     $eggsObj = $eggsJson | ConvertFrom-Json
+    $nameByPrefix = @{}
+    foreach ($pp in @($paldeckObj.players)) {
+      $guid = [string]$pp.guid; if (-not $guid) { continue }
+      $nameByPrefix[$guid.Substring(0, 8).ToUpperInvariant()] = [string]$pp.name
+    }
+    # Backfill each egg's ownerName (blank -- --no-names above skipped it) from the paldeck
+    # roster. The UI reads e.ownerName directly per egg (group headers, location tags), not
+    # just the top-level owners roster below.
+    foreach ($egg in @($eggsObj.eggs)) {
+      $pfx = ([string]$egg.owner).ToUpperInvariant()
+      if ($pfx -and $nameByPrefix.ContainsKey($pfx)) { $egg.ownerName = $nameByPrefix[$pfx] }
+    }
     # Player-name roster (8-hex prefix -> name) so the Eggs owner filter keeps every player
-    # even when they have zero eggs right now. Names come from the paldeck roster, preferring
-    # any owner names the dashboard already cached on the egg payload. The ADMIN set gets the
-    # full roster; each scoped set gets ONLY that player (so a scoped viewer never sees the
-    # other players' names in their filter).
-    $apiOwners = @{}
-    if ($eggsObj.owners) { foreach ($o in @($eggsObj.owners)) { if ($o.prefix) { $apiOwners[([string]$o.prefix).ToUpperInvariant()] = [string]$o.name } } }
+    # even when they have zero eggs right now. The ADMIN set gets the full roster; each
+    # scoped set gets ONLY that player (so a scoped viewer never sees the other players'
+    # names in their filter).
     $allOwners = @()
     foreach ($pp in @($paldeckObj.players)) {
       $guid = [string]$pp.guid; if (-not $guid) { continue }
-      $pfx = $guid.Substring(0, 8).ToUpperInvariant()
-      $nm = [string]$pp.name; if ($apiOwners.ContainsKey($pfx) -and $apiOwners[$pfx]) { $nm = $apiOwners[$pfx] }
-      $allOwners += [ordered]@{ prefix = $pfx; name = $nm }
+      $allOwners += [ordered]@{ prefix = $guid.Substring(0, 8).ToUpperInvariant(); name = [string]$pp.name }
     }
     # Re-serialize the admin set (instead of writing it verbatim) so the roster rides along.
     $eggsObj | Add-Member -NotePropertyName owners -NotePropertyValue $allOwners -Force
@@ -522,9 +534,8 @@ if ($doFreq) {
       $mine = @($eggsObj.eggs | Where-Object { ([string]$_.owner).ToUpperInvariant() -eq $prefix })
       # Per-player summary: only their own eggs; ghost/orphan stats are admin-only.
       $sum = [ordered]@{ realEggs = $mine.Count; available = $mine.Count; orphanContainerEggs = 0; orphanContainers = 0; orphanRecords = 0 }
-      $nm = [string]$pp.name; if ($apiOwners.ContainsKey($prefix) -and $apiOwners[$prefix]) { $nm = $apiOwners[$prefix] }
       # Force a single-element array so ConvertTo-Json emits a JSON array, not a bare object.
-      $myOwners = @([ordered]@{ prefix = $prefix; name = $nm })
+      $myOwners = @([ordered]@{ prefix = $prefix; name = [string]$pp.name })
       $dir = Join-Path $PubByPlayer $guid
       New-Item -ItemType Directory -Force -Path $dir | Out-Null
       [System.IO.File]::WriteAllText((Join-Path $dir 'eggs.json'), ([ordered]@{ eggs = $mine; owners = $myOwners; summary = $sum } | ConvertTo-Json -Depth 12 -Compress), $utf8)
@@ -534,143 +545,56 @@ if ($doFreq) {
     [System.IO.File]::WriteAllText((Join-Path $PubAll 'eggs.json'), '{"eggs":[],"summary":{}}', $utf8)
   }
 
-  # ── player-effigies/<guid>.json (one per player in the paldeck) ──────────────
-  Write-Step "building data/player-effigies/*.json"
+  # -- player-effigies/player-notes/player-bounties/player-npcs/player-fugitives/
+  #    player-eagles/<guid>.json (one call per player instead of six) ------------
+  # pal_save_reader.py's playerall mode decompresses each player's small .sav ONCE and
+  # returns all six sections in one JSON, instead of six separate process spawns each
+  # re-decompressing the same file (which is what this loop used to do, calling
+  # effigies/notes/bounties/npcs/fugitives/eagles modes one at a time). Each section's
+  # shape is unchanged ({"guid":...,"collected":[...]}), so the split below just wraps
+  # each field into the same per-player file this always wrote.
+  Write-Step "building data/player-effigies, -notes, -bounties, -npcs, -fugitives, -eagles/*.json"
   foreach ($p in @($paldeckObj.players)) {
     $guid = [string]$p.guid
     if (-not $guid) { continue }
-    $pe = Get-DashJson ('/api/player-effigies?guid=' + $guid)
-    if (-not $pe) {
-      try {
-        $pe = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'effigies', $guid)
-      } catch {
-        Write-Step "  skipped effigies for $guid ($($_.Exception.Message))"
-        continue
-      }
+    try {
+      $pa = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'playerall', $guid) | ConvertFrom-Json
+    } catch {
+      Write-Step "  skipped playerall for $guid ($($_.Exception.Message))"
+      continue
     }
-    [System.IO.File]::WriteAllText((Join-Path $PubEffig ($guid + '.json')), $pe, $utf8)
-  }
-
-  # ── player-notes/<guid>.json (journal/diary collection COUNT, one per player) ─
-  # Mirrors player-effigies above but for NoteObtainForInstanceFlag. There is no known
-  # instance-ID -> named-journal mapping (unlike effigies), so this only supports a
-  # collected COUNT on the client, not per-location found/new marking.
-  Write-Step "building data/player-notes/*.json"
-  foreach ($p in @($paldeckObj.players)) {
-    $guid = [string]$p.guid
-    if (-not $guid) { continue }
-    $pn = Get-DashJson ('/api/player-notes?guid=' + $guid)
-    if (-not $pn) {
-      try {
-        $pn = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'notes', $guid)
-      } catch {
-        Write-Step "  skipped notes for $guid ($($_.Exception.Message))"
-        continue
-      }
+    $sections = @{
+      $PubEffig     = $pa.effigies
+      $PubNotes     = $pa.notes
+      $PubBounty    = $pa.bounties
+      $PubNPCs      = $pa.npcs
+      $PubFugitives = $pa.fugitives
+      $PubEagles    = $pa.eagles
     }
-    [System.IO.File]::WriteAllText((Join-Path $PubNotes ($guid + '.json')), $pn, $utf8)
+    foreach ($dir in $sections.Keys) {
+      $body = [ordered]@{ guid = $guid; collected = $sections[$dir] } | ConvertTo-Json -Compress
+      [System.IO.File]::WriteAllText((Join-Path $dir ($guid + '.json')), $body, $utf8)
+    }
   }
 
   # ── player-location/<guid>.json (live world position, one per player) ────────
-  # Mirrors player-notes above but for Translation/Rotation, via pal_team_reader.py's
-  # lightweight "locations" mode. /api/player-locations always answers {players:[...]}
-  # (even scoped to one guid, to match the admin "all players" shape) -- unwrap to that
-  # one player's flat {x,y,z,yawDeg} object here, since the Worker/public client expects
-  # a single object per file (same convention as every other per-player route).
+  # Separate from playerall above: this comes from pal_team_reader.py's "locations" mode
+  # (Translation/Rotation via the GVAS parser), not pal_save_reader.py's byte-scanner, so
+  # there's no shared decompress to fold it into.
   Write-Step "building data/player-location/*.json"
   foreach ($p in @($paldeckObj.players)) {
     $guid = [string]$p.guid
     if (-not $guid) { continue }
-    $pl = Get-DashJson ('/api/player-locations?guid=' + $guid)
-    if (-not $pl) {
-      try {
-        $pl = Invoke-Reader @((Join-Path $Root 'pal_team_reader.py'), $saveDir, 'locations', $guid)
-      } catch {
-        Write-Step "  skipped location for $guid ($($_.Exception.Message))"
-        continue
-      }
+    try {
+      $pl = Invoke-Reader @((Join-Path $Root 'pal_team_reader.py'), $saveDir, 'locations', $guid)
+    } catch {
+      Write-Step "  skipped location for $guid ($($_.Exception.Message))"
+      continue
     }
     $one = $null
     try { $one = @(($pl | ConvertFrom-Json).players)[0] } catch {}
     $body = if ($one) { [ordered]@{ x = $one.x; y = $one.y; z = $one.z; yawDeg = $one.yawDeg } } else { [ordered]@{} }
     [System.IO.File]::WriteAllText((Join-Path $PubLocation ($guid + '.json')), ($body | ConvertTo-Json -Compress), $utf8)
-  }
-
-  # ── player-bounties/<guid>.json (bounty-boss / named-Alpha defeat state, one per player) ─
-  # Mirrors player-effigies/player-notes above but for NormalBossDefeatFlag, resolved to
-  # bounty-boss species codes by pal_save_reader.py's extract_bounty_data (matched against
-  # bounty_bosses.json so the species list and map locations can't drift apart).
-  Write-Step "building data/player-bounties/*.json"
-  foreach ($p in @($paldeckObj.players)) {
-    $guid = [string]$p.guid
-    if (-not $guid) { continue }
-    $pb = Get-DashJson ('/api/player-bounties?guid=' + $guid)
-    if (-not $pb) {
-      try {
-        $pb = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'bounties', $guid)
-      } catch {
-        Write-Step "  skipped bounties for $guid ($($_.Exception.Message))"
-        continue
-      }
-    }
-    [System.IO.File]::WriteAllText((Join-Path $PubBounty ($guid + '.json')), $pb, $utf8)
-  }
-
-  # ── player-npcs/<guid>.json (NPC talked-to state, one per player) ────────────
-  # Mirrors player-notes above but for NPCTalkCountMap via pal_save_reader.py's
-  # extract_npc_data ("collected" = count>0, not a bool flag).
-  Write-Step "building data/player-npcs/*.json"
-  foreach ($p in @($paldeckObj.players)) {
-    $guid = [string]$p.guid
-    if (-not $guid) { continue }
-    $pnpc = Get-DashJson ('/api/player-npcs?guid=' + $guid)
-    if (-not $pnpc) {
-      try {
-        $pnpc = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'npcs', $guid)
-      } catch {
-        Write-Step "  skipped npcs for $guid ($($_.Exception.Message))"
-        continue
-      }
-    }
-    [System.IO.File]::WriteAllText((Join-Path $PubNPCs ($guid + '.json')), $pnpc, $utf8)
-  }
-
-  # ── player-fugitives/<guid>.json (Wanted Fugitive defeat state, one per player) ─
-  # Mirrors player-npcs above but for NormalBossDefeatFlag matched by exact key, via
-  # pal_save_reader.py's extract_fugitive_data.
-  Write-Step "building data/player-fugitives/*.json"
-  foreach ($p in @($paldeckObj.players)) {
-    $guid = [string]$p.guid
-    if (-not $guid) { continue }
-    $pf = Get-DashJson ('/api/player-fugitives?guid=' + $guid)
-    if (-not $pf) {
-      try {
-        $pf = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'fugitives', $guid)
-      } catch {
-        Write-Step "  skipped fugitives for $guid ($($_.Exception.Message))"
-        continue
-      }
-    }
-    [System.IO.File]::WriteAllText((Join-Path $PubFugitives ($guid + '.json')), $pf, $utf8)
-  }
-
-  # ── player-eagles/<guid>.json (Eagle Statue unlock state, one per player) ──────
-  # Mirrors player-npcs above but for FastTravelPointUnlockFlag, via pal_save_reader.py's
-  # extract_fast_travel_data.
-  Write-Step "building data/player-eagles/*.json"
-  foreach ($p in @($paldeckObj.players)) {
-    $guid = [string]$p.guid
-    if (-not $guid) { continue }
-    $pea = Get-DashJson ('/api/player-eagles?guid=' + $guid)
-    if (-not $pea) {
-      try {
-        $pea = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $saveDir, 'eagles', $guid)
-      } catch {
-        Write-Step "  skipped eagles for $guid ($($_.Exception.Message))"
-        continue
-      }
-    }
-    [System.IO.File]::WriteAllText((Join-Path $PubEagles ($guid + '.json')), $pea, $utf8)
   }
 
   # ── Server settings (read-only view) ─────────────────────────────────────────

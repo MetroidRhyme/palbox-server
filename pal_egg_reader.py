@@ -20,7 +20,7 @@ import sys, os, io, json, struct, contextlib, re, glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pal_team_reader import _install_patches, _decompress, read_players, _uid_le, _raw_bytes, _build_pal
-from pal_save_reader import find_player_names
+from pal_save_reader import find_player_names_raw
 
 # Element prefix in the egg item id -> element index used by the icons (elem_NN.webp).
 _ELEM_IDX = {"Normal": 0, "Fire": 1, "Water": 2, "Electricity": 3, "Leaf": 4,
@@ -198,7 +198,7 @@ def _egg_record(etype, pal, species_fallback, owner, oname, ready, egg_id,
     return rec
 
 
-def read_eggs(save_dir):
+def read_eggs(save_dir, resolve_names=True):
     _install_patches()
     # The item-container slot RawData is permission metadata whose decoder trips a
     # 0.6 EOF assert; we don't need it (the item lives in the slot struct), so keep
@@ -288,9 +288,16 @@ def read_eggs(save_dir):
     # group id -> first member player prefix (guilds are solo here, but this supports
     # multi-member). Resolve each player's in-game name (same NickName source the Pals
     # view uses) so owners show real names everywhere without live server state.
+    # find_player_names_raw reuses the `raw` buffer decompressed above instead of
+    # decompressing Level.sav a second time (find_player_names' own path-based form used
+    # to do exactly that on every single call here). resolve_names=False (build_public_data
+    # .ps1's builder passes this) skips the byte-scan entirely for a caller that already
+    # has its own guid->name roster and would just overwrite these names anyway.
     prefixes = [p["prefix"] for p in read_players(save_dir)]
-    name_by_prefix = {pfx.upper(): nm for pfx, nm
-                      in find_player_names(os.path.join(save_dir, "Level.sav"), prefixes).items()}
+    if resolve_names:
+        name_by_prefix = {pfx.upper(): nm for pfx, nm in find_player_names_raw(raw, prefixes).items()}
+    else:
+        name_by_prefix = {}
     group_owner = {}
     for entry in wsd["GroupSaveDataMap"]["value"]:
         blob = _raw_bytes(entry.get("value", {}).get("RawData", {}))
@@ -358,8 +365,12 @@ def read_eggs(save_dir):
 def main():
     save_dir = sys.argv[1] if len(sys.argv) > 1 else \
         r"PATH\TO\Pal\Saved\SaveGames\0\<WorldGUID>"  # fallback for manual runs; the dashboard passes the real save folder as argv[1]
+    # --no-names: skip player-name resolution for a caller that already has its own
+    # guid->name roster (build_public_data.ps1's builder, from pal_save_reader.py's own
+    # default-mode call) and would just overwrite these names anyway.
+    resolve_names = "--no-names" not in sys.argv[2:]
     try:
-        out = read_eggs(save_dir)
+        out = read_eggs(save_dir, resolve_names=resolve_names)
     except Exception as e:
         print(json.dumps({"eggs": [], "summary": {}, "error": str(e)}))
         return
