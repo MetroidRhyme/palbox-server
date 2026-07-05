@@ -4240,7 +4240,7 @@ function initEffigyView(){
       if(!effigyLeaflet){
         var blockSize=131072;
         if(!window._palMapCfg) window._palMapCfg={blockSize:blockSize,realMin:{X:-999940,Y:-737262},realMax:{X:447900,Y:710578}};
-        effigyLeaflet=L.map('effigy-leaflet-map',{minZoom:0,maxZoom:8,zoom:1,crs:L.CRS.Simple});
+        effigyLeaflet=L.map('effigy-leaflet-map',{minZoom:0,maxZoom:8,zoom:1,crs:L.CRS.Simple,zoomControl:false});
         var sw=effigyLeaflet.unproject([0,blockSize],8);
         var ne=effigyLeaflet.unproject([blockSize,0],8);
         var bounds=L.latLngBounds(sw,ne);
