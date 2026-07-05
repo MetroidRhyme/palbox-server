@@ -91,11 +91,12 @@ foreach ($v in 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID') {
 $mutex = New-Object System.Threading.Mutex($false, 'PalBoxR2Sync')
 if (-not $mutex.WaitOne(0)) { Write-Step 'another sync run is in progress; skipping.'; exit 0 }
 
-# ── State: { levelStamp, files: {...}, lastSuccess, lastError } ────────────────
+# -- State: { levelStamp, files: {...}, lastSuccess, lastError, metaSkipCount } --
 # levelStamp is bumped only after a fully successful sync, so a partial/failed run is
 # retried next poll. files{} is updated per uploaded key, so completed uploads persist
 # even if a later one fails. lastSuccess/lastError (both set below) are what the
 # dashboard's /api/sync-status route reads for its "Public data: synced/FAILING" pill.
+# metaSkipCount tracks consecutive no-content-change runs since the last meta.json put.
 function Get-State {
   if (Test-Path -LiteralPath $StateFile) {
     try {
@@ -104,10 +105,11 @@ function Get-State {
       if ($s.files) { foreach ($p in $s.files.PSObject.Properties) { $files[$p.Name] = [string]$p.Value } }
       $lastError = $null
       if ($s.lastError) { $lastError = @{ at = [string]$s.lastError.at; message = [string]$s.lastError.message } }
-      return [pscustomobject]@{ levelStamp = [string]$s.levelStamp; files = $files; lastSuccess = [string]$s.lastSuccess; lastError = $lastError }
+      $metaSkipCount = if ($s.PSObject.Properties['metaSkipCount']) { [int]$s.metaSkipCount } else { 0 }
+      return [pscustomobject]@{ levelStamp = [string]$s.levelStamp; files = $files; lastSuccess = [string]$s.lastSuccess; lastError = $lastError; metaSkipCount = $metaSkipCount }
     } catch {}
   }
-  return [pscustomobject]@{ levelStamp = ''; files = @{}; lastSuccess = ''; lastError = $null }
+  return [pscustomobject]@{ levelStamp = ''; files = @{}; lastSuccess = ''; lastError = $null; metaSkipCount = 0 }
 }
 function Save-State($s) {
   # Write via temp file + rename (atomic on the same volume) rather than Set-Content
@@ -115,7 +117,9 @@ function Save-State($s) {
   # call below), so a mid-write interruption (e.g. the nightly maintenance window killing
   # the game server, disk hiccup, etc.) landing exactly here would otherwise leave truncated/
   # corrupt JSON that every subsequent sync attempt has to parse.
-  $obj = [ordered]@{ levelStamp = $s.levelStamp; files = $s.files; lastSuccess = $s.lastSuccess; lastError = $s.lastError }
+  # schemaVersion is a static marker for future format changes to check against, not
+  # round-tripped through Get-State -- there is nothing to migrate yet at version 1.
+  $obj = [ordered]@{ schemaVersion = 1; levelStamp = $s.levelStamp; files = $s.files; lastSuccess = $s.lastSuccess; lastError = $s.lastError; metaSkipCount = $s.metaSkipCount }
   $tmp = "$StateFile.tmp"
   ($obj | ConvertTo-Json -Compress -Depth 4) | Set-Content -LiteralPath $tmp -Encoding UTF8
   Move-Item -LiteralPath $tmp -Destination $StateFile -Force
@@ -215,13 +219,28 @@ foreach ($key in @($state.files.Keys)) {
 # now that the shell deploys independently of the per-save R2 data. savedAt = the
 # Level.sav mtime this sync reflects; written to its OWN R2 key, outside StageData, so
 # it never perturbs the per-file change detection above.
-$savedAtIso = [DateTime]::new([long]$stamp, [DateTimeKind]::Utc).ToString('yyyy-MM-ddTHH:mm:ssZ')
-$metaPath = Join-Path $StageDir 'meta.json'
-$metaObj = [ordered]@{ savedAt = $savedAtIso; syncedAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ') }
-[IO.File]::WriteAllText($metaPath, ($metaObj | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
-Write-Step "put meta.json (savedAt=$savedAtIso)"
-$mcode = Invoke-Wrangler @('r2', 'object', 'put', "$Bucket/meta.json", '--file', $metaPath, '--content-type', 'application/json', '--remote')
-if ($mcode -ne 0) { throw "wrangler r2 object put failed for meta.json (exit $mcode)" }
+#
+# Every non-gated run used to PUT meta.json unconditionally, even when uploaded=0 and
+# deleted=0 (Level.sav's mtime moved -- an autosave tick -- but every derived JSON
+# hashed identical to last time, e.g. nobody actually did anything). That's a wrangler
+# spawn + R2 Class A op producing no visible change. Skip it in that case, but not
+# forever: put it at least every 10th such no-op run so the public "data age" display
+# doesn't drift further from reality than that.
+$metaSkipCount = [int]$state.metaSkipCount
+if ($uploaded -eq 0 -and $deleted -eq 0 -and $metaSkipCount -lt 9) {
+  $metaSkipCount++
+  Write-Step "skip meta.json put (no content change; $metaSkipCount consecutive no-op run(s))"
+} else {
+  $savedAtIso = [DateTime]::new([long]$stamp, [DateTimeKind]::Utc).ToString('yyyy-MM-ddTHH:mm:ssZ')
+  $metaPath = Join-Path $StageDir 'meta.json'
+  $metaObj = [ordered]@{ savedAt = $savedAtIso; syncedAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ') }
+  [IO.File]::WriteAllText($metaPath, ($metaObj | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+  Write-Step "put meta.json (savedAt=$savedAtIso)"
+  $mcode = Invoke-Wrangler @('r2', 'object', 'put', "$Bucket/meta.json", '--file', $metaPath, '--content-type', 'application/json', '--remote')
+  if ($mcode -ne 0) { throw "wrangler r2 object put failed for meta.json (exit $mcode)" }
+  $metaSkipCount = 0
+}
+$state.metaSkipCount = $metaSkipCount
 
 $state.levelStamp = $stamp
 $state.lastSuccess = (Get-Date -Format o)

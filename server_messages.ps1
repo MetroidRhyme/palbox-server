@@ -7,9 +7,10 @@
 # chat-read API, so this captures only what WE send through /v1/api/announce; there is no
 # player chat here.
 #
-# Dot-source this file to get Add-ServerMessage / Get-ServerMessages. Safe to call from
-# any process (Manager job, maintenance script, nested reboot/shutdown jobs): a system
-# mutex serializes the read-modify-write so concurrent writers never clobber the file.
+# Dot-source this file to get Add-ServerMessage / Get-ServerMessagesJson. Safe to call
+# from any process (Manager job, maintenance script, nested reboot/shutdown jobs): a
+# system mutex serializes the read-modify-write so concurrent writers never clobber the
+# file.
 
 $ServerMsgFile = "$PSScriptRoot\server_messages.jsonl"
 $ServerMsgKeep = 50
@@ -49,14 +50,23 @@ function Add-ServerMessage {
     } catch {}
 }
 
-function Get-ServerMessages {
+# Returns the compact JSON array STRING directly -- each line is already a compact JSON
+# object (see Add-ServerMessage), so there is nothing to gain by parsing every line then
+# re-serializing the whole array, which is what the one caller (GET /api/server-messages,
+# the dashboard's hottest route -- polled every 8s) used to do. Cached on the file's own
+# LastWriteTimeUtc so repeated polls between broadcasts don't even re-read the file.
+function Get-ServerMessagesJson {
     param([int]$Limit = 50)
-    if (-not (Test-Path $ServerMsgFile)) { return @() }
-    $out = @()
-    foreach ($line in @(Get-Content -LiteralPath $ServerMsgFile -Encoding UTF8 -ErrorAction SilentlyContinue)) {
-        if (-not $line.Trim()) { continue }
-        try { $out += (ConvertFrom-Json $line) } catch {}
+    if (-not (Test-Path -LiteralPath $ServerMsgFile)) { return '[]' }
+    $mtime = (Get-Item -LiteralPath $ServerMsgFile).LastWriteTimeUtc
+    if ($script:_serverMsgJsonCache -and $script:_serverMsgJsonMtime -eq $mtime -and $script:_serverMsgJsonLimit -eq $Limit) {
+        return $script:_serverMsgJsonCache
     }
-    if ($out.Count -gt $Limit) { $out = $out[-$Limit..-1] }
-    return $out
+    $lines = @(Get-Content -LiteralPath $ServerMsgFile -Encoding UTF8 -ErrorAction SilentlyContinue | Where-Object { $_.Trim() })
+    if ($lines.Count -gt $Limit) { $lines = $lines[-$Limit..-1] }
+    $json = if ($lines.Count) { '[' + ($lines -join ',') + ']' } else { '[]' }
+    $script:_serverMsgJsonCache = $json
+    $script:_serverMsgJsonMtime = $mtime
+    $script:_serverMsgJsonLimit = $Limit
+    return $json
 }

@@ -270,6 +270,22 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
         Log "Off-machine backup uploaded: $key (${sizeMB}MB)"
     }
 
+    # sync_public_data.ps1 logs a line roughly every ~60s tick (SUCCESS or FAILED, the
+    # latter up to 4 lines) with no rotation of its own -- unlike this job's own Log
+    # function, which already self-trims maintenance.log. Once/day here (same
+    # maintenance-style tail-trim technique) is enough to keep it bounded.
+    function Trim-SyncLog {
+        $syncLog = "$ServerDir\sync_public_data.log"
+        if (-not (Test-Path -LiteralPath $syncLog)) { return }
+        try {
+            $lines = @(Get-Content -LiteralPath $syncLog -Encoding UTF8 -ErrorAction SilentlyContinue)
+            if ($lines.Count -gt 5000) {
+                $lines[-5000..-1] | Set-Content -LiteralPath $syncLog -Encoding UTF8
+                Log "Trimmed sync_public_data.log to 5000 lines."
+            }
+        } catch { Log "Could not trim sync_public_data.log: $($_.Exception.Message)" }
+    }
+
     # Start server if not already running
     if (-not (Get-Process | Where-Object { $_.Name -like "*PalServer*" })) {
         Log "Server not running - starting now..."
@@ -334,6 +350,7 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
         Report-SaveHealth
         Prune-AutoBackups
         Backup-OffMachine
+        Trim-SyncLog
 
         Log "Running update script..."
         & powershell.exe -ExecutionPolicy Bypass -NonInteractive -File $InstallScript
@@ -373,7 +390,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     $EggNotifyFile      = "$ServerDir\egg_notify.json"
     $EggNotifyStateFile = "$ServerDir\.egg_notify_state.json"
 
-    # Shared server-message feed helper (Add-ServerMessage / Get-ServerMessages) that
+    # Shared server-message feed helper (Add-ServerMessage / Get-ServerMessagesJson) that
     # backs the dashboard chat banner. Dot-sourced so every broadcast site here records.
     . "$ServerDir\server_messages.ps1"
 
@@ -1014,8 +1031,17 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
 
     function Append-Metric($entry) {
         Add-Content $LogFile (ConvertTo-Json $entry -Depth 3 -Compress) -Encoding UTF8
-        $lines = @(Get-Content $LogFile -Encoding UTF8)
-        if ($lines.Count -gt 2016) { $lines[-2016..-1] | Set-Content $LogFile -Encoding UTF8 }
+        $script:metricAppendCount++
+        # Once the log reaches its steady-state size (~7 days in), the count check below used
+        # to trip on EVERY call -- a full Get-Content + Set-Content over 2000+ lines (~206KB)
+        # every 5 minutes, forever, just to drop the single line that grew past the cap. Lazy:
+        # only check/trim about once/day (every 288 calls at the 300s poll interval). The log
+        # is allowed to sit a bit over 2016 lines between trims; /api/history only ever reads
+        # -Tail 288, so that has no effect on it either way.
+        if ($script:metricAppendCount % 288 -eq 0) {
+            $lines = @(Get-Content $LogFile -Encoding UTF8)
+            if ($lines.Count -gt 2016) { $lines[-2016..-1] | Set-Content $LogFile -Encoding UTF8 }
+        }
     }
 
     function CollectMetrics {
@@ -1118,6 +1144,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     $nextSync             = [datetime]::MinValue
     $nextEggCheck         = [datetime]::MinValue
     $script:lastEggStamp  = ''
+    $script:metricAppendCount = 0
     $script:palSpawnRaw   = $null
     $script:palTileCache  = @{}
     $script:effigyData    = $null
@@ -1155,6 +1182,28 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # deploy_public_site.ps1 only when the dashboard UI changes.
     function Trigger-PublicDeploy {
         try {
+            # Manager-side gate (same pattern as Check-EggNotifications' $script:lastEggStamp):
+            # skip the powershell.exe spawn entirely when the save hasn't moved since the last
+            # sync that actually succeeded. sync_public_data.ps1 already no-ops internally on
+            # an unchanged save, but that still cost a full process spawn every tick even while
+            # idle (~2 CPU-hours/day across a day of autosave ticks with zero players). Compare
+            # against sync_public_data.ps1's OWN persisted levelStamp (not a separate cache
+            # here) so a failed sync still retries every tick as before -- that field only
+            # advances on a real success, so a persistent failure naturally keeps comparing
+            # unequal until it's fixed.
+            $activeGuid = Get-ActiveGuid
+            if ($activeGuid) {
+                $levelSav = Join-Path (Join-Path $SaveGamesRoot $activeGuid) 'Level.sav'
+                $syncState = "$ServerDir\.palbox_r2_sync_state.json"
+                if ((Test-Path -LiteralPath $levelSav) -and (Test-Path -LiteralPath $syncState)) {
+                    $stamp = [string]([System.IO.File]::GetLastWriteTimeUtc($levelSav).Ticks)
+                    try {
+                        $lastStamp = (Get-Content -LiteralPath $syncState -Raw | ConvertFrom-Json).levelStamp
+                        if ($stamp -eq [string]$lastStamp) { return }
+                    } catch {}
+                }
+            }
+
             $syncScript = "$ServerDir\sync_public_data.ps1"
             if (Test-Path $syncScript) {
                 # -Root is passed explicitly rather than left to sync_public_data.ps1's own
@@ -1315,13 +1364,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/history' -and $method -eq 'GET') {
                     try {
                         if (Test-Path $LogFile) {
-                            $lines   = @(Get-Content $LogFile -Tail 288 -Encoding UTF8)
-                            $entries = @($lines | Where-Object { $_.Trim() } | ForEach-Object {
-                                try { ConvertFrom-Json $_ } catch { $null }
-                            } | Where-Object { $_ })
-                            $json = if ($entries.Count) {
-                                '[' + (($entries | ForEach-Object { ConvertTo-Json $_ -Depth 3 -Compress }) -join ',') + ']'
-                            } else { '[]' }
+                            # Each line in metrics-log.jsonl is already a compact JSON object
+                            # (see Append-Metric) -- string-join into an array instead of
+                            # parsing then re-serializing all 288 lines every request (576
+                            # JSON conversions for data that needs none).
+                            $lines = @(Get-Content $LogFile -Tail 288 -Encoding UTF8 | Where-Object { $_.Trim() })
+                            $json = if ($lines.Count) { '[' + ($lines -join ',') + ']' } else { '[]' }
                         } else { $json = '[]' }
                     } catch { $json = '[]' }
                     Send-Response $res 200 "application/json" $json
@@ -1480,11 +1528,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/server-messages' -and $method -eq 'GET') {
                     # Recent server broadcasts for the dashboard chat banner (admin copy;
                     # the public site reads the mirrored R2 server-messages.json).
-                    $msgs = @(Get-ServerMessages 50)
-                    $out  = if ($msgs.Count) { ConvertTo-Json $msgs -Depth 4 -Compress } else { '[]' }
-                    # ConvertTo-Json unwraps a single-element array; force the [ ] back.
-                    if ($msgs.Count -eq 1) { $out = '[' + (ConvertTo-Json $msgs[0] -Depth 4 -Compress) + ']' }
-                    Send-Response $res 200 "application/json" $out
+                    Send-Response $res 200 "application/json" (Get-ServerMessagesJson 50)
                     break
                 }
 
