@@ -81,12 +81,14 @@ $DashboardHtmlPath = Join-Path $Root 'dashboard.html'
 if (-not (Test-Path -LiteralPath $DashboardHtmlPath)) { throw "dashboard.html not found: $DashboardHtmlPath" }
 $html = [System.IO.File]::ReadAllText($DashboardHtmlPath, [System.Text.UTF8Encoding]::new($false))
 
-# (1) Remove the Dashboard nav tab and make Pals the default active tab.
+# (1) Remove the Dashboard nav tab and make Pals the default active tab. The button's
+# label is "Pal Box" (matching the view's own panel-header) but data-tab/switchView stay
+# "pals" -- see the explanatory comment at the nav-tab source; not renamed here either.
 $html = $html.Replace(
   '<button class="nav-tab active" data-tab="dashboard" onclick="switchView(''dashboard'')">Dashboard</button>', '')
 $html = $html.Replace(
-  '<button class="nav-tab" data-tab="pals" onclick="switchView(''pals'')">Pals</button>',
-  '<button class="nav-tab active" data-tab="pals" onclick="switchView(''pals'')">Pals</button>')
+  '<button class="nav-tab" data-tab="pals" onclick="switchView(''pals'')">Pal Box</button>',
+  '<button class="nav-tab active" data-tab="pals" onclick="switchView(''pals'')">Pal Box</button>')
 
 # (1b) Remove the Data Mine nav tab -- an admin-only raw-data view (see
 # /palbox-bounty-tracker) whose API calls (/api/syndicate-bosses,
@@ -233,18 +235,19 @@ if ($html -eq $before) { throw "paldeck spoiler: imgUrl line not found" }
 # Portrait cell: '?' placeholder (no onclick) when masked, real clickable portrait otherwise.
 $before = $html
 $html = $html.Replace(@'
-      +'<td style="padding:2px 4px;width:44px;text-align:center;cursor:pointer;" onclick="openPaldeckDetail('+idx+')"><img src="'+imgUrl+'" loading="lazy" onerror="this.style.display=\'none\'" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;pointer-events:none;"></td>'
+      +'<td style="padding:2px 4px;width:44px;text-align:center;cursor:pointer;" onclick="openPaldeckDetail('+idx+')"><img src="'+imgUrl+'" alt="" loading="lazy" onerror="this.style.display=\'none\'" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;pointer-events:none;"></td>'
 '@, @'
-      +(_msk?'<td style="padding:2px 4px;width:44px;text-align:center;"><span style="display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--muted);border:1px dashed var(--border);border-radius:6px;">?</span></td>':'<td style="padding:2px 4px;width:44px;text-align:center;cursor:pointer;" onclick="openPaldeckDetail('+idx+')"><img src="'+imgUrl+'" loading="lazy" onerror="this.style.display=\'none\'" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;pointer-events:none;"></td>')
+      +(_msk?'<td style="padding:2px 4px;width:44px;text-align:center;"><span style="display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--muted);border:1px dashed var(--border);border-radius:6px;">?</span></td>':'<td style="padding:2px 4px;width:44px;text-align:center;cursor:pointer;" onclick="openPaldeckDetail('+idx+')"><img src="'+imgUrl+'" alt="" loading="lazy" onerror="this.style.display=\'none\'" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;pointer-events:none;"></td>')
 '@)
 if ($html -eq $before) { throw "paldeck spoiler: portrait cell not found" }
 
-# Name cell: scrambled monospace name (no onclick) when masked, real clickable name otherwise.
+# Name cell: scrambled monospace name (no onclick, not keyboard-focusable -- there is
+# nothing to activate) when masked, real clickable + keyboard-focusable name otherwise.
 $before = $html
 $html = $html.Replace(@'
-      +'<td style="padding:4px 10px;cursor:pointer;" onclick="openPaldeckDetail('+idx+')">'+name+'</td>'
+      +'<td tabindex="0" role="button" style="padding:4px 10px;cursor:pointer;" onclick="openPaldeckDetail('+idx+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openPaldeckDetail('+idx+');}">'+name+'</td>'
 '@, @'
-      +(_msk?'<td style="padding:4px 10px;color:var(--muted);font-family:monospace;letter-spacing:2px;">'+_dn+'</td>':'<td style="padding:4px 10px;cursor:pointer;" onclick="openPaldeckDetail('+idx+')">'+name+'</td>')
+      +(_msk?'<td style="padding:4px 10px;color:var(--muted);font-family:monospace;letter-spacing:2px;">'+_dn+'</td>':'<td tabindex="0" role="button" style="padding:4px 10px;cursor:pointer;" onclick="openPaldeckDetail('+idx+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openPaldeckDetail('+idx+');}">'+name+'</td>')
 '@)
 if ($html -eq $before) { throw "paldeck spoiler: name cell not found" }
 
@@ -468,7 +471,7 @@ $settingsBlock = @'
     var bar=document.getElementById('sv-tab-bar'); if(!bar) return;
     bar.innerHTML=SV_CATS.filter(function(c){return Object.keys(META).some(function(k){return META[k].c===c;});})
       .map(function(c){
-        return '<div class="tab'+(c===svCat?' active':'')+'" onclick="svSwitch(\''+c+'\')">'+esc(c)+'</div>';
+        return '<button type="button" class="tab'+(c===svCat?' active':'')+'" onclick="svSwitch(\''+c+'\')">'+esc(c)+'</button>';
       }).join('');
   }
   function renderSvGrid(){

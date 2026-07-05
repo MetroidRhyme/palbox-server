@@ -480,6 +480,52 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         try { $Response.OutputStream.Write($bytes, 0, $bytes.Length); $Response.OutputStream.Close() } catch {}
     }
 
+    function Get-GzipBytes([string]$Text) {
+        $ms = New-Object System.IO.MemoryStream
+        $gz = New-Object System.IO.Compression.GZipStream($ms, [System.IO.Compression.CompressionLevel]::Optimal, $true)
+        $bytes = [Text.Encoding]::UTF8.GetBytes($Text)
+        $gz.Write($bytes, 0, $bytes.Length)
+        $gz.Dispose()
+        $result = $ms.ToArray()
+        $ms.Dispose()
+        return $result
+    }
+
+    # Last-Modified/If-Modified-Since 304 handling + optional gzip, same pattern the icon
+    # routes already use -- copied here for the two biggest uncompressed payloads (the
+    # ~430KB dashboard page and the 165KB pal-species.json), which previously had no
+    # Cache-Control/ETag/gzip at all. $GzipBytes is precomputed by the caller (once at
+    # startup for $HtmlPage, lazily on first request for pal-species) rather than
+    # gzip'd fresh on every single request.
+    function Send-CachedResponse($Response, $Request, [string]$ContentType, [string]$Body, [byte[]]$GzipBytes, [datetime]$Mtime) {
+        $lastModStr = $Mtime.ToString('R')
+        $ims = $Request.Headers['If-Modified-Since']
+        $imsDate = [datetime]::MinValue
+        if ($ims -and [datetime]::TryParse($ims, [ref]$imsDate) -and $Mtime -le $imsDate.ToUniversalTime().AddSeconds(1)) {
+            $Response.StatusCode = 304
+            $Response.AddHeader('Cache-Control', 'no-cache')
+            $Response.AddHeader('Last-Modified', $lastModStr)
+            try { $Response.OutputStream.Close() } catch {}
+            return
+        }
+        $Response.AddHeader('Cache-Control', 'no-cache')
+        $Response.AddHeader('Last-Modified', $lastModStr)
+        $Response.ContentType = $ContentType
+        $acceptEnc = $Request.Headers['Accept-Encoding']
+        if ($acceptEnc -and $acceptEnc -like '*gzip*' -and $GzipBytes) {
+            $Response.AddHeader('Content-Encoding', 'gzip')
+            $Response.StatusCode = 200
+            $Response.ContentLength64 = $GzipBytes.Length
+            try { $Response.OutputStream.Write($GzipBytes, 0, $GzipBytes.Length) } catch {}
+        } else {
+            $Response.StatusCode = 200
+            $bytes = [Text.Encoding]::UTF8.GetBytes($Body)
+            $Response.ContentLength64 = $bytes.Length
+            try { $Response.OutputStream.Write($bytes, 0, $bytes.Length) } catch {}
+        }
+        try { $Response.OutputStream.Close() } catch {}
+    }
+
     # ── Hand-confirmed map locations (Anthony's own live-play data) ──────────────
     # confirmed_locations.json holds flag-key -> {name,gx,gy} entries Anthony has
     # personally verified in-game via a companion save-watching script (Desktop
@@ -515,11 +561,26 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return $script:confirmedLocations
     }
 
-    # gx/gy (in-game grid coords) -> real world x/y. Inverse of the effigy
-    # tooltip's cx=(y-158000)/459, cy=(x+123888)/459 -- see the
-    # palbox-journal-overlay skill's coordinate-transform section.
+    # gx/gy (in-game grid coords) <-> real world x/y transform constants -- single source
+    # of truth in map_constants.json (also read by build_public_data.ps1's own copy of
+    # ConvertTo-WorldXY) so the two can't drift apart the way individual map categories
+    # already have in the past (Chillet/WeaselDragon, Landmarks misclassification bugs).
+    $script:mapConstCache = $null
+    function Get-MapConstants {
+        if ($null -eq $script:mapConstCache) {
+            $path = "$ServerDir\map_constants.json"
+            try { $script:mapConstCache = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json }
+            catch { $script:mapConstCache = [pscustomobject]@{ scale = 459; offsetX = 123888; offsetY = 158000 } }
+        }
+        return $script:mapConstCache
+    }
+
+    # gx/gy (in-game grid coords) -> real world x/y. Inverse of the effigy tooltip's
+    # cx=(y-offsetY)/scale, cy=(x+offsetX)/scale -- see the palbox-journal-overlay skill's
+    # coordinate-transform section.
     function ConvertTo-WorldXY([int]$gx, [int]$gy) {
-        return @{ x = ($gy * 459) - 123888; y = ($gx * 459) + 158000 }
+        $mc = Get-MapConstants
+        return @{ x = ($gy * $mc.scale) - $mc.offsetX; y = ($gx * $mc.scale) + $mc.offsetY }
     }
 
     # Anthony wants ONLY his own confirmed locations on the map -- these Merge-Confirmed*
@@ -920,7 +981,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # Graceful stop (save + REST shutdown), force-kill as a last resort. Returns
     # $true once no PalServer process remains.
     function Stop-PalServerWait {
-        if (-not (Get-Process | Where-Object { $_.Name -like "*PalServer*" })) { return $true }
+        # -Name 'PalServer*' instead of piping every process on the box through
+        # Where-Object -- a targeted Get-Process filter, not a full enumeration.
+        if (-not (Get-Process -Name 'PalServer*' -EA SilentlyContinue)) { return $true }
         try { Invoke-RestMethod -Uri "$PalApiBase/v1/api/save" -Method POST -Headers (Get-PalHeaders) -EA Stop | Out-Null } catch {}
         Start-Sleep -Seconds 3
         try {
@@ -928,14 +991,14 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 -Body (ConvertTo-Json @{ waittime=5; message="Switching world save - back shortly." }) -EA Stop | Out-Null
         } catch {}
         $waited = 0
-        while ((Get-Process | Where-Object { $_.Name -like "*PalServer*" }) -and $waited -lt 60) {
+        while ((Get-Process -Name 'PalServer*' -EA SilentlyContinue) -and $waited -lt 60) {
             Start-Sleep -Seconds 2; $waited += 2
         }
-        if (Get-Process | Where-Object { $_.Name -like "*PalServer*" }) {
-            Get-Process | Where-Object { $_.Name -like "*PalServer*" } | Stop-Process -Force -EA SilentlyContinue
+        if (Get-Process -Name 'PalServer*' -EA SilentlyContinue) {
+            Get-Process -Name 'PalServer*' -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
             Start-Sleep -Seconds 3
         }
-        return -not [bool](Get-Process | Where-Object { $_.Name -like "*PalServer*" })
+        return -not [bool](Get-Process -Name 'PalServer*' -EA SilentlyContinue)
     }
 
     function Get-SaveList {
@@ -1155,6 +1218,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # inline, for syntax highlighting and reviewable diffs; gen_public_site.ps1 reads the
     # same file directly instead of extracting it via string markers.
     $HtmlPage = [System.IO.File]::ReadAllText((Join-Path $ServerDir 'dashboard.html'), [System.Text.UTF8Encoding]::new($false))
+    $script:htmlMtime = [System.IO.File]::GetLastWriteTimeUtc((Join-Path $ServerDir 'dashboard.html'))
+    # Precompute once at startup rather than per-request -- ASCII HTML gzips ~5:1, and this
+    # is the single biggest payload the dashboard serves (~430KB uncompressed).
+    $script:htmlGzip = Get-GzipBytes $HtmlPage
 
     # ── State ─────────────────────────────────────────────────────────────────
     $script:playtimeGuid  = $null
@@ -1337,6 +1404,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
             if ((Get-Date) -ge $nextCollect) {
                 CollectMetrics
                 $nextCollect = (Get-Date).AddSeconds($PollInterval)
+                # Release the cached ~34MB Paldex JSON once its 24h TTL (see /api/palspawn)
+                # has passed, rather than leaving it resident until the next spawn-map
+                # request happens to overwrite it -- if the Map tab isn't in active use for a
+                # while, this frees the memory instead of holding stale data indefinitely.
+                if ($script:palSpawnRaw -and $script:palSpawnFetched -and (((Get-Date) - $script:palSpawnFetched).TotalHours -ge 24)) {
+                    $script:palSpawnRaw = $null
+                }
             }
 
             # Egg-ready notifications on a fast cadence so an egg that becomes ready is
@@ -1379,7 +1453,107 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
             switch ($true) {
 
                 ($path -eq '/' -or $path -eq '/index.html') {
-                    Send-Response $res 200 "text/html; charset=utf-8" $HtmlPage
+                    Send-CachedResponse -Response $res -Request $req -ContentType "text/html; charset=utf-8" -Body $HtmlPage -GzipBytes $script:htmlGzip -Mtime $script:htmlMtime
+                    break
+                }
+
+                # Icon/portrait routes are the highest-frequency GETs (every pal card
+                # loads one); placed early in this switch so they don't fall through
+                # every other route's condition check first, unlike their previous
+                # spot much further down.
+                ($path -like '/icons/*' -and $method -eq 'GET') {
+                    # Bundled work/element suitability icons (downloaded from paldb, whose
+                    # CDN blocks hotlinking). The public site serves these statically; here
+                    # we serve our local copies so the admin dashboard matches.
+                    #
+                    # Cache-Control here previously had NO validator (no ETag/Last-Modified) on
+                    # top of a blind 24h max-age -- so once a browser cached an icon URL, it
+                    # wouldn't even ask the server again for a full day, with zero way to detect
+                    # a changed file. That's bad enough on its own, but these <img> tags are
+                    # loading="lazy" and sit inside the pal-detail popup, which isn't opened
+                    # during the initial page load -- so Chrome's hard-reload cache bypass
+                    # (which only covers resources loaded as part of that initial navigation)
+                    # never touches them either. Net effect: a regenerated icon (e.g. when the
+                    # elem_*.webp assets were swapped from plain squares to the wider banner
+                    # art) could silently keep showing the OLD image in an existing browser
+                    # profile for up to 24h with no hard-refresh able to fix it. Fix: shorten
+                    # max-age so staleness is bounded to minutes instead of a day, and add a
+                    # Last-Modified validator + If-Modified-Since/304 handling so repeat checks
+                    # after that are cheap when the file hasn't actually changed.
+                    $res.KeepAlive = $false
+                    $iconBytes = $null
+                    $iconMtime = $null
+                    try {
+                        $fname = [System.IO.Path]::GetFileName($path)   # strips any traversal
+                        # work_/elem_ suitability icons (webp) + passive rank icons/frame (png).
+                        if ($fname -match '^[A-Za-z0-9_]+\.(webp|png)$') {
+                            $file = Join-Path "$ServerDir\pal_icons" $fname
+                            if (Test-Path -LiteralPath $file) {
+                                $iconMtime = [System.IO.File]::GetLastWriteTimeUtc($file)
+                                $lastModStr = $iconMtime.ToString('R')
+                                $ims = $req.Headers['If-Modified-Since']
+                                $imsDate = [datetime]::MinValue
+                                if ($ims -and [datetime]::TryParse($ims, [ref]$imsDate)) {
+                                    if ($iconMtime -le $imsDate.ToUniversalTime().AddSeconds(1)) {
+                                        $res.StatusCode = 304
+                                        $res.AddHeader('Cache-Control', 'public, max-age=300')
+                                        $res.AddHeader('Last-Modified', $lastModStr)
+                                        $res.OutputStream.Close()
+                                        break
+                                    }
+                                }
+                                $iconBytes = [System.IO.File]::ReadAllBytes($file)
+                            }
+                        }
+                    } catch {}
+                    if ($iconBytes) {
+                        try {
+                            $res.StatusCode = 200
+                            $res.ContentType = if ([System.IO.Path]::GetExtension($fname).ToLower() -eq '.png') { 'image/png' } else { 'image/webp' }
+                            $res.AddHeader('Cache-Control', 'public, max-age=300')
+                            if ($iconMtime) { $res.AddHeader('Last-Modified', $iconMtime.ToString('R')) }
+                            $res.ContentLength64 = $iconBytes.Length
+                            $res.OutputStream.Write($iconBytes, 0, $iconBytes.Length)
+                        } catch {}
+                    } else { try { $res.StatusCode = 404 } catch {} }
+                    try { $res.OutputStream.Close() } catch {}
+                    break
+                }
+
+                ($path -eq '/api/palicon' -and $method -eq 'GET') {
+                    # Serve Pal portrait PNGs from the LOCAL copy in PalAssets\Pals so the
+                    # dashboard no longer depends on palcalc's GitHub repo at runtime.
+                    # (Refresh the local copy with: python gen_pal_assets.py)
+                    $res.KeepAlive = $false
+                    $iconBytes = $null
+                    try {
+                        $name = $req.QueryString['name']
+                        if ($name) {
+                            # Block path traversal: only allow a bare file name.
+                            $name = $name -replace '[\\/:*?"<>|]', ''
+                            if (-not $script:palIconCache.ContainsKey($name)) {
+                                $file = Join-Path $script:palIconDir ($name + '.png')
+                                if (Test-Path -LiteralPath $file) {
+                                    $script:palIconCache[$name] = [System.IO.File]::ReadAllBytes($file)
+                                } else {
+                                    $script:palIconCache[$name] = $null
+                                }
+                            }
+                            $iconBytes = $script:palIconCache[$name]
+                        }
+                    } catch {}
+                    if ($iconBytes) {
+                        try {
+                            $res.StatusCode = 200
+                            $res.ContentType = 'image/png'
+                            $res.Headers.Add('Cache-Control', 'public, max-age=604800')
+                            $res.ContentLength64 = $iconBytes.Length
+                            $res.OutputStream.Write($iconBytes, 0, $iconBytes.Length)
+                        } catch {}
+                    } else {
+                        try { $res.StatusCode = 404 } catch {}
+                    }
+                    try { $res.OutputStream.Close() } catch {}
                     break
                 }
 
@@ -2053,6 +2227,11 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $ty = $req.QueryString['y']
                         if ($tz -and $tx -and $ty) {
                             $cacheKey = "${tz}_${tx}_${ty}"
+                            # Crude cap: this cache never evicted anything, so panning/zooming
+                            # around the map over a long enough uptime grows it unbounded.
+                            # Full clear (not per-entry LRU) once it gets large -- simple, and
+                            # tiles are cheap to refetch from paldb's CDN if actually revisited.
+                            if ($script:palTileCache.Count -ge 2000) { $script:palTileCache = @{} }
                             if (-not $script:palTileCache.ContainsKey($cacheKey)) {
                                 try {
                                     $wreq = [System.Net.HttpWebRequest]::Create("https://cdn.paldb.cc/image/map7/z${tz}x${tx}y${ty}.webp")
@@ -2076,102 +2255,6 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             $res.ContentType = 'image/webp'
                             $res.ContentLength64 = $tileBytes.Length
                             $res.OutputStream.Write($tileBytes, 0, $tileBytes.Length)
-                        } catch {}
-                    } else {
-                        try { $res.StatusCode = 404 } catch {}
-                    }
-                    try { $res.OutputStream.Close() } catch {}
-                    break
-                }
-
-                ($path -like '/icons/*' -and $method -eq 'GET') {
-                    # Bundled work/element suitability icons (downloaded from paldb, whose
-                    # CDN blocks hotlinking). The public site serves these statically; here
-                    # we serve our local copies so the admin dashboard matches.
-                    #
-                    # Cache-Control here previously had NO validator (no ETag/Last-Modified) on
-                    # top of a blind 24h max-age -- so once a browser cached an icon URL, it
-                    # wouldn't even ask the server again for a full day, with zero way to detect
-                    # a changed file. That's bad enough on its own, but these <img> tags are
-                    # loading="lazy" and sit inside the pal-detail popup, which isn't opened
-                    # during the initial page load -- so Chrome's hard-reload cache bypass
-                    # (which only covers resources loaded as part of that initial navigation)
-                    # never touches them either. Net effect: a regenerated icon (e.g. when the
-                    # elem_*.webp assets were swapped from plain squares to the wider banner
-                    # art) could silently keep showing the OLD image in an existing browser
-                    # profile for up to 24h with no hard-refresh able to fix it. Fix: shorten
-                    # max-age so staleness is bounded to minutes instead of a day, and add a
-                    # Last-Modified validator + If-Modified-Since/304 handling so repeat checks
-                    # after that are cheap when the file hasn't actually changed.
-                    $res.KeepAlive = $false
-                    $iconBytes = $null
-                    $iconMtime = $null
-                    try {
-                        $fname = [System.IO.Path]::GetFileName($path)   # strips any traversal
-                        # work_/elem_ suitability icons (webp) + passive rank icons/frame (png).
-                        if ($fname -match '^[A-Za-z0-9_]+\.(webp|png)$') {
-                            $file = Join-Path "$ServerDir\pal_icons" $fname
-                            if (Test-Path -LiteralPath $file) {
-                                $iconMtime = [System.IO.File]::GetLastWriteTimeUtc($file)
-                                $lastModStr = $iconMtime.ToString('R')
-                                $ims = $req.Headers['If-Modified-Since']
-                                $imsDate = [datetime]::MinValue
-                                if ($ims -and [datetime]::TryParse($ims, [ref]$imsDate)) {
-                                    if ($iconMtime -le $imsDate.ToUniversalTime().AddSeconds(1)) {
-                                        $res.StatusCode = 304
-                                        $res.AddHeader('Cache-Control', 'public, max-age=300')
-                                        $res.AddHeader('Last-Modified', $lastModStr)
-                                        $res.OutputStream.Close()
-                                        break
-                                    }
-                                }
-                                $iconBytes = [System.IO.File]::ReadAllBytes($file)
-                            }
-                        }
-                    } catch {}
-                    if ($iconBytes) {
-                        try {
-                            $res.StatusCode = 200
-                            $res.ContentType = if ([System.IO.Path]::GetExtension($fname).ToLower() -eq '.png') { 'image/png' } else { 'image/webp' }
-                            $res.AddHeader('Cache-Control', 'public, max-age=300')
-                            if ($iconMtime) { $res.AddHeader('Last-Modified', $iconMtime.ToString('R')) }
-                            $res.ContentLength64 = $iconBytes.Length
-                            $res.OutputStream.Write($iconBytes, 0, $iconBytes.Length)
-                        } catch {}
-                    } else { try { $res.StatusCode = 404 } catch {} }
-                    try { $res.OutputStream.Close() } catch {}
-                    break
-                }
-
-                ($path -eq '/api/palicon' -and $method -eq 'GET') {
-                    # Serve Pal portrait PNGs from the LOCAL copy in PalAssets\Pals so the
-                    # dashboard no longer depends on palcalc's GitHub repo at runtime.
-                    # (Refresh the local copy with: python gen_pal_assets.py)
-                    $res.KeepAlive = $false
-                    $iconBytes = $null
-                    try {
-                        $name = $req.QueryString['name']
-                        if ($name) {
-                            # Block path traversal: only allow a bare file name.
-                            $name = $name -replace '[\\/:*?"<>|]', ''
-                            if (-not $script:palIconCache.ContainsKey($name)) {
-                                $file = Join-Path $script:palIconDir ($name + '.png')
-                                if (Test-Path -LiteralPath $file) {
-                                    $script:palIconCache[$name] = [System.IO.File]::ReadAllBytes($file)
-                                } else {
-                                    $script:palIconCache[$name] = $null
-                                }
-                            }
-                            $iconBytes = $script:palIconCache[$name]
-                        }
-                    } catch {}
-                    if ($iconBytes) {
-                        try {
-                            $res.StatusCode = 200
-                            $res.ContentType = 'image/png'
-                            $res.Headers.Add('Cache-Control', 'public, max-age=604800')
-                            $res.ContentLength64 = $iconBytes.Length
-                            $res.OutputStream.Write($iconBytes, 0, $iconBytes.Length)
                         } catch {}
                     } else {
                         try { $res.StatusCode = 404 } catch {}
@@ -2374,17 +2457,23 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/pal-species' -and $method -eq 'GET') {
                     # Curated species-level data (type/work/skills/stats) built by
                     # build_pal_species.py. The public site bundles this as a static file;
-                    # here we serve it from the same JSON so both dashboards match.
+                    # here we serve it from the same JSON so both dashboards match. 165KB
+                    # and effectively immutable for the life of this process (cached once
+                    # below), so gzip + Last-Modified/304 are worth it same as the icon
+                    # routes and the main page.
                     try {
                         if (-not $script:palSpeciesData) {
                             $f = "$ServerDir\pal_species.json"
                             if (Test-Path -LiteralPath $f) {
                                 $script:palSpeciesData = [System.IO.File]::ReadAllText($f)
+                                $script:palSpeciesMtime = [System.IO.File]::GetLastWriteTimeUtc($f)
                             } else {
                                 $script:palSpeciesData = '{}'
+                                $script:palSpeciesMtime = [datetime]::UtcNow
                             }
+                            $script:palSpeciesGzip = Get-GzipBytes $script:palSpeciesData
                         }
-                        Send-Response $res 200 "application/json" $script:palSpeciesData
+                        Send-CachedResponse -Response $res -Request $req -ContentType "application/json" -Body $script:palSpeciesData -GzipBytes $script:palSpeciesGzip -Mtime $script:palSpeciesMtime
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }

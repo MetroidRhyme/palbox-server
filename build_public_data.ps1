@@ -106,11 +106,26 @@ function Get-ConfirmedLocations {
   return $script:confirmedLocationsCache
 }
 
-# gx/gy (in-game grid coords) -> real world x/y. Inverse of the effigy
-# tooltip's cx=(y-158000)/459, cy=(x+123888)/459 -- see the
-# palbox-journal-overlay skill's coordinate-transform section.
+# gx/gy (in-game grid coords) <-> real world x/y transform constants -- single source of
+# truth in map_constants.json (also read by PalWorldServerManager.ps1's own copy of
+# ConvertTo-WorldXY) so the two can't drift apart the way individual map categories already
+# have in the past (Chillet/WeaselDragon, Landmarks misclassification bugs).
+$script:mapConstCache = $null
+function Get-MapConstants {
+  if ($null -eq $script:mapConstCache) {
+    $path = Join-Path $Root 'map_constants.json'
+    try { $script:mapConstCache = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json }
+    catch { $script:mapConstCache = [pscustomobject]@{ scale = 459; offsetX = 123888; offsetY = 158000 } }
+  }
+  return $script:mapConstCache
+}
+
+# gx/gy (in-game grid coords) -> real world x/y. Inverse of the effigy tooltip's
+# cx=(y-offsetY)/scale, cy=(x+offsetX)/scale -- see the palbox-journal-overlay skill's
+# coordinate-transform section.
 function ConvertTo-WorldXY([int]$gx, [int]$gy) {
-  return @{ x = ($gy * 459) - 123888; y = ($gx * 459) + 158000 }
+  $mc = Get-MapConstants
+  return @{ x = ($gy * $mc.scale) - $mc.offsetX; y = ($gx * $mc.scale) + $mc.offsetY }
 }
 
 # Anthony wants ONLY his own confirmed locations on the map -- these Merge-Confirmed*

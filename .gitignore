@@ -22,6 +22,10 @@ maintenance.log
 manager-config.json
 sync_public_data.log
 prefs/
+# The "prefs/" line above only matches a directory -- also catch a stray bare file named
+# "prefs" (no extension), which has shown up before with no clear source and isn't
+# actually referenced by any script (the real prefs feature lives in R2, not on disk).
+prefs
 *.flag
 __pycache__/
 *.pyc

@@ -12,8 +12,13 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;}
+/* Visible keyboard-focus outline for interactive elements -- previously only inputs had
+   any :focus styling at all, so tabbing through buttons/tabs/nav gave no visual feedback.
+   :focus-visible (not :focus) so a mouse click doesn't draw it, only keyboard navigation. */
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
 /* Kill the browser focus outline Leaflet's interactive SVG markers get on click -- it
-   shows as a stray white ring around an effigy/spawn marker that lingers after clicking. */
+   shows as a stray white ring around an effigy/spawn marker that lingers after clicking.
+   Declared after the rule above so it still wins for this specific case. */
 .leaflet-interactive:focus{outline:none;}
 /* Effigy marker tooltip: a touch larger and roomier than Leaflet's default. */
 .eff-tip{font-size:13px;line-height:1.45;padding:5px 9px;}
@@ -125,7 +130,7 @@ textarea{resize:vertical;min-height:58px;}
 /* Settings editor */
 .tab-bar{display:flex;gap:3px;padding:8px 14px 0;overflow-x:auto;border-bottom:1px solid var(--border);flex-shrink:0;scrollbar-width:none;}
 .tab-bar::-webkit-scrollbar{display:none;}
-.tab{padding:5px 12px;font-size:12px;cursor:pointer;color:var(--muted);border-radius:6px 6px 0 0;border:1px solid transparent;border-bottom:none;white-space:nowrap;transition:color .12s;user-select:none;}
+.tab{padding:5px 12px;font-size:12px;cursor:pointer;color:var(--muted);border-radius:6px 6px 0 0;border:1px solid transparent;border-bottom:none;white-space:nowrap;transition:color .12s;user-select:none;background:none;font-family:inherit;}
 .tab:hover{color:var(--text);}
 .tab.active{background:var(--surface);border-color:var(--border);color:var(--text);font-weight:600;margin-bottom:-1px;}
 .tab-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--yellow);margin-left:4px;vertical-align:middle;}
@@ -232,7 +237,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 .pal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
 .pal-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:7px;position:relative;}
 .pal-card.alpha{border-color:#d29922;}
-.pal-card.lucky{border-color:#e3b341;box-shadow:0 0 0 1px rgba(227,179,65,.25);}
+.pal-card.lucky{border-color:var(--yellow);box-shadow:0 0 0 1px rgba(227,179,65,.25);}
 .pal-card-top{display:flex;gap:9px;align-items:center;}
 .pal-portrait{width:46px;height:46px;border-radius:8px;background:var(--surface);object-fit:contain;flex-shrink:0;}
 .pal-name{font-weight:600;font-size:15px;line-height:1.2;display:flex;align-items:center;flex-wrap:wrap;gap:5px;}
@@ -240,10 +245,10 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 .pal-sub{font-size:11px;color:var(--muted);margin-top:1px;}
 .pal-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;}
 .pal-badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:.3px;text-transform:uppercase;}
-.pb-alpha{background:rgba(210,153,34,.18);color:#e3b341;}
+.pb-alpha{background:rgba(210,153,34,.18);color:var(--yellow);}
 .pb-lucky{background:rgba(227,179,65,.2);color:#f0c84a;}
 .pb-loc{background:var(--surface);color:var(--muted);text-transform:none;font-weight:600;letter-spacing:0;}
-.pb-male{background:rgba(88,166,255,.16);color:#58a6ff;}
+.pb-male{background:rgba(88,166,255,.16);color:var(--blue);}
 .pb-female{background:rgba(247,129,182,.16);color:#f781b6;}
 .pal-ivs{display:flex;flex-direction:column;gap:3px;}
 .iv-row{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);}
@@ -253,9 +258,9 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 .iv-fill{height:100%;border-radius:3px;}
 .pal-chips{display:flex;gap:3px;flex-wrap:wrap;}
 .pal-chip{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--surface);color:var(--muted);border:1px solid var(--border);}
-.pal-stars{color:#e3b341;font-size:11px;letter-spacing:1px;}
+.pal-stars{color:var(--yellow);font-size:11px;letter-spacing:1px;}
 /* Pals page advanced filter bar */
-.pf-badge{background:#58a6ff;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:0 5px;margin-left:5px;}
+.pf-badge{background:var(--blue);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:0 5px;margin-left:5px;}
 .pf-panel{display:none;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface);}
 .pf-panel.open{display:block;}
 /* "..." overflow menu: toolbar controls that don't need to be always-visible (Pals/Eggs
@@ -273,18 +278,22 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 .pf-chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
 .pf-chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:3px 8px;font-size:12px;cursor:pointer;user-select:none;color:var(--muted);}
 .pf-chip img{width:16px;height:16px;}
-.pf-chip:hover{border-color:#58a6ff;}
-.pf-chip.on{background:rgba(88,166,255,.18);border-color:#58a6ff;color:var(--text);}
+.pf-chip:hover{border-color:var(--blue);}
+.pf-chip.on{background:rgba(88,166,255,.18);border-color:var(--blue);color:var(--text);}
 .pf-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;}
+/* Same look as .pf-input (filter-panel controls) but for the main toolbar selects/search
+   inputs -- kept as its own class rather than reusing .pf-input since these live outside
+   the filter panels; each element's own min-width/flex stays as inline style. */
+.sel{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;}
 .pf-num{width:62px;}
 .pf-seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
 .pf-seg button{background:var(--surface2);color:var(--muted);border:0;border-left:1px solid var(--border);padding:4px 11px;font-size:12px;cursor:pointer;font-family:inherit;}
 .pf-seg button:first-child{border-left:0;}
-.pf-seg button.on{background:#58a6ff;color:#fff;}
+.pf-seg button.on{background:var(--blue);color:#fff;}
 .pf-pass-sel{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
-.pf-pass-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(88,166,255,.16);border:1px solid #58a6ff;border-radius:7px;padding:2px 4px 2px 9px;font-size:12px;color:var(--text);}
+.pf-pass-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(88,166,255,.16);border:1px solid var(--blue);border-radius:7px;padding:2px 4px 2px 9px;font-size:12px;color:var(--text);}
 .pf-pass-chip b{cursor:pointer;color:var(--muted);font-weight:700;padding:0 3px;}
-.pf-pass-chip b:hover{color:#f85149;}
+.pf-pass-chip b:hover{color:var(--red);}
 .pf-flag{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;}
 </style>
 </head>
@@ -297,7 +306,11 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
   </div>
   <nav style="display:flex;gap:2px;">
     <button class="nav-tab active" data-tab="dashboard" onclick="switchView('dashboard')">Dashboard</button>
-    <button class="nav-tab" data-tab="pals" onclick="switchView('pals')">Pals</button>
+    <!-- Label says "Pal Box" (matches the view's own panel-header) but data-tab/switchView
+         stay "pals" -- an internal id rename here would ripple through gen_public_site.ps1's
+         anchors and localStorage'd tab state for no user-facing benefit, same reasoning as
+         why the Map tab's internal id/code stays "effigies". -->
+    <button class="nav-tab" data-tab="pals" onclick="switchView('pals')">Pal Box</button>
     <button class="nav-tab" data-tab="eggs" onclick="switchView('eggs')">Eggs</button>
     <button class="nav-tab" data-tab="paldeck" onclick="switchView('paldeck')">Paldeck</button>
     <button class="nav-tab" data-tab="effigies" onclick="switchView('effigies')">Map</button>
@@ -490,7 +503,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <div class="panel-header">
       <span>Paldeck</span>
       <div style="display:flex;gap:8px;align-items:center">
-        <select id="paldeck-player" onchange="renderPaldeck()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:120px;"></select>
+        <select id="paldeck-player" onchange="renderPaldeck()" class="sel" style="min-width:120px;"></select>
         <span id="paldeck-summary" style="color:var(--muted);font-size:12px;"></span>
         <button class="btn btn-ghost" onclick="fetchPaldeck()">&#8635; Reload</button>
       </div>
@@ -503,7 +516,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
   <div class="panel" style="flex:1;min-height:0;">
     <div class="panel-header">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="effigy-player" onchange="fetchEffigyPlayer()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:120px;"></select>
+        <select id="effigy-player" onchange="fetchEffigyPlayer()" class="sel" style="min-width:120px;"></select>
         <span id="effigy-summary" style="color:var(--muted);font-size:12px;"></span>
       </div>
       <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
@@ -614,15 +627,15 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <div class="panel-header">
       <span>Pal Box</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="pals-player" onchange="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:110px;"></select>
-        <input id="pals-search" type="text" placeholder="Search name / passive..." oninput="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;flex:1;min-width:120px;">
+        <select id="pals-player" onchange="renderPals()" class="sel" style="min-width:110px;"></select>
+        <input id="pals-search" type="text" placeholder="Search name / passive..." oninput="renderPals()" class="sel" style="flex:1;min-width:120px;">
         <button class="btn btn-ghost" onclick="togglePalFilters()" style="position:relative;">Filters<span id="pals-filter-count" class="pf-badge" style="display:none;">0</span></button>
         <span id="pals-summary" style="color:var(--muted);font-size:12px;"></span>
         <div class="overflow-toggle-wrap">
           <button class="btn btn-ghost" onclick="toggleOverflowMenu('pals-more')" title="More options">&#8942;</button>
           <div id="pals-more" class="overflow-menu">
-            <select id="pals-location" onchange="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;"></select>
-            <select id="pals-sort" onchange="renderPals()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;">
+            <select id="pals-location" onchange="renderPals()" class="sel"></select>
+            <select id="pals-sort" onchange="renderPals()" class="sel">
               <option value="iv">Sort: Best IVs</option>
               <option value="work">Sort: Work Suitability</option>
               <option value="level">Sort: Level</option>
@@ -735,21 +748,21 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <div class="panel-header">
       <span>Eggs</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="eggs-owner" onchange="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;min-width:110px;"></select>
-        <input id="eggs-search" type="text" placeholder="Search name / passive..." oninput="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;flex:1;min-width:120px;">
+        <select id="eggs-owner" onchange="renderEggs()" class="sel" style="min-width:110px;"></select>
+        <input id="eggs-search" type="text" placeholder="Search name / passive..." oninput="renderEggs()" class="sel" style="flex:1;min-width:120px;">
         <button class="btn btn-ghost" onclick="toggleEggFilters()" style="position:relative;">Filters<span id="eggs-filter-count" class="pf-badge" style="display:none;">0</span></button>
         <span id="eggs-summary" style="color:var(--muted);font-size:12px;"></span>
         <div class="overflow-toggle-wrap">
           <button class="btn btn-ghost" onclick="toggleOverflowMenu('eggs-more')" title="More options">&#8942;</button>
           <div id="eggs-more" class="overflow-menu">
-            <select id="eggs-location" onchange="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;">
+            <select id="eggs-location" onchange="renderEggs()" class="sel">
               <option value="">All locations</option>
               <option value="incubator">Incubators</option>
               <option value="breedfarm">Breeding Farm</option>
               <option value="storage">Storage</option>
               <option value="inventory">Inventory</option>
             </select>
-            <select id="eggs-sort" onchange="renderEggs()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:13px;">
+            <select id="eggs-sort" onchange="renderEggs()" class="sel">
               <option value="iv">Sort: Best IVs</option>
               <option value="work">Sort: Work Suitability</option>
               <option value="rarity">Sort: Rarity</option>
@@ -813,7 +826,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
   <div onclick="closePalMap()" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);"></div>
   <div onclick="event.stopPropagation()" style="position:relative;background:var(--surface);border:1px solid var(--border);border-radius:12px;width:92vw;max-width:1000px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
     <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">
-      <img id="pal-map-img" src="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">
+      <img id="pal-map-img" src="" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">
       <div style="min-width:0;flex:1;">
         <div id="pal-map-name" style="font-weight:700;font-size:15px;"></div>
       </div>
@@ -2121,7 +2134,7 @@ function eggCard(e,showLoc){
   var star=watched?'<span class="egg-watch-star" title="Matches a watch">&#9733;</span>':'';
   return '<div class="'+cls+'">'
     +'<div class="pal-card-top">'
-      +'<img class="pal-portrait" loading="lazy" src="'+palPortrait(look.name)+'" onerror="this.style.visibility=\'hidden\'">'
+      +'<img class="pal-portrait" loading="lazy" alt="" src="'+palPortrait(look.name)+'" onerror="this.style.visibility=\'hidden\'">'
       +'<div style="min-width:0;flex:1;">'
         +'<div class="pal-name">'+esc(look.name)+'</div>'
         +'<div class="pal-sub">#'+look.noStr+'</div>'
@@ -2697,7 +2710,7 @@ function palCard(p){
   // abilities (equipMoves) are intentionally NOT shown here -- they live in the popup.
   return '<div class="'+cls+'" data-iid="'+p.instanceId+'">'
     +'<div class="pal-card-top">'
-      +'<img class="pal-portrait" loading="lazy" src="'+palPortrait(look.name)+'" onerror="this.style.visibility=\'hidden\'">'
+      +'<img class="pal-portrait" loading="lazy" alt="" src="'+palPortrait(look.name)+'" onerror="this.style.visibility=\'hidden\'">'
       +'<div style="min-width:0;flex:1;">'
         +'<div class="pal-name">'+esc(look.name)+genderBadge+stars+'</div>'
         +nick
@@ -2793,8 +2806,8 @@ function renderPaldeck(){
     var imgUrl='/api/palicon?name='+encodeURIComponent(name);
     rows+='<tr style="border-bottom:1px solid var(--border);'+bg+'">'
       +'<td style="padding:4px 10px;color:var(--muted);font-size:11px;text-align:right;white-space:nowrap;width:55px;">'+noStr+'</td>'
-      +'<td style="padding:2px 4px;width:44px;text-align:center;cursor:pointer;" onclick="openPaldeckDetail('+idx+')"><img src="'+imgUrl+'" loading="lazy" onerror="this.style.display=\'none\'" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;pointer-events:none;"></td>'
-      +'<td style="padding:4px 10px;cursor:pointer;" onclick="openPaldeckDetail('+idx+')">'+name+'</td>'
+      +'<td style="padding:2px 4px;width:44px;text-align:center;cursor:pointer;" onclick="openPaldeckDetail('+idx+')"><img src="'+imgUrl+'" alt="" loading="lazy" onerror="this.style.display=\'none\'" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;pointer-events:none;"></td>'
+      +'<td tabindex="0" role="button" style="padding:4px 10px;cursor:pointer;" onclick="openPaldeckDetail('+idx+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openPaldeckDetail('+idx+');}">'+name+'</td>'
       +'<td style="padding:4px 10px;text-align:center;width:60px;">'+cnt+'</td>'
       +'<td style="padding:4px 10px;text-align:center;width:32px;">'+chk+'</td>'
       +'</tr>';
@@ -2804,8 +2817,11 @@ function renderPaldeck(){
   var sumStr=player.total+' unique captured | '+checkTotal+'/'+allCount+' at 12+';
   document.getElementById('paldeck-summary').textContent=sumStr;
   area.innerHTML=
-    '<div style="overflow-y:auto;max-height:520px;">'
-    +'<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+    // No inner scroll wrapper -- #paldeck-area is already a .panel-body (overflow:auto),
+    // so a nested max-height/overflow div here was scroll-inside-scroll on touch (the
+    // outer page-level scroll and this inner one competing for the same swipe). The
+    // sticky header works fine against the .panel-body ancestor's own scroll instead.
+    '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
     +'<thead style="position:sticky;top:0;background:var(--surface2);z-index:1;">'
     +'<tr style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;">'
     +'<th style="padding:6px 10px;text-align:right;width:55px;">#</th>'
@@ -2815,7 +2831,7 @@ function renderPaldeck(){
     +'<th style="padding:6px 10px;text-align:center;width:32px;">&#10003;</th>'
     +'</tr></thead>'
     +'<tbody>'+rows+'</tbody>'
-    +'</table></div>';
+    +'</table>';
   savePrefs();
 }
 
@@ -2979,7 +2995,7 @@ function makeBossIcon(imgUrl){
   return L.divIcon({
     html:'<div style="width:38px;height:38px;border-radius:50%;border:2.5px solid #e3b341;'
         +'box-shadow:0 2px 8px rgba(0,0,0,0.85);overflow:hidden;background:#1a1a1a;">'
-        +'<img src="'+imgUrl+'" style="width:100%;height:100%;object-fit:contain;" onerror="this.parentElement.style.background=\'#e3b341\'">'
+        +'<img src="'+imgUrl+'" alt="" style="width:100%;height:100%;object-fit:contain;" onerror="this.parentElement.style.background=\'#e3b341\'">'
         +'</div>',
     iconSize:[38,38],iconAnchor:[19,19],className:''
   });
@@ -3126,7 +3142,7 @@ function journalBookIcon(found){
 // don't have a separate "grey" portrait asset per Pal.
 var BOUNTY_ICON_SZ=EFF_ACORN_SZ*1.6;
 function bountyBossIcon(name,found){
-  var img='<img src="'+palPortrait(name)+'" onerror="this.style.visibility=\'hidden\'">';
+  var img='<img src="'+palPortrait(name)+'" alt="" onerror="this.style.visibility=\'hidden\'">';
   return L.divIcon({
     className:'eff-map-marker bounty-marker'+(found?' eff-map-found':''),
     html:'<div class="bounty-ring">'+img+'</div>',
@@ -3450,6 +3466,16 @@ function initEffigyView(){
       fetchPlayerLocations();
     });
   });
+}
+
+// World x/y -> in-game grid coords (cx/cy), for marker tooltips. Mirrors
+// map_constants.json (also read by build_public_data.ps1 and this Manager's own
+// ConvertTo-WorldXY) -- keep this literal in sync with that file if the transform ever
+// changes; single-sourcing across the PS/JS boundary isn't done here since dashboard.html
+// is served as a static file with no per-request templating.
+var MAP_CONST={scale:459,offsetX:123888,offsetY:158000};
+function worldToGrid(x,y){
+  return {cx:Math.round((y-MAP_CONST.offsetY)/MAP_CONST.scale), cy:Math.round((x+MAP_CONST.offsetX)/MAP_CONST.scale)};
 }
 
 function effigyRposToLatLng(x,y){
@@ -3847,9 +3873,9 @@ function renderDataMine(){
   },function(p,r){return p.bounty.indexOf(r.species)!==-1;},[
     {header:'In-Game Coords',cell:function(r){
       // Same raw-world -> in-game conversion used by the effigy map tooltip
-      // (cx=(y-158000)/459, cy=(x+123888)/459) so this matches what the player sees on
+      // (via worldToGrid) so this matches what the player sees on
       // their in-game map, not the raw save/world units in the Species/Location line above.
-      var cx=Math.round((r.y-158000)/459), cy=Math.round((r.x+123888)/459);
+      var _g=worldToGrid(r.x,r.y), cx=_g.cx, cy=_g.cy;
       return '<span class="syn-key">X: '+cx+', Y: '+cy+'</span>';
     }}
   ]);
@@ -3930,7 +3956,7 @@ function renderEffigyMap(){
     // Global view filter: hide whichever category (found / new) the player has toggled off.
     // Runs after the count so the summary stays accurate regardless of what is shown.
     if((got&&!effigyShowFound)||(!got&&!effigyShowNew)) return;
-    var cx=Math.round((pos.y-158000)/459), cy=Math.round((pos.x+123888)/459);
+    var _g=worldToGrid(pos.x,pos.y), cx=_g.cx, cy=_g.cy;
     var tip=(got?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#2f9e43">New</b>')
       +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
     // Acorn glyph for both states: green = uncollected, grey/faded = already found.
@@ -4027,7 +4053,7 @@ function renderEffigyMap(){
       var hGot=h.key&&fugitiveCollectedSet.has(h.key.toUpperCase());
       if(hGot&&!effigyShowFound) return;
       var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hGot),interactive:true});
-      var cx=Math.round((h.y-158000)/459), cy=Math.round((h.x+123888)/459);
+      var _g=worldToGrid(h.x,h.y), cx=_g.cx, cy=_g.cy;
       var hStatus=hGot?'<span style="color:#5a6573">&#10003; Defeated</span>':'<b style="color:#f85149">Wanted Fugitive</b>';
       hm.bindTooltip('<b style="color:#111;">'+h.name+'</b><br>'+hStatus
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
@@ -4046,7 +4072,7 @@ function renderEffigyMap(){
       var esGot=es.key&&eagleCollectedSet.has(es.key.toUpperCase());
       if(esGot&&!effigyShowFound) return;
       var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esGot),interactive:true});
-      var cx=Math.round((es.y-158000)/459), cy=Math.round((es.x+123888)/459);
+      var _g=worldToGrid(es.x,es.y), cx=_g.cx, cy=_g.cy;
       var esStatus=esGot?'<span style="color:#5a6573">&#10003; Unlocked</span>':'<b style="color:#e8b339">Not yet unlocked</b>';
       esm.bindTooltip('<b style="color:#111;">'+es.name+'</b><br>'+esStatus
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
@@ -4064,7 +4090,7 @@ function renderEffigyMap(){
       var nGot=n.key&&npcCollectedSet.has(n.key.toUpperCase());
       if(nGot&&!effigyShowFound) return;
       var nm=L.marker(effigyRposToLatLng(n.x,n.y),{icon:npcIcon(nGot),interactive:true});
-      var cx=Math.round((n.y-158000)/459), cy=Math.round((n.x+123888)/459);
+      var _g=worldToGrid(n.x,n.y), cx=_g.cx, cy=_g.cy;
       var nStatus=nGot?'<span style="color:#5a6573">&#10003; Met</span>':'<b style="color:#39c5bb">Not yet met</b>';
       nm.bindTooltip('<b style="color:#111;">'+n.name+'</b><br>'+nStatus
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
@@ -4077,7 +4103,7 @@ function renderEffigyMap(){
   if(effigyShowLandmark&&landmarkLocations&&landmarkLocations.length){
     landmarkLocations.forEach(function(lm){
       var lmk=L.marker(effigyRposToLatLng(lm.x,lm.y),{icon:landmarkIcon(),interactive:true});
-      var cx=Math.round((lm.y-158000)/459), cy=Math.round((lm.x+123888)/459);
+      var _g=worldToGrid(lm.x,lm.y), cx=_g.cx, cy=_g.cy;
       lmk.bindTooltip('<b style="color:#a371f7">'+lm.name+'</b>'
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
@@ -4094,7 +4120,7 @@ function renderEffigyMap(){
     playerLocations.forEach(function(pl){
       if(typeof pl.x!=='number'||typeof pl.y!=='number') return;
       var pm=L.marker(effigyRposToLatLng(pl.x,pl.y),{icon:playerMarkerIcon(pl.yawDeg),interactive:true,zIndexOffset:900});
-      var cx=Math.round((pl.y-158000)/459), cy=Math.round((pl.x+123888)/459);
+      var _g=worldToGrid(pl.x,pl.y), cx=_g.cx, cy=_g.cy;
       pm.bindTooltip('<b style="color:#58a6ff">'+esc(pl.name)+'</b>'
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
@@ -4374,8 +4400,8 @@ function renderSettingsTabs(){
   var html=CATS.filter(function(c){return Object.keys(META).some(function(k){return META[k].c===c;});})
     .map(function(c){
       var dot=Object.keys(sDirty).some(function(k){return META[k]&&META[k].c===c;});
-      return '<div class="tab'+(c===sCat?' active':'')+'" onclick="switchTab(\''+c+'\')">'
-        +c+(dot?'<span class="tab-dot"></span>':'')+'</div>';
+      return '<button type="button" class="tab'+(c===sCat?' active':'')+'" onclick="switchTab(\''+c+'\')">'
+        +c+(dot?'<span class="tab-dot"></span>':'')+'</button>';
     }).join('');
   document.getElementById('settings-tab-bar').innerHTML=html;
 }
@@ -4867,7 +4893,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT2);_rszT2=setTimeo
     // Passives: 2x2 grid, colored + chevroned by rarity tier.
     var passHtml=(p.passives&&p.passives.length)?('<div class="pm-pgrid">'+p.passives.map(passivePill).join('')+'</div>'):'<span class="pm-muted">None</span>';
     var html='<div class="pm-top">'
-      +'<img class="pm-portrait" src="'+palPortrait(look.name)+'" onerror="this.style.visibility=\'hidden\'">'
+      +'<img class="pm-portrait" src="'+palPortrait(look.name)+'" alt="'+esc(look.name)+'" onerror="this.style.visibility=\'hidden\'">'
       +'<div class="pm-id"><div class="pm-name">'+esc(look.name)+(p.gender?(' '+genderIcon(p.gender)):'')+stars+' <span class="pm-no">#'+look.noStr+'</span></div>'
       +(p.nickname?('<div class="pal-nick">'+esc(p.nickname)+'</div>'):'')
       +(badges?('<div class="pal-badges">'+badges+'</div>'):'')+'</div>'
@@ -4926,7 +4952,7 @@ window.addEventListener('resize',function(){clearTimeout(_rszT2);_rszT2=setTimeo
       }).join('');
     }
     var html='<div class="pm-top">'
-      +'<img class="pm-portrait" src="'+palPortrait(d.name)+'" onerror="this.style.visibility=\'hidden\'">'
+      +'<img class="pm-portrait" src="'+palPortrait(d.name)+'" alt="'+esc(d.name)+'" onerror="this.style.visibility=\'hidden\'">'
       +'<div class="pm-id"><div class="pm-name">'+esc(d.name)+' <span class="pm-no">#'+d.noStr+'</span></div>'
       +'<div class="pal-sub pm-muted">Caught: '+d.count+'</div></div>'
       +elemHtml
