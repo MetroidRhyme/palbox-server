@@ -237,12 +237,18 @@ def extract_bounty_data(sav_path):
     flag_set = set(flags)
     excluded = load_excluded_boss_keys()
     defeated = []
+    # Anonymous exact-key overrides take priority over suffix-matching, since a key can carry
+    # a misleading suffix (e.g. "..._BOSS_FAIRYDRAGON" confirmed to actually be WeaselDragon) --
+    # claiming it here first stops the suffix loop below from also misattributing it.
+    claimed_keys = set()
+    for key, species in load_anonymous_boss_keys().items():
+        if key not in excluded and key in flag_set:
+            if species not in defeated:
+                defeated.append(species)
+            claimed_keys.add(key)
     for species in load_bounty_species():
         suffix = "_BOSS_" + species.upper()
-        if any(k.endswith(suffix) for k in flags if k not in excluded):
-            defeated.append(species)
-    for key, species in load_anonymous_boss_keys().items():
-        if key not in excluded and key in flag_set and species not in defeated:
+        if any(k.endswith(suffix) for k in flags if k not in excluded and k not in claimed_keys):
             defeated.append(species)
     return defeated
 
@@ -276,19 +282,22 @@ def extract_datamine_data(sav_path):
         flags = parse_name_bool_map(raw, p)
         excluded = load_excluded_boss_keys()
         matched_keys = set()
+        # Anonymous exact-key overrides are claimed first -- same priority reasoning as
+        # extract_bounty_data() above, so a mislabeled-suffix key (e.g. FairyDragon's suffix
+        # actually meaning WeaselDragon) can't be double-attributed to both species.
+        for key, species in load_anonymous_boss_keys().items():
+            if key not in excluded and key in flags and key not in matched_keys:
+                bounty.append(species)
+                matched_keys.add(key)
         for species in load_bounty_species():
             suffix = "_BOSS_" + species.upper()
             for k in flags:
-                if k in excluded:
+                if k in excluded or k in matched_keys:
                     continue
                 if k.endswith(suffix):
                     bounty.append(species)
                     matched_keys.add(k)
                     break
-        for key, species in load_anonymous_boss_keys().items():
-            if key not in excluded and key in flags and key not in matched_keys:
-                bounty.append(species)
-                matched_keys.add(key)
         for k in flags:
             if k in matched_keys:
                 continue
