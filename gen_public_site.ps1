@@ -7,10 +7,11 @@
 # byte-for-byte what the UI expects. If the dashboard is not reachable we fall back
 # to running the readers directly (names then come from the save, not live sessions).
 #
-# index.html is produced by extracting the dashboard's HTML/JS here-string out of
-# PalWorldServerManager.ps1 and surgically (a) removing the entire control surface
-# and (b) repointing data fetches at the static files. The two maps keep their exact
-# /api/palmaptile and /api/palspawn paths, served by Cloudflare Pages Functions.
+# index.html is produced by reading the dashboard's HTML/JS straight from dashboard.html
+# (PalWorldServerManager.ps1 reads the same file at startup instead of holding it inline)
+# and surgically (a) removing the entire control surface and (b) repointing data fetches
+# at the static files. The two maps keep their exact /api/palmaptile and /api/palspawn
+# paths, served by Cloudflare Pages Functions.
 
 [CmdletBinding()]
 param(
@@ -19,7 +20,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$ManagerPath = Join-Path $Root 'PalWorldServerManager.ps1'
 $IconDir = Join-Path $Root 'PalAssets\Pals'
 $SiteSrc = Join-Path $Root 'site_src'
 
@@ -75,17 +75,11 @@ Write-Step "writing _worker.js"
 if (Test-Path -LiteralPath $PubFunc) { Remove-Item -LiteralPath $PubFunc -Recurse -Force }  # drop any stale functions/ dir
 Copy-Item -Path (Join-Path $SiteSrc '_worker.js') -Destination (Join-Path $Pub '_worker.js') -Force
 
-# ── index.html : extract + transform the dashboard here-string ─────────────────
+# -- index.html : transform the dashboard source --------------------------------
 Write-Step "building index.html"
-$src = [System.IO.File]::ReadAllText($ManagerPath)
-$startMarker = '$HtmlPage = @' + "'"   # matches:  $HtmlPage = @'
-$si = $src.IndexOf($startMarker)
-if ($si -lt 0) { throw "Could not find HTML here-string start marker in $ManagerPath" }
-$contentStart = $src.IndexOf("`n", $si) + 1
-# Closing delimiter of a single-quoted here-string is a newline followed by '@
-$ei = $src.IndexOf("`n'@", $contentStart)
-if ($ei -lt 0) { throw "Could not find HTML here-string end marker in $ManagerPath" }
-$html = $src.Substring($contentStart, $ei - $contentStart)
+$DashboardHtmlPath = Join-Path $Root 'dashboard.html'
+if (-not (Test-Path -LiteralPath $DashboardHtmlPath)) { throw "dashboard.html not found: $DashboardHtmlPath" }
+$html = [System.IO.File]::ReadAllText($DashboardHtmlPath, [System.Text.UTF8Encoding]::new($false))
 
 # (1) Remove the Dashboard nav tab and make Pals the default active tab.
 $html = $html.Replace(

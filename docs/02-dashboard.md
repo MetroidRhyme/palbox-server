@@ -61,19 +61,23 @@ Endpoints: `info`, `settings`, `metrics`, `players`, `announce`, `kick`, `ban`, 
 
 ## Editing the dashboard (if you customize it)
 
-The dashboard HTML/JS is a single-quoted PowerShell here-string (`$HtmlPage`) served as bytes.
+The dashboard HTML/JS lives in its own file, `dashboard.html`, which the Manager reads at
+startup (`[System.IO.File]::ReadAllText(...)`) and serves as bytes -- edit that file directly
+rather than an inline here-string.
 
-- **The Manager runs under Windows PowerShell 5.1** -- route/server code must avoid PS7-only
-  syntax (no ternary `? :`, no `??`/`?.`; use if/else).
+- **The Manager runs under Windows PowerShell 5.1** -- route/server code in
+  `PalWorldServerManager.ps1` must avoid PS7-only syntax (no ternary `? :`, no `??`/`?.`; use
+  if/else). `dashboard.html` itself is just HTML/JS, so this only applies to the .ps1.
 - **Keep served strings pure ASCII.** A raw non-ASCII char in a served string gets mangled
   (the file is read as ANSI). Use HTML entities (`&mdash;`, `&bull;`) in markup and `\uXXXX`
   in JS strings.
-- **Dashboard HTML changes only take effect after a Manager restart** (the HTML is an in-memory
-  here-string).
-- Syntax-check after editing:
+- **Dashboard HTML changes only take effect after a Manager restart** (the file is read once
+  into memory at startup, not on every request).
+- Syntax-check `PalWorldServerManager.ps1` after editing:
   ```powershell
   $e=$null;[System.Management.Automation.Language.Parser]::ParseFile("PalWorldServerManager.ps1",[ref]$null,[ref]$e)|Out-Null;if($e){$e}else{"OK"}
   ```
 
-If you also run the public site, see [04](04-public-site.md) -- the generator extracts and
-transforms this dashboard's HTML, so some edits require regenerating + redeploying the site.
+If you also run the public site, see [04](04-public-site.md) -- the generator reads
+`dashboard.html` directly and transforms it, so some edits require regenerating + redeploying
+the site.

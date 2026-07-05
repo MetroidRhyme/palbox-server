@@ -76,8 +76,8 @@ node --check .\site_src\_worker.js          # syntax-check the Worker first
 & .\deploy_public_site.ps1 -Force           # builds the shell + wrangler pages deploy
 ```
 
-- `gen_public_site.ps1` builds the static shell in `public\` by extracting the dashboard's HTML
-  and transforming it read-only.
+- `gen_public_site.ps1` builds the static shell in `public\` by reading `dashboard.html`
+  directly and transforming it read-only.
 - `deploy_public_site.ps1` regenerates + `wrangler pages deploy`s the shell (republishes the Worker).
 - `sync_public_data.ps1` builds the frequent per-player data and uploads **only changed files** to
   R2; it self-gates (exits if the save is unchanged), so it's cheap to run every poll.
