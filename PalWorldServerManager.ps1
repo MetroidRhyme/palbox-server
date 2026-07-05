@@ -18,7 +18,29 @@ $ActiveSettingsPath  = "$ServerDir\Pal\Saved\Config\WindowsServer\PalWorldSettin
 
 $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
     param($InstallScript, $StartScript, $AdminPassword, $RestApiBase,
-          $ConfigFile, $SkipFlagFile, $MaintLogFile)
+          $ConfigFile, $SkipFlagFile, $MaintLogFile, $ServerDir)
+
+    # --- Save backup + health monitoring ---------------------------------------
+    # Runs before every update (the update could in theory corrupt or roll back the
+    # world). Backups land in SaveLibrary using the same layout the Save Manager UI
+    # writes, so they show up there too.
+    $SaveGamesRoot    = "$ServerDir\Pal\Saved\SaveGames\0"
+    $SaveLibraryRoot  = "$ServerDir\SaveLibrary"
+    $GameUserSettings = "$ServerDir\Pal\Saved\Config\WindowsServer\GameUserSettings.ini"
+    $ActiveSettings   = "$ServerDir\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
+    $HealthScript     = "$ServerDir\save_health.py"
+    $BackupKeep       = 14          # keep this many maintenance auto-backups, prune older
+    # Advisory bloat thresholds (well below the ~60 MB on-disk level where saves are
+    # known to crash). There is no safe in-place cleaner for this 0.6/PlM save format,
+    # so crossing these only logs a warning - it never edits the save automatically.
+    $WarnLevelDiskMB  = 25
+    $WarnEggItems     = 8000
+
+    # Off-machine backup: SaveLibrary is git-ignored and lives on this one disk, so a
+    # weekly zip goes to R2 too -- retention is a native R2 lifecycle rule on the
+    # backups/ prefix (expire after ~32 days / ~4 weekly backups), not pruned here.
+    $OffMachineStateFile = "$ServerDir\.palbox_offmachine_backup_state.json"
+    $OffMachineConfig    = "$ServerDir\config.ps1"
 
     function Log([string]$Msg) {
         $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Msg"
@@ -110,6 +132,144 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
     function IsSkipSet { return (Test-Path $SkipFlagFile) }
     function ClearSkip { Remove-Item $SkipFlagFile -Force -ErrorAction SilentlyContinue }
 
+    # The world the server loads is named by DedicatedServerName in GameUserSettings.ini.
+    # The server rewrites that file on shutdown, so we only read it while stopped.
+    function Get-ActiveWorldDir {
+        if (-not (Test-Path $GameUserSettings)) { return $null }
+        $c = Get-Content $GameUserSettings -Raw -Encoding UTF8
+        if ($c -match '(?m)^\s*DedicatedServerName\s*=\s*(.+?)\s*$') {
+            $dir = Join-Path $SaveGamesRoot $Matches[1].Trim()
+            if (Test-Path (Join-Path $dir 'Level.sav')) { return $dir }
+        }
+        # Fallback: the only world folder that actually has a Level.sav.
+        $cand = Get-ChildItem $SaveGamesRoot -Directory -EA SilentlyContinue |
+                Where-Object { Test-Path (Join-Path $_.FullName 'Level.sav') } |
+                Select-Object -First 1
+        if ($cand) { return $cand.FullName }
+        return $null
+    }
+
+    # Copy the live world into SaveLibrary\Auto-backup_<stamp>\<guid>\ with a slot.json
+    # that matches what the Save Manager writes, so the backup appears in its UI.
+    function Backup-LiveWorld {
+        $worldDir = Get-ActiveWorldDir
+        if (-not $worldDir) { Log "Backup skipped: no active world found."; return }
+        $guid  = Split-Path $worldDir -Leaf
+        $stamp = Get-Date -Format 'yyyy-MM-dd_HH_mm'
+        $slot  = Join-Path $SaveLibraryRoot "Auto-backup_$stamp"
+        $dest  = Join-Path $slot $guid
+        if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }
+
+        # robocopy: fast, handles the deep backup\ tree; exit codes < 8 are success.
+        robocopy $worldDir $dest /E /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
+        if ($LASTEXITCODE -ge 8) { Log "Backup FAILED (robocopy $LASTEXITCODE): $slot"; return }
+
+        if (Test-Path $ActiveSettings) { Copy-Item $ActiveSettings (Join-Path $slot 'PalWorldSettings.ini') -Force }
+        $parent = ''
+        $marker = Join-Path $SaveLibraryRoot '.active-slot'
+        if (Test-Path $marker) { $parent = (Get-Content $marker -Raw -Encoding UTF8).Trim() }
+        $meta = [ordered]@{
+            name="Auto-backup $stamp"; guid=$guid; created=(Get-Date -Format o)
+            note="Pre-maintenance snapshot"; auto=$true; parent=$parent
+        }
+        ($meta | ConvertTo-Json) | Set-Content (Join-Path $slot 'slot.json') -Encoding UTF8
+        Log "Backup saved: $slot"
+    }
+
+    # Keep only the newest $BackupKeep pre-maintenance auto-backups (by folder name,
+    # which is timestamp-sortable). Only prunes the ones this job makes; named saves
+    # and Manager snapshots are left untouched.
+    function Prune-AutoBackups {
+        $mine = Get-ChildItem $SaveLibraryRoot -Directory -EA SilentlyContinue |
+                Where-Object { $_.Name -like 'Auto-backup_*' } |
+                Sort-Object Name -Descending
+        if ($mine.Count -le $BackupKeep) { return }
+        foreach ($old in $mine[$BackupKeep..($mine.Count - 1)]) {
+            try { Remove-Item $old.FullName -Recurse -Force -EA Stop; Log "Pruned old backup: $($old.Name)" }
+            catch { Log "Could not prune $($old.Name): $($_.Exception.Message)" }
+        }
+    }
+
+    # Read-only bloat report. Logs sizes + egg-item count and warns past thresholds.
+    # Never edits the save: the 0.6/PlM format has no safe in-place cleaner (the parse
+    # libraries the community tools build on cannot round-trip it). If a warning fires,
+    # do a manual, verified cleanup offline against a backup - don't automate it.
+    function Report-SaveHealth {
+        $worldDir = Get-ActiveWorldDir
+        if (-not $worldDir) { return }
+        $json = $null
+        try { $json = & python $HealthScript $worldDir 2>$null | Select-Object -Last 1 } catch {}
+        if (-not $json) { Log "Save health: report unavailable (python/save_health.py?)."; return }
+        try { $h = $json | ConvertFrom-Json } catch { Log "Save health: bad output."; return }
+        if (-not $h.ok) { Log "Save health error: $($h.error)"; return }
+
+        $diskMB   = [math]::Round($h.levelDiskBytes   / 1MB, 1)
+        $decompMB = [math]::Round($h.levelDecompBytes / 1MB, 1)
+        $dpsMB    = [math]::Round($h.maxDpsDiskBytes  / 1MB, 1)
+        Log "Save health: Level.sav ${diskMB}MB disk / ${decompMB}MB decompressed, eggs=$($h.eggItems), max _dps=${dpsMB}MB"
+        if ($diskMB     -ge $WarnLevelDiskMB) { Log "WARNING: Level.sav is ${diskMB}MB on disk (>= ${WarnLevelDiskMB}MB). Consider an offline save cleanup." }
+        if ($h.eggItems -ge $WarnEggItems)    { Log "WARNING: $($h.eggItems) egg dynamic-item records (>= $WarnEggItems) - save bloat building up." }
+    }
+
+    # Zips SaveLibrary (which, run right after Backup-LiveWorld, already holds a fresh
+    # live-world snapshot) and pushes it to R2 so a single-disk failure can't take out
+    # every backup along with the live world. Runs at most once every ~7 days, gated on
+    # a persisted timestamp rather than a fixed weekday so it still catches up if the
+    # job was down on the usual day. Retention is the R2-side lifecycle rule, not here.
+    function Backup-OffMachine {
+        $last = $null
+        if (Test-Path $OffMachineStateFile) {
+            try { $last = (Get-Content $OffMachineStateFile -Raw | ConvertFrom-Json).lastBackup } catch {}
+        }
+        if ($last) {
+            try { if (((Get-Date) - [datetime]$last).TotalDays -lt 7) { return } } catch {}
+        }
+
+        # Same Process -> User -> Machine credential fallback as sync_public_data.ps1,
+        # since this job (like that script) can start with a bare Process environment.
+        foreach ($v in 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID') {
+            if (-not [Environment]::GetEnvironmentVariable($v, 'Process')) {
+                $val = [Environment]::GetEnvironmentVariable($v, 'User')
+                if (-not $val) { $val = [Environment]::GetEnvironmentVariable($v, 'Machine') }
+                if ($val) { Set-Item -Path ("Env:" + $v) -Value $val }
+            }
+        }
+        if (-not $env:CLOUDFLARE_API_TOKEN -or -not $env:CLOUDFLARE_ACCOUNT_ID) {
+            Log "Off-machine backup skipped: R2 credentials not set in the environment."
+            return
+        }
+
+        $bucket = 'your-r2-bucket'
+        if (Test-Path $OffMachineConfig) { . $OffMachineConfig; if ($R2Bucket) { $bucket = $R2Bucket } }
+
+        $stamp = Get-Date -Format 'yyyy-MM-dd'
+        $zipPath = Join-Path $env:TEMP "palbox-offmachine-backup-$stamp.zip"
+        if (Test-Path $zipPath) { Remove-Item $zipPath -Force -EA SilentlyContinue }
+
+        Log "Off-machine backup: zipping SaveLibrary..."
+        try {
+            Compress-Archive -Path (Join-Path $SaveLibraryRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal -EA Stop
+        } catch {
+            Log "Off-machine backup FAILED (zip): $($_.Exception.Message)"
+            return
+        }
+
+        $key = "backups/offmachine-backup-$stamp.zip"
+        $sizeMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
+        Log "Off-machine backup: uploading $key (${sizeMB}MB)..."
+        $wranglerCmd = Get-Command wrangler -ErrorAction SilentlyContinue
+        if ($wranglerCmd) { & wrangler r2 object put "$bucket/$key" --file $zipPath --content-type application/zip --remote | Out-Null }
+        else { & npx wrangler r2 object put "$bucket/$key" --file $zipPath --content-type application/zip --remote | Out-Null }
+        $code = $LASTEXITCODE
+        Remove-Item $zipPath -Force -EA SilentlyContinue
+
+        if ($code -ne 0) { Log "Off-machine backup FAILED (wrangler put exit $code)."; return }
+
+        ([ordered]@{ lastBackup = (Get-Date -Format o) } | ConvertTo-Json) |
+            Set-Content $OffMachineStateFile -Encoding UTF8
+        Log "Off-machine backup uploaded: $key (${sizeMB}MB)"
+    }
+
     # Start server if not already running
     if (-not (Get-Process | Where-Object { $_.Name -like "*PalServer*" })) {
         Log "Server not running - starting now..."
@@ -169,6 +329,12 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
         Log "=== MAINTENANCE START ==="
         Stop-PalServer
 
+        Log "Backing up world before update..."
+        Backup-LiveWorld
+        Report-SaveHealth
+        Prune-AutoBackups
+        Backup-OffMachine
+
         Log "Running update script..."
         & powershell.exe -ExecutionPolicy Bypass -NonInteractive -File $InstallScript
         Log "Update complete."
@@ -186,7 +352,7 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
     }
 
 } -ArgumentList $InstallScript, $StartScript, $AdminPassword, $RestApiBase,
-                $ConfigFile, $SkipFlagFile, $MaintLogFile
+                $ConfigFile, $SkipFlagFile, $MaintLogFile, $ServerDir
 
 # ── Dashboard Job ─────────────────────────────────────────────────────────────
 

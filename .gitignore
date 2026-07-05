@@ -18,6 +18,7 @@ maintenance.log
 .palbox_deploy_state.json
 .palbox_r2_sync_state.json
 .palbox_msg_push_state.json
+.palbox_offmachine_backup_state.json
 manager-config.json
 sync_public_data.log
 prefs/

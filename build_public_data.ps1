@@ -388,10 +388,24 @@ function Get-ConfirmedLandmarks {
 }
 
 # ── Run a Python reader and return its stdout as a single string ───────────────
+# Under $ErrorActionPreference = 'Stop' (set above), a native command's stderr line
+# becomes a terminating exception the instant it's written -- even with "2>$null" on
+# the call, since that redirect only takes effect after the error-vs-stop check. That
+# turned every stderr WARNING (not just real failures) into an aborted build with only
+# the first traceback line as the message and the exit-code check below as dead code
+# (2026-07-02: a stray warning took the sync down for ~15 hours). Fix: relax EAP to
+# 'Continue' for just this native call (local to the function scope, so it doesn't
+# affect the rest of the script) and merge both streams so stderr lines arrive as
+# ErrorRecord objects we can separate out and report in full, rather than as thrown
+# exceptions.
 function Invoke-Reader([string[]]$ScriptArgs) {
-  $out = & python @ScriptArgs 2>$null
-  if ($LASTEXITCODE -ne 0 -or -not $out) {
-    throw "python $($ScriptArgs -join ' ') failed (exit $LASTEXITCODE)"
+  $ErrorActionPreference = 'Continue'
+  $raw = & python @ScriptArgs 2>&1
+  $code = $LASTEXITCODE
+  $out = @($raw | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] })
+  $errText = ($raw | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { $_.ToString() }) -join "`n"
+  if ($code -ne 0 -or -not $out) {
+    throw "python $($ScriptArgs -join ' ') failed (exit ${code}):`n$errText"
   }
   return ($out -join "`n")
 }
