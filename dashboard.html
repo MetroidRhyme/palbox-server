@@ -220,6 +220,9 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
   /* Toasts: full-width at bottom */
   #toasts{left:10px;right:10px;bottom:10px;}
   .toast{max-width:none;}
+
+  /* Map "Layers" panel: taller touch rows than the ~20px mouse-sized default */
+  #eff-filter-body button{padding:8px!important;}
 }
 
 /* ---- Pal Box ---- */
@@ -493,6 +496,10 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     </div>
     <div style="position:relative;flex:1;min-height:0;">
       <div id="eff-filter-panel" style="position:absolute;top:8px;left:8px;z-index:1000;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;flex-direction:column;gap:5px;box-shadow:0 4px 16px rgba(0,0,0,.35);">
+        <div id="eff-filter-hdr" onclick="toggleFilterPanel()" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-weight:600;">
+          <span id="eff-filter-arrow" style="display:inline-block;font-size:10px;color:var(--muted);transition:transform .15s;">&#9660;</span> Layers
+        </div>
+        <div id="eff-filter-body" style="display:flex;flex-direction:column;gap:5px;">
         <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have not found yet"><span style="color:#3fb950;">&#9679;</span> Lifmunk Effigies</button>
         <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have already found"><span style="color:#484f58;">&#9679;</span> Found</button>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -511,6 +518,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         </div>
         <button id="eff-filt-landmark" onclick="toggleEffigyFilter('landmark')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide other confirmed landmarks (discovered areas, etc.)"><span style="color:#a371f7;">&#9679;</span> Landmarks</button>
         <button id="eff-filt-players" onclick="toggleEffigyFilter('players')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide every player's live position (from their own save's Translation/Rotation)"><span style="color:#58a6ff;">&#9679;</span> Players</button>
+        </div>
       </div>
       <div id="effigy-leaflet-map" style="position:absolute;inset:0;"></div>
     </div>
@@ -3190,6 +3198,21 @@ function toggleBountyManual(species){
 // solely from the save). Both default on. effigyShowJournal/effigyShowBounty are independent
 // toggles for the journal-note / bounty-boss overlays (unrelated to found/new).
 var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowNpc=true, effigyShowLandmark=true, effigyShowPlayers=true;
+
+// "Layers" panel: collapsible so it doesn't sit open over most of a phone-sized map (it
+// used to be an always-open overlay). Collapsed by default only on phone widths, applied
+// once at first init (see initEffigyView) so it doesn't fight a manual toggle afterward.
+function toggleFilterPanel(){
+  var body=document.getElementById('eff-filter-body'), arrow=document.getElementById('eff-filter-arrow');
+  if(!body) return;
+  var collapsed=body.style.display==='none';
+  body.style.display=collapsed?'flex':'none';
+  if(arrow) arrow.style.transform=collapsed?'':'rotate(-90deg)';
+}
+function initFilterPanelCollapse(){
+  if(window.matchMedia && window.matchMedia('(max-width:640px)').matches) toggleFilterPanel();
+}
+
 function setEffigyFilterBtns(){
   var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bp=document.getElementById('eff-filt-npc'), bl=document.getElementById('eff-filt-landmark'), bpl=document.getElementById('eff-filt-players');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
@@ -3346,6 +3369,7 @@ function initEffigyView(){
     return;
   }
   effigyInited=true;
+  initFilterPanelCollapse();
   loadLeaflet(function(){
     requestAnimationFrame(function(){
       if(!effigyLeaflet){
@@ -3923,13 +3947,28 @@ function renderEffigyMap(){
       var bStatus=bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
         :bManual?'<span style="color:#5a6573">&#10003; Marked defeated by you</span>'
         :'<b style="color:#e3b341">Alpha Boss</b>';
-      if(clickable) bStatus+='<br><span style="color:#8a8f98;font-size:11px;">Click to '+(bManual?'unmark':'mark defeated')+'</span>';
       bm.bindTooltip('<b style="color:#111;">'+b.name+'</b><br>'+bStatus,
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       bm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
       bm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
       if(clickable){
-        bm.on('click',function(){toggleBountyManual(b.species);});
+        // A bare click used to toggle "defeated" immediately and silently -- fine with a
+        // hover tooltip to read first on desktop, but on touch (no hover) a tap to see the
+        // name flipped the mark with no confirmation and no undo. Now tapping opens a
+        // popup with an explicit button, and the actual toggle confirms via toast.
+        bm.bindPopup('<b style="color:#111;">'+esc(b.name)+'</b><br>'+bStatus
+          +'<br><button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="margin-top:6px;font-size:12px;">'
+          +(bManual?'Unmark defeated':'Mark defeated')+'</button>');
+        bm.on('popupopen',function(e){
+          var btn=e.popup.getElement()&&e.popup.getElement().querySelector('.eff-bounty-mark-btn');
+          if(!btn) return;
+          btn.onclick=function(){
+            var wasManual=bManual;
+            toggleBountyManual(b.species);
+            toast((wasManual?'Unmarked ':'Marked ')+b.name+(wasManual?' as not defeated.':' as defeated.'),'success');
+            bm.closePopup();
+          };
+        });
         bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
       }
       effigyMarkerLayer.addLayer(bm);
