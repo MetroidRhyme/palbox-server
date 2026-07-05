@@ -3988,14 +3988,22 @@ function landmarkIcon(){ return simpleDotIcon('#a371f7'); }
 // NOT independently verified against the map's actual up/down/left/right -- if the arrow
 // visibly doesn't match which way a player is really facing in-game, that's a rotation-offset
 // bug to fix here, not a data bug.
+// Compass-arrow shape (a chevron pointing "up" before rotation), same clip-path drawn
+// twice at different insets to fake a white outline -- clip-path shapes can't take a
+// plain CSS border like the circular markers elsewhere on this map do.
+var PLAYER_ARROW_CLIP='polygon(50% 0%, 100% 100%, 50% 76%, 0% 100%)';
 function playerMarkerIcon(yawDeg){
   var hasYaw=(typeof yawDeg==='number'&&!isNaN(yawDeg));
-  var nose=hasYaw?'<div style="position:absolute;top:-6px;left:50%;width:0;height:0;margin-left:-4px;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:7px solid #58a6ff;"></div>':'';
+  // Facing is briefly unknown right after a teleport/spawn (see /palworld-dataminer) --
+  // still point the arrow "up" so the marker isn't blank, but fade it to signal the
+  // heading isn't real data.
+  var op=hasYaw?'1':'0.45';
+  var rot=hasYaw?yawDeg:0;
   return L.divIcon({
     className:'eff-map-marker',
-    html:'<div style="width:100%;height:100%;'+(hasYaw?('transform:rotate('+yawDeg+'deg);'):'')+'position:relative;">'
-      +nose
-      +'<div style="width:100%;height:100%;border-radius:50%;background:#58a6ff;border:2px solid #fff;box-sizing:border-box;"></div>'
+    html:'<div style="width:100%;height:100%;position:relative;opacity:'+op+';transform:rotate('+rot+'deg);">'
+      +'<div style="position:absolute;inset:-2px;background:#fff;clip-path:'+PLAYER_ARROW_CLIP+';"></div>'
+      +'<div style="position:absolute;inset:0;background:#58a6ff;clip-path:'+PLAYER_ARROW_CLIP+';"></div>'
       +'</div>',
     iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
