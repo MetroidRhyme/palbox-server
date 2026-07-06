@@ -4274,7 +4274,9 @@ function renderBountySummary(){
 // feature. Everything else persists into the separate datamine_labels.json.
 var DATAMINE_PROPERTIES=[
   {name:'NormalBossDefeatFlag',kind:'bool_map',spatial:true,iconCategories:['Wanted Fugitive','Field Boss'],desc:'Boss / field-alpha defeat flags (Field Boss + Wanted Fugitive map categories).'},
-  {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,noName:true,desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab).'},
+  {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,noName:true,
+    fullRosterKeys:function(){return effigyLocations?Object.keys(effigyLocations):[];},
+    desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab). Includes the full 605-entry effigies.json roster, not just keys a player has actually picked up.'},
   {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Journal'],desc:'Journal / diary note pickups.'},
   {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,iconCategories:['Eagle Statue'],desc:'Eagle Statue (fast travel) unlocks.'},
   {name:'FindAreaFlagMap',kind:'bool_map',spatial:true,desc:'Discovered map zones (Landmarks).'},
@@ -4383,7 +4385,11 @@ function dmRowId(propName,key,scope){
   return 'dm-row-'+(scope?scope+'-':'')+propName+'-'+key.replace(/[^A-Za-z0-9_-]/g,'_');
 }
 
-// Union of every distinct key seen across all players for one property, regardless of kind.
+// Union of every distinct key seen across all players for one property, regardless of kind --
+// PLUS, for a property with a complete public-scrape roster (e.g. RelicObtainForInstanceFlag's
+// fullRosterKeys, effigies.json), every key in that roster too, so the table shows every known
+// effigy (605), not just ones a player has actually picked up (which is all a raw save's own
+// map entries can ever contain).
 function dmAllKeysFor(propName){
   var keys={};
   (dmFullPlayers||[]).forEach(function(p){
@@ -4392,6 +4398,10 @@ function dmAllKeysFor(propName){
     if(d.kind==='name_array'){ (d.entries||[]).forEach(function(k){ keys[k]=1; }); }
     else { Object.keys(d.entries||{}).forEach(function(k){ keys[k]=1; }); }
   });
+  var prop=dmPropByName(propName);
+  if(prop&&prop.fullRosterKeys){
+    prop.fullRosterKeys().forEach(function(k){ keys[k]=1; });
+  }
   return Object.keys(keys).sort();
 }
 
