@@ -608,6 +608,14 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       </div>
     </div>
 
+    <div class="dm-section" id="dm-sec-unmatched-icons">
+      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-unmatched-icons')"><span class="dm-arrow">&#9660;</span>Map Icons Without a Key</div>
+      <div class="dm-section-body">
+        <div class="dm-section-sub">Map pins from the scraped rosters (Eagle Statues, Wanted Fugitive, Field Boss, Journals) whose name/location is already known but has no matching raw save key yet -- type the key in once you've identified it via a live save diff.</div>
+        <div id="dm-unmatched-icons-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
+
     <div id="dm-property-sections"><div class="empty-state">Loading...</div></div>
   </div>
 </div>
@@ -4430,12 +4438,14 @@ function dmTableHtml(prop,keys,players){
 
 async function fetchDataMine(){
   document.getElementById('dm-unmapped-area').innerHTML='<div class="empty-state">Loading...</div>';
+  document.getElementById('dm-unmatched-icons-area').innerHTML='<div class="empty-state">Loading...</div>';
   document.getElementById('dm-property-sections').innerHTML='<div class="empty-state">Loading...</div>';
   try{
     if(!paldeckData) await fetchPaldeck();
     // dmRosterFallback needs these loaded (effigies.json/journal_locations.json, same data
-    // the Map tab uses) -- both functions no-op if already loaded elsewhere in the session.
-    await Promise.all([fetchEffigyLocations(),fetchJournalLocations()]);
+    // the Map tab uses) -- both no-op if already loaded elsewhere in the session. The other
+    // three are for the "Map Icons Without a Key" section below (dmIconCategoriesHtml).
+    await Promise.all([fetchEffigyLocations(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations()]);
     var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
     var mappingsPromise=api('/api/datamine-mappings');
     var playerPromises=roster.map(function(p){
@@ -4453,21 +4463,88 @@ async function fetchDataMine(){
   }catch(e){
     var msg='<div class="empty-state">Failed to load: '+esc(String(e&&e.message||e))+'</div>';
     document.getElementById('dm-unmapped-area').innerHTML=msg;
+    document.getElementById('dm-unmatched-icons-area').innerHTML='';
     document.getElementById('dm-property-sections').innerHTML='';
+  }
+}
+
+// Map-icon categories whose scraped roster (name+coords already known, per the Map tab)
+// carries no matching save-flag key yet -- the roster data itself is already loaded
+// client-side for the Map tab (eagleStatueLocations/wantedFugitiveLocations/bossLocations/
+// journalLocations), just never surfaced here before. Towers is deliberately excluded: it
+// has no per-player tracking and doesn't map cleanly onto a single DATAMINE_PROPERTIES entry
+// (see feedback discussion). getGxGy converts world x/y -> grid coords for categories that
+// don't already carry gx/gy (journals do, from journal_locations.json directly).
+var DM_ICON_CATEGORIES=[
+  {label:'Eagle Statue',property:'FastTravelPointUnlockFlag',getRoster:function(){return eagleStatueLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){eagleStatueLocations=null;return fetchEagleStatues();}},
+  {label:'Wanted Fugitive',property:'NormalBossDefeatFlag',getRoster:function(){return wantedFugitiveLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){wantedFugitiveLocations=null;return fetchWantedFugitives();}},
+  {label:'Field Boss',property:'NormalBossDefeatFlag',getRoster:function(){return bossLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){bossLocations=null;return fetchBossLocations();}},
+  {label:'Journal',property:'NoteObtainForInstanceFlag',getRoster:function(){return journalLocations||[];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){journalLocations=null;return fetchJournalLocations();}}
+];
+
+function dmIconCatByLabel(label){
+  return DM_ICON_CATEGORIES.filter(function(c){return c.label===label;})[0];
+}
+
+function dmIconRowId(property,label,name){
+  return 'dm-icon-'+property+'-'+label+'-'+String(name).replace(/[^A-Za-z0-9_-]/g,'_');
+}
+
+function dmUnmatchedIconsHtml(){
+  var rows=[];
+  DM_ICON_CATEGORIES.forEach(function(cat){
+    cat.getRoster().filter(function(r){return !r.key;}).forEach(function(r){
+      var g=cat.getGxGy(r);
+      rows.push({cat:cat,name:r.name,gx:g.cx,gy:g.cy});
+    });
+  });
+  if(!rows.length) return '<div class="empty-state">Nothing unmatched</div>';
+  return '<table class="syn-table"><thead><tr><th>Category</th><th>Name</th><th>Coordinates</th><th>Key</th><th></th></tr></thead><tbody>'
+    +rows.map(function(r){
+      var rowId=dmIconRowId(r.cat.property,r.cat.label,r.name);
+      var lJs=dmEscJs(r.cat.label), nJs=dmEscJs(r.name);
+      return '<tr><td>'+esc(r.cat.label)+'</td><td>'+esc(r.name)+'</td>'
+        +'<td class="syn-key">X: '+esc(r.gx)+', Y: '+esc(r.gy)+'</td>'
+        +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-key" placeholder="raw save key"></td>'
+        +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineIconKey(\''+lJs+'\',\''+nJs+'\','+r.gx+','+r.gy+',\''+rowId+'\')">Save</button></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
+  var cat=dmIconCatByLabel(catLabel);
+  if(!cat){ toast('Unknown category.','error'); return; }
+  var keyEl=document.getElementById(rowId+'-key');
+  if(!keyEl){ toast('Could not find that row -- try reloading.','error'); return; }
+  var key=keyEl.value.trim();
+  if(!key){ toast('Enter the raw save key first.','error'); return; }
+  try{
+    await api('/api/datamine-mapping','POST',{property:cat.property,key:key,name:name,gx:gx,gy:gy});
+    dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key!==key;});
+    dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:cat.property});
+    // Refetch this category's roster so the just-matched entry's own "key" field updates and
+    // it drops out of the unmatched list immediately, instead of lingering until a full reload.
+    await cat.refetch();
+    toast('Saved.','success');
+    renderDataMine();
+  }catch(e){
+    toast('Failed to save: '+String(e&&e.message||e),'error');
   }
 }
 
 function renderDataMine(){
   var sumEl=document.getElementById('dm-summary');
   var unmappedArea=document.getElementById('dm-unmapped-area');
+  var unmatchedIconsArea=document.getElementById('dm-unmatched-icons-area');
   var sectionsEl=document.getElementById('dm-property-sections');
   if(!dmFullPlayers||!dmMappings){ return; }
   if(!dmFullPlayers.length){
     unmappedArea.innerHTML='<div class="empty-state">No player data</div>';
+    unmatchedIconsArea.innerHTML='';
     sectionsEl.innerHTML='';
     sumEl.textContent='';
     return;
   }
+  unmatchedIconsArea.innerHTML=dmUnmatchedIconsHtml();
 
   var totalKeys=0, unmappedRows=[];
   var sectionsHtml=DATAMINE_PROPERTIES.map(function(prop){
