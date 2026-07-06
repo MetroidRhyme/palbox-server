@@ -4271,7 +4271,7 @@ function renderBountySummary(){
 // feature. Everything else persists into the separate datamine_labels.json.
 var DATAMINE_PROPERTIES=[
   {name:'NormalBossDefeatFlag',kind:'bool_map',spatial:true,desc:'Boss / field-alpha defeat flags (Field Boss + Wanted Fugitive map categories).'},
-  {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,desc:'Effigy pickups.'},
+  {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,noName:true,desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab).'},
   {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,desc:'Journal / diary note pickups.'},
   {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,desc:'Eagle Statue (fast travel) unlocks.'},
   {name:'FindAreaFlagMap',kind:'bool_map',spatial:true,desc:'Discovered map zones (Landmarks).'},
@@ -4317,15 +4317,33 @@ function dmMappingFor(propName,key){
     return {name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false};
   }
   var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key===key;})[0];
-  return m2?{name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false}:{name:null,gx:null,gy:null,fallback:false};
+  if(m2&&m2.name) return {name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false};
+  var fb2=dmRosterFallback(propName,key);
+  if(fb2) return {name:fb2.name,gx:(m2&&m2.gx!=null?m2.gx:null),gy:(m2&&m2.gy!=null?m2.gy:null),fallback:true};
+  return {name:null,gx:m2?m2.gx:null,gy:m2?m2.gy:null,fallback:false};
 }
 
-// Read-only fallback name/location lookup against the existing curated roster files for
-// properties that already have real-world names from prior scraping work (effigies.json's
-// 605-entry public roster; journal_locations.json's wiki-sourced pins) -- these are loaded
-// client-side already for the Map tab (effigyLocations/journalLocations), just never
-// consulted by this tab before. Returns null (not just no-match) if the roster itself
-// hasn't finished loading yet, same as an unmatched key.
+// PAL_LIST (species roster already used by the Pals/Paldeck tab) doubles as a name lookup
+// for PaldeckUnlockFlag/PalCaptureCount/PalCaptureBonusCount, all keyed by Pal species code --
+// matched case-insensitively since PaldeckUnlockFlag keys are upper-cased by
+// parse_name_bool_map_full while PalCaptureCount/PalCaptureBonusCount keep the natural
+// mixed-case species id (see /palworld-dataminer skill's casing-inconsistency note). Built
+// once and cached, not per-call.
+var _dmPalSpeciesName=null;
+function dmPalSpeciesName(key){
+  if(!_dmPalSpeciesName){
+    _dmPalSpeciesName={};
+    (typeof PAL_LIST!=='undefined'?PAL_LIST:[]).forEach(function(row){ _dmPalSpeciesName[row[1].toUpperCase()]=row[2]; });
+  }
+  return _dmPalSpeciesName[key.toUpperCase()]||null;
+}
+
+// Read-only fallback name/location lookup against the existing curated roster/reference data
+// for properties that already have real-world names from prior scraping/curation work
+// (effigies.json's 605-entry public roster; journal_locations.json's wiki-sourced pins;
+// PAL_LIST's species roster) -- most already loaded client-side for other tabs, just never
+// consulted by this tab before. Returns null (not just no-match) if the roster itself hasn't
+// finished loading yet, same as an unmatched key.
 function dmRosterFallback(propName,key){
   if(propName==='RelicObtainForInstanceFlag'&&effigyLocations){
     var e=effigyLocations[key]||effigyLocations[key.toUpperCase()];
@@ -4338,11 +4356,19 @@ function dmRosterFallback(propName,key){
     var j=journalLocations.filter(function(r){return r.key&&r.key.toUpperCase()===key.toUpperCase();})[0];
     if(j&&j.name) return {name:j.name,gx:j.gx,gy:j.gy};
   }
+  if(propName==='PaldeckUnlockFlag'||propName==='PalCaptureCount'||propName==='PalCaptureBonusCount'){
+    var n=dmPalSpeciesName(key);
+    if(n) return {name:n,gx:null,gy:null};
+  }
   return null;
 }
 
-function dmRowId(propName,key){
-  return 'dm-row-'+propName+'-'+key.replace(/[^A-Za-z0-9_-]/g,'_');
+// scope distinguishes the Unmapped Keys section's rows from the same key/property's row in
+// its own property-section table below -- both would otherwise render inputs with identical
+// ids for the same key, so a save could silently read from whichever the browser found
+// first instead of the one actually edited.
+function dmRowId(propName,key,scope){
+  return 'dm-row-'+(scope?scope+'-':'')+propName+'-'+key.replace(/[^A-Za-z0-9_-]/g,'_');
 }
 
 // Union of every distinct key seen across all players for one property, regardless of kind.
@@ -4385,8 +4411,8 @@ function dmRowHtml(prop,key,players){
     +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span></td>'
     +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
       +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>'
-    +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)">'
-      +(m.fallback?' <span class="dm-kind-badge" title="Not yet in confirmed_locations.json -- shown from the existing scraped roster (effigies.json/journal_locations.json). Click Save to promote it.">roster</span>':'')+'</td>'
+    +(prop.noName?'':'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)">'
+      +(m.fallback?' <span class="dm-kind-badge" title="Not yet in confirmed_locations.json -- shown from the existing scraped roster (effigies.json/journal_locations.json). Click Save to promote it.">roster</span>':'')+'</td>')
     +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td>'
     +players.map(function(p){ return '<td class="syn-check">'+dmPlayerCellHtml(prop,p,key)+'</td>'; }).join('')
     +'</tr>';
@@ -4394,7 +4420,8 @@ function dmRowHtml(prop,key,players){
 
 function dmTableHtml(prop,keys,players){
   if(!keys.length) return '<div class="empty-state">None found</div>';
-  return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th><th>Coordinates</th><th>Display Name</th><th></th>'
+  return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th><th>Coordinates</th>'
+    +(prop.noName?'':'<th>Display Name</th>')+'<th></th>'
     +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
     +'</tr></thead><tbody>'
     +keys.map(function(k){return dmRowHtml(prop,k,players);}).join('')
@@ -4446,9 +4473,13 @@ function renderDataMine(){
   var sectionsHtml=DATAMINE_PROPERTIES.map(function(prop){
     var keys=dmAllKeysFor(prop.name);
     totalKeys+=keys.length;
-    keys.forEach(function(k){
-      if(!dmMappingFor(prop.name,k).name) unmappedRows.push({prop:prop,key:k});
-    });
+    // noName properties (e.g. RelicObtainForInstanceFlag) have no name to assign at all --
+    // they'd otherwise permanently flood this section with keys that can never be "mapped".
+    if(!prop.noName){
+      keys.forEach(function(k){
+        if(!dmMappingFor(prop.name,k).name) unmappedRows.push({prop:prop,key:k});
+      });
+    }
     var id='dm-sec-'+prop.name;
     return '<div class="dm-section" id="'+id+'">'
       +'<div class="dm-section-hdr" onclick="toggleDmSection(\''+id+'\')"><span class="dm-arrow">&#9660;</span>'+esc(prop.name)
@@ -4465,26 +4496,29 @@ function renderDataMine(){
   unmappedArea.innerHTML=unmappedRows.length
     ? '<table class="syn-table"><thead><tr><th>Property</th><th>Key</th><th>Key Value</th><th>Coordinates</th><th>Display Name</th><th></th></tr></thead><tbody>'
       +unmappedRows.map(function(r){
-        var rowId=dmRowId(r.prop.name,r.key), pJs=dmEscJs(r.prop.name), kJs=dmEscJs(r.key);
+        var m=dmMappingFor(r.prop.name,r.key);
+        var rowId=dmRowId(r.prop.name,r.key,'um'), pJs=dmEscJs(r.prop.name), kJs=dmEscJs(r.key);
         return '<tr><td>'+esc(r.prop.name)+'</td><td class="syn-key">'+esc(r.key)+'</td>'
           +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[r.prop.kind]+'</span></td>'
-          +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" placeholder="gx">'
-            +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" placeholder="gy"></td>'
+          +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
+            +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>'
           +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" placeholder="(unmapped)"></td>'
-          +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td></tr>';
+          +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\',\'um\')">Save</button></td></tr>';
       }).join('')+'</tbody></table>'
     : '<div class="empty-state">Nothing unmapped</div>';
 
   sumEl.textContent=totalKeys+' keys across '+DATAMINE_PROPERTIES.length+' properties, '+unmappedRows.length+' unmapped, '+dmFullPlayers.length+' players';
 }
 
-async function saveDatamineMapping(propName,key){
-  var rowId=dmRowId(propName,key);
+async function saveDatamineMapping(propName,key,scope){
+  var rowId=dmRowId(propName,key,scope);
   var nameEl=document.getElementById(rowId+'-name');
   var gxEl=document.getElementById(rowId+'-gx');
   var gyEl=document.getElementById(rowId+'-gy');
-  if(!nameEl){ toast('Could not find that row -- try reloading.','error'); return; }
-  var name=nameEl.value.trim()||null;
+  if(!gxEl||!gyEl){ toast('Could not find that row -- try reloading.','error'); return; }
+  // nameEl is absent for noName properties (e.g. RelicObtainForInstanceFlag -- no per-key
+  // name exists to assign, coordinates only), not an error.
+  var name=nameEl?(nameEl.value.trim()||null):null;
   var gx=gxEl.value.trim()===''?null:gxEl.value.trim();
   var gy=gyEl.value.trim()===''?null:gyEl.value.trim();
   try{
