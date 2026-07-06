@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Tower of the Free Pal Alliance",
+    "gx": 181,
+    "gy": 30,
+    "x": -110118,
+    "y": 241079,
+    "lv": 25
+  },
+  {
+    "name": "Tower of the Brothers of the Eternal Pyre",
+    "gx": -588,
+    "gy": -518,
+    "x": -361650,
+    "y": -111892,
+    "lv": 45
+  },
+  {
+    "name": "Tower of the PAL Genetic Research Unit",
+    "gx": -148,
+    "gy": 447,
+    "x": 81285,
+    "y": 90068,
+    "lv": 50
+  },
+  {
+    "name": "Tower of the PIDF",
+    "gx": 556,
+    "gy": 335,
+    "x": 29877,
+    "y": 413204,
+    "lv": 40
+  },
+  {
+    "name": "Tower of the Rayne Syndicate",
+    "gx": 111,
+    "gy": -431,
+    "x": -321717,
+    "y": 208949,
+    "lv": 10
+  },
+  {
+    "name": "Feybreak Tower",
+    "gx": -1294,
+    "gy": -1669,
+    "x": -889959,
+    "y": -435946,
+    "lv": 60
+  },
+  {
+    "name": "Moonflower Tower",
+    "gx": -597,
+    "gy": 206,
+    "x": -29334,
+    "y": -116023,
+    "lv": 55
+  }
+]

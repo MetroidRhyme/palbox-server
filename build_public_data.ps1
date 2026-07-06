@@ -128,13 +128,13 @@ function ConvertTo-WorldXY([int]$gx, [int]$gy) {
   return @{ x = ($gy * $mc.scale) - $mc.offsetX; y = ($gx * $mc.scale) + $mc.offsetY }
 }
 
-# Effigy keys Anthony has manually clicked "Confirm" on in the admin dashboard popup --
+# Keys/species Anthony has manually clicked "Confirm" on in an admin dashboard popup -- each
 # kept in its own file rather than confirmed_locations.json, which stays owned exclusively
 # by the Desktop dataminer script. See the matching PalWorldServerManager.ps1 function's
-# comment for why this is a separate signal from "picked up in-game".
-function Get-EffigyConfirmedKeys {
+# comment for why this is a separate signal from "picked up/defeated in-game".
+function Get-ManualConfirmSet([string]$fileName) {
   $keys = @{}
-  $f = "$Root\effigy_confirmed_keys.json"
+  $f = "$Root\$fileName"
   if (Test-Path -LiteralPath $f) {
     try {
       $arr = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -145,6 +145,12 @@ function Get-EffigyConfirmedKeys {
   }
   return $keys
 }
+function Get-EffigyConfirmedKeys { return Get-ManualConfirmSet 'effigy_confirmed_keys.json' }
+function Get-JournalConfirmedKeys { return Get-ManualConfirmSet 'journal_confirmed_keys.json' }
+function Get-BountyConfirmedSpecies { return Get-ManualConfirmSet 'bounty_confirmed_species.json' }
+function Get-TowerConfirmedNames { return Get-ManualConfirmSet 'tower_confirmed_keys.json' }
+function Get-FugitiveConfirmedNames { return Get-ManualConfirmSet 'fugitive_confirmed_keys.json' }
+function Get-EagleConfirmedNames { return Get-ManualConfirmSet 'eagle_confirmed_keys.json' }
 
 # Anthony wants ONLY his own confirmed locations on the map for Journals/Bounty -- those
 # Merge-Confirmed* functions FILTER the base public/wiki-sourced data down to matches only
@@ -181,22 +187,24 @@ function Merge-ConfirmedJournals([string]$json) {
   try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
   if ($null -eq $arr) { $arr = @() }
   $byKey = @{}
-  foreach ($c in $confirmed) { $byKey[$c.key.ToUpper()] = $c }
+  foreach ($c in $confirmed) { if ($c.key) { $byKey[$c.key.ToUpper()] = $c } }
+  $manualKeys = Get-JournalConfirmedKeys
   $result = @()
   foreach ($entry in $arr) {
-    if (-not $entry.key) { continue }
-    $c = $byKey[$entry.key.ToUpper()]
+    $out = @{ name = $entry.name; x = $entry.x; y = $entry.y; gx = $entry.gx; gy = $entry.gy; key = $entry.key }
+    $c = if ($entry.key) { $byKey[$entry.key.ToUpper()] } else { $null }
     if ($c) {
       $xy = ConvertTo-WorldXY $c.gx $c.gy
-      $entry.x = $xy.x
-      $entry.y = $xy.y
-      $entry.gx = $c.gx
-      $entry.gy = $c.gy
-      # Anthony's script is the source of truth -- override the name too, not
-      # just the coordinates, if it has one for this key.
-      if ($c.name) { $entry.name = $c.name }
-      $result += $entry
+      $out.x = $xy.x
+      $out.y = $xy.y
+      $out.gx = $c.gx
+      $out.gy = $c.gy
+      if ($c.name) { $out.name = $c.name }
+      $out.m = $true
+    } elseif ($entry.key -and $manualKeys.ContainsKey($entry.key.ToUpper())) {
+      $out.m = $true
     }
+    $result += $out
   }
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
@@ -226,96 +234,192 @@ function Get-AnonymousBossKeyMap {
 # confirmed entry hasn't been added to either roster yet.
 function Test-SyndicateKeyShape([string]$key) { return $key -match '^BOSS_' }
 
+# Towers (towers.json, 7 raid-boss tower locations scraped from paldb.cc, added 2026-07-06)
+# were previously confirmed by Anthony under the Eagle Statue bucket, since walking up to
+# one behaves like a fast-travel point in his own mental model.
+# Merge-ConfirmedWantedFugitives/EagleStatues below explicitly exclude any confirmed entry
+# whose name matches one of these 7 so it routes to Merge-ConfirmedTowers instead.
+function Get-TowerNameSet {
+  $names = New-Object System.Collections.Generic.HashSet[string]
+  $f = Join-Path $Root 'towers.json'
+  if (Test-Path -LiteralPath $f) {
+    try {
+      foreach ($e in (Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+        if ($e.name) { [void]$names.Add($e.name.ToUpper()) }
+      }
+    } catch {}
+  }
+  return $names
+}
+
+# Shared matcher for the three paldb-name-only roster overlays below (Tower/Wanted
+# Fugitive/Eagle Statue). Unlike Journals (matched by a stable "key") or Bounty (matched by
+# species), paldb's own scrape carries no save-flag key or species id at all -- only a
+# display name + gx/gy -- so a confirmed_locations.json entry can only line up by exact name
+# (primary), a short-callsign suffix match (added 2026-07-06, mirroring
+# PalWorldServerManager.ps1's copy: Anthony's confirmed Wanted Fugitive entries are recorded
+# under the short in-game callsign alone, e.g. "Aloha", while the paldb roster's display name
+# is the full title, e.g. "Pineapple Pizza Enthusiast Aloha" -- a confirmed entry whose short
+# name is the roster name's final word, on a word boundary, counts as a match), or close
+# gx/gy proximity (fallback, for an entry with no name set yet).
+function Find-ConfirmedByNameOrCoord($rosterEntry, $candidates) {
+  $nameU = if ($rosterEntry.name) { $rosterEntry.name.ToUpper() } else { $null }
+  foreach ($c in $candidates) {
+    if ($nameU -and $c.name -and $c.name.ToUpper() -eq $nameU) { return $c }
+  }
+  foreach ($c in $candidates) {
+    if ($nameU -and $c.name -and $nameU.EndsWith(' ' + $c.name.ToUpper())) { return $c }
+  }
+  foreach ($c in $candidates) {
+    if (-not $c.name -and [Math]::Abs($c.gx - $rosterEntry.gx) -le 3 -and [Math]::Abs($c.gy - $rosterEntry.gy) -le 3) { return $c }
+  }
+  return $null
+}
+
+# OVERLAYS the 7-entry paldb-scraped towers.json roster (added 2026-07-06). See
+# Get-TowerNameSet above for why this needed splitting out of Eagle Statues. `m:true` marks
+# a name/coord match against confirmed_locations.json OR a manual dashboard-popup confirm
+# (tower_confirmed_keys.json). No per-player "cleared" signal exists yet for raid towers, so
+# status can only reach confirmed (yellow) or unconfirmed (red) until that's built.
+function Merge-ConfirmedTowers([string]$json) {
+  $confirmed = Get-ConfirmedLocations
+  try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
+  if ($null -eq $arr) { $arr = @() }
+  $manualNames = Get-TowerConfirmedNames
+  $result = @()
+  foreach ($entry in $arr) {
+    $out = @{ name = $entry.name; x = $entry.x; y = $entry.y; lv = $entry.lv }
+    $c = Find-ConfirmedByNameOrCoord $entry $confirmed
+    if ($c) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $out.x = $xy.x
+      $out.y = $xy.y
+      if ($c.name) { $out.name = $c.name }
+      $out.key = $c.key
+      $out.m = $true
+    } elseif ($entry.name -and $manualNames.ContainsKey($entry.name.ToUpper())) {
+      $out.m = $true
+    }
+    $result += $out
+  }
+  return (ConvertTo-Json -InputObject @($result) -Depth 6)
+}
+
 function Merge-ConfirmedBounty([string]$json) {
   $confirmed = Get-ConfirmedLocations
   # No @() wrap -- see the note on Get-ConfirmedLocations above.
   try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
   if ($null -eq $arr) { $arr = @() }
   $anonMap = Get-AnonymousBossKeyMap
+  # Reverse of $anonMap (species -> raw NormalBossDefeatFlag key) -- mirrors
+  # PalWorldServerManager.ps1's copy, kept in sync for data-shape parity even though the
+  # public site doesn't render this field.
+  $reverseAnon = @{}
+  foreach ($k in $anonMap.Keys) { $reverseAnon[$anonMap[$k].ToUpper()] = $k }
   $bySpecies = @{}
-  foreach ($entry in $arr) { if ($entry.species) { $bySpecies[$entry.species.ToUpper()] = $entry } }
-  $result = @()
   foreach ($c in $confirmed) {
     $species = $anonMap[$c.key.ToUpper()]
     if (-not $species) { $species = $c.key }
-    $entry = $bySpecies[$species.ToUpper()]
+    $bySpecies[$species.ToUpper()] = $c
+  }
+  $manualSpecies = Get-BountyConfirmedSpecies
+  $result = @()
+  $claimedSpecies = New-Object System.Collections.Generic.HashSet[string]
+  foreach ($entry in $arr) {
+    if (-not $entry.species) { continue }
+    $sp = $entry.species.ToUpper()
+    $out = @{ species = $entry.species; name = $entry.name; x = $entry.x; y = $entry.y }
+    $c = $bySpecies[$sp]
+    if ($c) {
+      $xy = ConvertTo-WorldXY $c.gx $c.gy
+      $out.x = $xy.x
+      $out.y = $xy.y
+      if ($c.name) { $out.name = $c.name }
+      $out.key = $c.key
+      $out.m = $true
+      [void]$claimedSpecies.Add($sp)
+    } else {
+      if ($reverseAnon.ContainsKey($sp)) { $out.key = $reverseAnon[$sp] }
+      if ($manualSpecies.ContainsKey($sp)) { $out.m = $true }
+    }
+    $result += $out
+  }
+  foreach ($c in $confirmed) {
+    # Anthony's dataminer script already told us (via confirmed_locations.json's "source"
+    # field) that this key is a NormalBossDefeatFlag hit, and its shape says Field Boss, not
+    # Wanted Fugitive -- show it now from his own confirmed name/coords rather than waiting
+    # on a manual anonymous_boss_keys.json edit, if it isn't already covered by a
+    # bounty_bosses.json roster entry above.
+    if ($c.source -ne 'NormalBossDefeatFlag' -or (Test-SyndicateKeyShape $c.key)) { continue }
+    $species = $anonMap[$c.key.ToUpper()]
+    if (-not $species) { $species = $c.key }
+    if ($claimedSpecies.Contains($species.ToUpper())) { continue }
     $xy = ConvertTo-WorldXY $c.gx $c.gy
-    if ($entry) {
-      $entry.x = $xy.x
-      $entry.y = $xy.y
-      if ($c.name) { $entry.name = $c.name }
-      $result += $entry
-    } elseif ($c.source -eq 'NormalBossDefeatFlag' -and -not (Test-SyndicateKeyShape $c.key)) {
-      # Anthony's dataminer script already told us (via confirmed_locations.json's "source"
-      # field) that this key is a NormalBossDefeatFlag hit, and its shape says Field Boss,
-      # not Wanted Fugitive -- show it now from his own confirmed name/coords rather than
-      # waiting on a manual anonymous_boss_keys.json edit. No per-player found/unfound fade
-      # until a species gets assigned there (same static-pin limitation Wanted
-      # Fugitive/Eagle Statue/Landmarks already have).
-      $name = if ($c.name) { $c.name } else { $c.key }
-      $result += @{ species = $c.key; name = $name; x = $xy.x; y = $xy.y }
-    }
+    $name = if ($c.name) { $c.name } else { $c.key }
+    $result += @{ species = $c.key; name = $name; x = $xy.x; y = $xy.y; key = $c.key; m = $true }
   }
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
-# "Wanted Fugitive" -- NPC/Syndicate boss defeat-flag keys (syndicate_bosses.json, e.g.
-# BOSS_MALE_SOLDIER02) that Anthony has personally located. Unlike bounty bosses these
-# carry no location at all in the base roster, so this is entirely sourced from
-# confirmed_locations.json. Primary classifier is the "source" field Anthony's dataminer
-# script now stamps on each entry (source == NormalBossDefeatFlag + syndicate key shape, see
-# Test-SyndicateKeyShape) -- the syndicate_bosses.json roster match is kept only as a
-# fallback for entries confirmed before "source" existed, and as a name-label source. No
-# per-player found/unfound state -- static named pins only, same as Landmarks below.
-function Get-ConfirmedWantedFugitives {
+# "Wanted Fugitive" -- OVERLAYS the 33-entry paldb-scraped wanted_fugitives.json roster
+# (added 2026-07-06, replacing the old confirmed-only/no-base-roster version). Excludes any
+# confirmed entry whose name is a Tower (Get-TowerNameSet above) -- those route to
+# Merge-ConfirmedTowers instead. The real save-flag key still comes through on a match (from
+# the confirmed entry itself) so per-player defeat tracking (player-fugitives) keeps working
+# for anything Anthony has actually confirmed.
+function Merge-ConfirmedWantedFugitives([string]$json) {
   $confirmed = Get-ConfirmedLocations
-  $roster = @{}
-  $synFile = Join-Path $Root 'syndicate_bosses.json'
-  if (Test-Path -LiteralPath $synFile) {
-    try {
-      foreach ($e in (Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-        if ($e.key) { $roster[$e.key.ToUpper()] = $e.label }
-      }
-    } catch {}
-  }
+  try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
+  if ($null -eq $arr) { $arr = @() }
+  $towerNames = Get-TowerNameSet
+  $candidates = @($confirmed | Where-Object { -not ($_.name -and $towerNames.Contains($_.name.ToUpper())) })
+  $manualNames = Get-FugitiveConfirmedNames
   $result = @()
-  foreach ($c in $confirmed) {
-    $isFugitive = $roster.ContainsKey($c.key.ToUpper()) -or
-      ($c.source -eq 'NormalBossDefeatFlag' -and (Test-SyndicateKeyShape $c.key))
-    if ($isFugitive) {
+  foreach ($entry in $arr) {
+    $out = @{ name = $entry.name; x = $entry.x; y = $entry.y; lv = $entry.lv }
+    $c = Find-ConfirmedByNameOrCoord $entry $candidates
+    if ($c) {
       $xy = ConvertTo-WorldXY $c.gx $c.gy
-      $name = if ($c.name) { $c.name } else { $roster[$c.key.ToUpper()] }
-      if (-not $name) { $name = $c.key }
-      $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+      $out.x = $xy.x
+      $out.y = $xy.y
+      if ($c.name) { $out.name = $c.name }
+      $out.key = $c.key
+      $out.m = $true
+    } elseif ($entry.name -and $manualNames.ContainsKey($entry.name.ToUpper())) {
+      $out.m = $true
     }
+    $result += $out
   }
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
-# "Eagle Statues" -- fast-travel points (FastTravelPointUnlockFlag). Primary classifier is
-# the "source" field (see Merge-ConfirmedBounty's comment above); fast_travel_keys.json (a
-# roster of confirmed fast-travel point GUIDs, grown from real save data -- see
-# pal_save_reader.py's extract_fast_travel_data) is kept as a fallback for entries confirmed
-# before "source" existed. Static named pins only.
-function Get-ConfirmedEagleStatues {
+# "Eagle Statues" -- OVERLAYS the 83-entry paldb-scraped eagle_travel_locations.json roster
+# (added 2026-07-06, replacing the old confirmed-only/no-base-roster version; paldb's own
+# raw 89-entry Fast Travel list had 6 broken "en Text"/blank placeholder rows sitting
+# exactly on Tower coordinates, filtered out when eagle_travel_locations.json was built).
+# Same exclusion/matching/key-passthrough pattern as Merge-ConfirmedWantedFugitives above.
+function Merge-ConfirmedEagleStatues([string]$json) {
   $confirmed = Get-ConfirmedLocations
-  $roster = New-Object System.Collections.Generic.HashSet[string]
-  $ftFile = Join-Path $Root 'fast_travel_keys.json'
-  if (Test-Path -LiteralPath $ftFile) {
-    try {
-      foreach ($e in (Get-Content -LiteralPath $ftFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-        if ($e.key) { [void]$roster.Add($e.key.ToUpper()) }
-      }
-    } catch {}
-  }
+  try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
+  if ($null -eq $arr) { $arr = @() }
+  $towerNames = Get-TowerNameSet
+  $candidates = @($confirmed | Where-Object { -not ($_.name -and $towerNames.Contains($_.name.ToUpper())) })
+  $manualNames = Get-EagleConfirmedNames
   $result = @()
-  foreach ($c in $confirmed) {
-    $isEagle = ($c.source -eq 'FastTravelPointUnlockFlag') -or $roster.Contains($c.key.ToUpper())
-    if ($isEagle) {
+  foreach ($entry in $arr) {
+    $out = @{ name = $entry.name; x = $entry.x; y = $entry.y }
+    $c = Find-ConfirmedByNameOrCoord $entry $candidates
+    if ($c) {
       $xy = ConvertTo-WorldXY $c.gx $c.gy
-      $name = if ($c.name) { $c.name } else { $c.key }
-      $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+      $out.x = $xy.x
+      $out.y = $xy.y
+      if ($c.name) { $out.name = $c.name }
+      $out.key = $c.key
+      $out.m = $true
+    } elseif ($entry.name -and $manualNames.ContainsKey($entry.name.ToUpper())) {
+      $out.m = $true
     }
+    $result += $out
   }
   return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
@@ -407,6 +511,23 @@ function Get-ConfirmedLandmarks {
         if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
       }
     } catch {}
+  }
+  # Tower/Wanted Fugitive/Eagle Statue (added 2026-07-06) match confirmed entries by NAME,
+  # not by a GUID-roster membership check like the blocks above -- claim by name here too so
+  # a matched entry doesn't leak into Landmarks.
+  $namedRosterNames = New-Object System.Collections.Generic.HashSet[string]
+  foreach ($rn in @('towers.json', 'wanted_fugitives.json', 'eagle_travel_locations.json')) {
+    $rf = Join-Path $Root $rn
+    if (Test-Path -LiteralPath $rf) {
+      try {
+        foreach ($e in (Get-Content -LiteralPath $rf -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+          if ($e.name) { [void]$namedRosterNames.Add($e.name.ToUpper()) }
+        }
+      } catch {}
+    }
+  }
+  foreach ($c in $confirmed) {
+    if ($c.name -and $namedRosterNames.Contains($c.name.ToUpper())) { [void]$claimed.Add($c.key.ToUpper()) }
   }
   # Anthony's dataminer script stamps a "source" (raw save-flag name) on every newly
   # confirmed entry now -- trust it directly instead of waiting on a roster-file edit.
@@ -729,17 +850,46 @@ if ($doStatic) {
     [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), '[]', $utf8)
   }
 
-  # ── wanted-fugitives.json (Anthony's confirmed NPC/Syndicate boss locations) ───
-  # Entirely sourced from confirmed_locations.json -- no public/wiki base data exists for
-  # these at all. The dashboard serves the same JSON at /api/wanted-fugitives.
+  # wanted-fugitives.json (paldb-scraped human/Syndicate boss locations, added
+  # 2026-07-06) -- Bundled as a static file; Anthony's own confirmed coordinates/names
+  # (Merge-ConfirmedWantedFugitives) override the paldb-sourced base data wherever they
+  # overlap. The dashboard serves the same JSON at /api/wanted-fugitives.
   Write-Step "building data/wanted-fugitives.json"
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'wanted-fugitives.json'), (Get-ConfirmedWantedFugitives), $utf8)
+  $fugitivesLocal = Join-Path $Root 'wanted_fugitives.json'
+  if (Test-Path -LiteralPath $fugitivesLocal) {
+    $fugitivesJson = [System.IO.File]::ReadAllText($fugitivesLocal)
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'wanted-fugitives.json'), (Merge-ConfirmedWantedFugitives $fugitivesJson), $utf8)
+  } else {
+    Write-Step "WARNING: wanted_fugitives.json missing; wanted-fugitive overlay will be empty"
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'wanted-fugitives.json'), '[]', $utf8)
+  }
 
-  # ── eagle-statues.json (Anthony's confirmed fast-travel point locations) ─────
-  # Entirely sourced from confirmed_locations.json. The dashboard serves the same JSON at
-  # /api/eagle-statues.
+  # eagle-statues.json (paldb-scraped fast-travel point locations, added 2026-07-06) --
+  # Bundled as a static file; Anthony's own confirmed coordinates/names
+  # (Merge-ConfirmedEagleStatues) override the paldb-sourced base data wherever they overlap.
+  # The dashboard serves the same JSON at /api/eagle-statues.
   Write-Step "building data/eagle-statues.json"
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'eagle-statues.json'), (Get-ConfirmedEagleStatues), $utf8)
+  $eaglesLocal = Join-Path $Root 'eagle_travel_locations.json'
+  if (Test-Path -LiteralPath $eaglesLocal) {
+    $eaglesJson = [System.IO.File]::ReadAllText($eaglesLocal)
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'eagle-statues.json'), (Merge-ConfirmedEagleStatues $eaglesJson), $utf8)
+  } else {
+    Write-Step "WARNING: eagle_travel_locations.json missing; eagle-statue overlay will be empty"
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'eagle-statues.json'), '[]', $utf8)
+  }
+
+  # towers.json (paldb-scraped raid Tower locations, added 2026-07-06) -- Split out of
+  # Eagle Statues -- see Get-TowerNameSet's comment. Bundled as a static file; the dashboard
+  # serves the same JSON at /api/towers.
+  Write-Step "building data/towers.json"
+  $towersLocal = Join-Path $Root 'towers.json'
+  if (Test-Path -LiteralPath $towersLocal) {
+    $towersJson = [System.IO.File]::ReadAllText($towersLocal)
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'towers.json'), (Merge-ConfirmedTowers $towersJson), $utf8)
+  } else {
+    Write-Step "WARNING: towers.json missing; tower overlay will be empty"
+    [System.IO.File]::WriteAllText((Join-Path $PubData 'towers.json'), '[]', $utf8)
+  }
 
   # ── npcs.json (Anthony's confirmed NPC locations, static; per-player state is separate) ──
   # Entirely sourced from confirmed_locations.json. The dashboard serves the same JSON at

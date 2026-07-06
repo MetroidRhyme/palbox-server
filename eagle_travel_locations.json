@@ -1,0 +1,583 @@
+[
+  {
+    "name": "Mount Obsidian - Midpoint",
+    "gx": -498,
+    "gy": -444,
+    "x": -327684,
+    "y": -70582
+  },
+  {
+    "name": "Eternal Pyre Tower Entrance",
+    "gx": -595,
+    "gy": -531,
+    "x": -367617,
+    "y": -115105
+  },
+  {
+    "name": "Ancient Civilization Ruins",
+    "gx": -398,
+    "gy": -633,
+    "x": -414435,
+    "y": -24682
+  },
+  {
+    "name": "Fisherman's Point",
+    "gx": -480,
+    "gy": -745,
+    "x": -465843,
+    "y": -62320
+  },
+  {
+    "name": "Mount Obsidian - Anubis Statue",
+    "gx": -540,
+    "gy": -638,
+    "x": -416730,
+    "y": -89860
+  },
+  {
+    "name": "Beach of Everlasting Summer",
+    "gx": -803,
+    "gy": -565,
+    "x": -383223,
+    "y": -210577
+  },
+  {
+    "name": "Ruined Fortress City",
+    "gx": -562,
+    "gy": -246,
+    "x": -236802,
+    "y": -99958
+  },
+  {
+    "name": "PIDF Tower Entrance",
+    "gx": 542,
+    "gy": 335,
+    "x": 29877,
+    "y": 406778
+  },
+  {
+    "name": "Sand Dunes Entrance",
+    "gx": 282,
+    "gy": 160,
+    "x": -50448,
+    "y": 287438
+  },
+  {
+    "name": "Duneshelter",
+    "gx": 356,
+    "gy": 347,
+    "x": 35385,
+    "y": 321404
+  },
+  {
+    "name": "Deep Sand Dunes",
+    "gx": 528,
+    "gy": 526,
+    "x": 117546,
+    "y": 400352
+  },
+  {
+    "name": "Cold Shore",
+    "gx": -43,
+    "gy": 11,
+    "x": -118839,
+    "y": 138263
+  },
+  {
+    "name": "No Man's Trail",
+    "gx": -36,
+    "gy": 95,
+    "x": -80283,
+    "y": 141476
+  },
+  {
+    "name": "Icy Weasel Hill",
+    "gx": 4,
+    "gy": 184,
+    "x": -39432,
+    "y": 159836
+  },
+  {
+    "name": "Unthawable Lake",
+    "gx": -101,
+    "gy": 287,
+    "x": 7845,
+    "y": 111641
+  },
+  {
+    "name": "Land of Absolute Zero",
+    "gx": -239,
+    "gy": 492,
+    "x": 101940,
+    "y": 48299
+  },
+  {
+    "name": "PAL Genetic Research Unit Tower Entrance",
+    "gx": -138,
+    "gy": 465,
+    "x": 89547,
+    "y": 94658
+  },
+  {
+    "name": "Feybreak Shipwreck",
+    "gx": -1389,
+    "gy": -1470,
+    "x": -798618,
+    "y": -479551
+  },
+  {
+    "name": "Arena Entrance",
+    "gx": 629,
+    "gy": 15,
+    "x": -117003,
+    "y": 446711
+  },
+  {
+    "name": "Sakurajima - Mushroom Wetlands",
+    "gx": -464,
+    "gy": 132,
+    "x": -63300,
+    "y": -54976
+  },
+  {
+    "name": "Sakurajima - Southern Sandbar",
+    "gx": -650,
+    "gy": 81,
+    "x": -86709,
+    "y": -140350
+  },
+  {
+    "name": "Moonflower Tower",
+    "gx": -597,
+    "gy": 205,
+    "x": -29793,
+    "y": -116023
+  },
+  {
+    "name": "Moonflower Tower Entrance",
+    "gx": -602,
+    "gy": 214,
+    "x": -25662,
+    "y": -118318
+  },
+  {
+    "name": "Cherry Blossom Crossroads",
+    "gx": -516,
+    "gy": 213,
+    "x": -26121,
+    "y": -78844
+  },
+  {
+    "name": "Sakurajima - Northern Rock Field",
+    "gx": -522,
+    "gy": 341,
+    "x": 32631,
+    "y": -81598
+  },
+  {
+    "name": "Secluded Cemetery",
+    "gx": -668,
+    "gy": 265,
+    "x": -2253,
+    "y": -148612
+  },
+  {
+    "name": "Scorched Ashland",
+    "gx": -811,
+    "gy": -828,
+    "x": -503940,
+    "y": -214249
+  },
+  {
+    "name": "Stone Pillar Cave Entrance",
+    "gx": -897,
+    "gy": -1011,
+    "x": -587937,
+    "y": -253723
+  },
+  {
+    "name": "Loess Plains",
+    "gx": -891,
+    "gy": -1456,
+    "x": -792192,
+    "y": -250969
+  },
+  {
+    "name": "Hidden Passage to the Oculus Gate",
+    "gx": -1048,
+    "gy": -1252,
+    "x": -698556,
+    "y": -323032
+  },
+  {
+    "name": "The Oculus Gate, Tower in Sight",
+    "gx": -1118,
+    "gy": -1386,
+    "x": -760062,
+    "y": -355162
+  },
+  {
+    "name": "Feybreak Tower Entrance",
+    "gx": -1288,
+    "gy": -1665,
+    "x": -888123,
+    "y": -433192
+  },
+  {
+    "name": "Scorched Hill",
+    "gx": -1192,
+    "gy": -1254,
+    "x": -699474,
+    "y": -389128
+  },
+  {
+    "name": "Deserted Ash Plateau",
+    "gx": -1399,
+    "gy": -1018,
+    "x": -591150,
+    "y": -484141
+  },
+  {
+    "name": "Emberstone Plateau",
+    "gx": -720,
+    "gy": -1194,
+    "x": -671934,
+    "y": -172480
+  },
+  {
+    "name": "Shield Dragon Tunnel",
+    "gx": -970,
+    "gy": -977,
+    "x": -572331,
+    "y": -287230
+  },
+  {
+    "name": "Forgotten Island Church Ruins",
+    "gx": -461,
+    "gy": -13,
+    "x": -129855,
+    "y": -53599
+  },
+  {
+    "name": "Marsh Island Church Ruins",
+    "gx": 399,
+    "gy": -276,
+    "x": -250572,
+    "y": 341141
+  },
+  {
+    "name": "Isle of the Glacial Core",
+    "gx": 139,
+    "gy": 637,
+    "x": 168495,
+    "y": 221801
+  },
+  {
+    "name": "Oasis Isle",
+    "gx": 885,
+    "gy": 196,
+    "x": -33924,
+    "y": 564215
+  },
+  {
+    "name": "Isle of Decayed Treasures",
+    "gx": 610,
+    "gy": -161,
+    "x": -197787,
+    "y": 437990
+  },
+  {
+    "name": "Sunlit Isle",
+    "gx": 386,
+    "gy": -462,
+    "x": -335946,
+    "y": 335174
+  },
+  {
+    "name": "Frostbitten Isle",
+    "gx": -80,
+    "gy": -947,
+    "x": -558561,
+    "y": 121280
+  },
+  {
+    "name": "Sealed Realm of Terraria",
+    "gx": -422,
+    "gy": -795,
+    "x": -488793,
+    "y": -35698
+  },
+  {
+    "name": "Phantom Isle",
+    "gx": -887,
+    "gy": -186,
+    "x": -209262,
+    "y": -249133
+  },
+  {
+    "name": "Bridge of the Twin Knights",
+    "gx": -13,
+    "gy": -372,
+    "x": -294636,
+    "y": 152033
+  },
+  {
+    "name": "Ravine Entrance",
+    "gx": -67,
+    "gy": -425,
+    "x": -318963,
+    "y": 127247
+  },
+  {
+    "name": "Forgotten Island",
+    "gx": -543,
+    "gy": -29,
+    "x": -137199,
+    "y": -91237
+  },
+  {
+    "name": "Ice Wind Island",
+    "gx": -353,
+    "gy": 77,
+    "x": -88545,
+    "y": -4027
+  },
+  {
+    "name": "Kelpsea Hill",
+    "gx": -408,
+    "gy": -101,
+    "x": -170247,
+    "y": -29272
+  },
+  {
+    "name": "Sea Breeze Archipelago - Castaway Beach",
+    "gx": -99,
+    "gy": -711,
+    "x": -450237,
+    "y": 112559
+  },
+  {
+    "name": "Sea Breeze Archipelago Church",
+    "gx": -73,
+    "gy": -551,
+    "x": -376797,
+    "y": 124493
+  },
+  {
+    "name": "Small Cove",
+    "gx": -205,
+    "gy": -545,
+    "x": -374043,
+    "y": 63905
+  },
+  {
+    "name": "Islandhopper Coast",
+    "gx": 241,
+    "gy": -310,
+    "x": -266178,
+    "y": 268619
+  },
+  {
+    "name": "Marsh Island",
+    "gx": 430,
+    "gy": -345,
+    "x": -282243,
+    "y": 355370
+  },
+  {
+    "name": "Eastern Wild Island",
+    "gx": 548,
+    "gy": -102,
+    "x": -170706,
+    "y": 409532
+  },
+  {
+    "name": "Natural Bridge",
+    "gx": 376,
+    "gy": -212,
+    "x": -221196,
+    "y": 330584
+  },
+  {
+    "name": "Cinnamoth Forest",
+    "gx": -69,
+    "gy": -272,
+    "x": -248736,
+    "y": 126329
+  },
+  {
+    "name": "Sealed Realm of the Swordmaster",
+    "gx": -110,
+    "gy": -468,
+    "x": -338700,
+    "y": 107510
+  },
+  {
+    "name": "Deep Bamboo Thicket",
+    "gx": -325,
+    "gy": -199,
+    "x": -215229,
+    "y": 8825
+  },
+  {
+    "name": "Sealed Realm of the Winged Tyrant",
+    "gx": -264,
+    "gy": -155,
+    "x": -195033,
+    "y": 36824
+  },
+  {
+    "name": "Pristine Snow Field",
+    "gx": -344,
+    "gy": 270,
+    "x": 42,
+    "y": 104
+  },
+  {
+    "name": "Ascetic Falls",
+    "gx": -224,
+    "gy": -441,
+    "x": -326307,
+    "y": 55184
+  },
+  {
+    "name": "Foot of the Volcano",
+    "gx": -353,
+    "gy": -492,
+    "x": -349716,
+    "y": -4027
+  },
+  {
+    "name": "Sealed Realm of the Thunder Dragon",
+    "gx": -215,
+    "gy": -348,
+    "x": -283620,
+    "y": 59315
+  },
+  {
+    "name": "Investigator's Fork",
+    "gx": -217,
+    "gy": -206,
+    "x": -218442,
+    "y": 58397
+  },
+  {
+    "name": "Ancient Ritual Site",
+    "gx": -15,
+    "gy": -292,
+    "x": -257916,
+    "y": 151115
+  },
+  {
+    "name": "Mount Flopie Summit",
+    "gx": 21,
+    "gy": -95,
+    "x": -167493,
+    "y": 167639
+  },
+  {
+    "name": "Lake Center",
+    "gx": 16,
+    "gy": -212,
+    "x": -221196,
+    "y": 165344
+  },
+  {
+    "name": "Hypocrite Hill",
+    "gx": 71,
+    "gy": -248,
+    "x": -237720,
+    "y": 190589
+  },
+  {
+    "name": "Sealed Realm of the Guardian",
+    "gx": 120,
+    "gy": -61,
+    "x": -151887,
+    "y": 213080
+  },
+  {
+    "name": "Snowy Mountain Crossroads",
+    "gx": 95,
+    "gy": -3,
+    "x": -125265,
+    "y": 201605
+  },
+  {
+    "name": "Free Pal Alliance Tower Entrance",
+    "gx": 167,
+    "gy": 45,
+    "x": -103233,
+    "y": 234653
+  },
+  {
+    "name": "Sealed Realm of the Swift",
+    "gx": 286,
+    "gy": 18,
+    "x": -115626,
+    "y": 289274
+  },
+  {
+    "name": "Mossanda Forest",
+    "gx": 233,
+    "gy": -117,
+    "x": -177591,
+    "y": 264947
+  },
+  {
+    "name": "Gobfin's Turf",
+    "gx": 149,
+    "gy": -208,
+    "x": -219360,
+    "y": 226391
+  },
+  {
+    "name": "Rayne Syndicate Tower Entrance",
+    "gx": 118,
+    "gy": -422,
+    "x": -317586,
+    "y": 212162
+  },
+  {
+    "name": "Grassy Behemoth Hills",
+    "gx": 172,
+    "gy": -475,
+    "x": -341913,
+    "y": 236948
+  },
+  {
+    "name": "Desolate Church",
+    "gx": 63,
+    "gy": -416,
+    "x": -314832,
+    "y": 186917
+  },
+  {
+    "name": "Plateau of Beginnings",
+    "gx": 240,
+    "gy": -512,
+    "x": -358896,
+    "y": 268160
+  },
+  {
+    "name": "Small Settlement",
+    "gx": 73,
+    "gy": -485,
+    "x": -346503,
+    "y": 191507
+  },
+  {
+    "name": "Sealed Realm of the Frozen Wings",
+    "gx": 119,
+    "gy": -337,
+    "x": -278571,
+    "y": 212621
+  },
+  {
+    "name": "Fort Ruins",
+    "gx": 181,
+    "gy": -390,
+    "x": -302898,
+    "y": 241079
+  }
+]

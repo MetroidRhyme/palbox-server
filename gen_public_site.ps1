@@ -297,6 +297,7 @@ $html = $html.Replace("'/api/journals'", "'data/journals.json'")
 $html = $html.Replace("'/api/bounty-bosses'", "'data/bounty-bosses.json'")
 $html = $html.Replace("'/api/wanted-fugitives'", "'data/wanted-fugitives.json'")
 $html = $html.Replace("'/api/eagle-statues'", "'data/eagle-statues.json'")
+$html = $html.Replace("'/api/towers'", "'data/towers.json'")
 $html = $html.Replace("'/api/npcs'", "'data/npcs.json'")
 $html = $html.Replace("'/api/landmarks'", "'data/landmarks.json'")
 $html = $html.Replace("'/api/pal-species'", "'data/pal-species.json'")
@@ -633,7 +634,7 @@ foreach ($m in [regex]::Matches($html, '/api/[A-Za-z0-9_-]+')) {
 $expectedDataRefs = @(
   'data/pals.json', 'data/eggs.json', 'data/server-messages.json', 'data/paldeck.json',
   'data/effigies.json', 'data/journals.json', 'data/bounty-bosses.json',
-  'data/wanted-fugitives.json', 'data/eagle-statues.json', 'data/npcs.json',
+  'data/wanted-fugitives.json', 'data/eagle-statues.json', 'data/towers.json', 'data/npcs.json',
   'data/landmarks.json', 'data/pal-species.json', 'data/pal-skills.json',
   'data/pal-passives.json', 'data/settings.json', 'data/meta.json',
   'data/player-location/', 'data/player-effigies/', 'data/player-notes/',

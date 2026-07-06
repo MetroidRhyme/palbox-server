@@ -24,5 +24,6 @@
   { "key": "BOSS_MALE_TRADER01", "label": "Trader" },
   { "key": "BOSS_NINJA", "label": "Ninja" },
   { "key": "BOSS_POLICE_RIFLE", "label": "Police (Rifle)" },
-  { "key": "BOSS_SCIENTIST_LASERRIFLE", "label": "Scientist (Laser Rifle)" }
+  { "key": "BOSS_SCIENTIST_LASERRIFLE", "label": "Scientist (Laser Rifle)" },
+  { "key": "BOSS_VIKINGELITE", "label": "Cache" }
 ]

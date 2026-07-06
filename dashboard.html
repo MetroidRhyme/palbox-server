@@ -551,6 +551,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         </div>
         <button id="eff-filt-fugitive" onclick="toggleEffigyFilter('fugitive')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide human/Syndicate boss (Wanted Fugitive) locations"><span style="color:#f85149;">&#9679;</span> Wanted Fugitive</button>
         <button id="eff-filt-eagle" onclick="toggleEffigyFilter('eagle')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide fast-travel point (Eagle Statue) locations"><span style="color:#e8b339;">&#9679;</span> Eagle Statues</button>
+        <button id="eff-filt-tower" onclick="toggleEffigyFilter('tower')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide raid Tower locations"><span style="color:#e8b339;">&#9679;</span> Towers</button>
         <div style="display:flex;align-items:center;gap:6px;">
           <button id="eff-filt-npc" onclick="toggleEffigyFilter('npc')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide NPC locations"><span style="color:#39c5bb;">&#9679;</span> NPCs</button>
           <span id="npc-summary" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="NPCs talked to, from the save"></span>
@@ -3188,16 +3189,9 @@ function bountyBossIcon(name,status){
   var img='<img src="'+palPortrait(name)+'" alt="" onerror="this.style.visibility=\'hidden\'" style="'+wash+'">';
   return _iconMemo[k]=statusRingIcon(img,status,BOUNTY_ICON_SZ);
 }
-// Wanted Fugitive (human/Syndicate bosses), Eagle Statue (fast-travel points), NPC, and
-// Landmarks (discovered areas, everything else) have no dedicated art -- plain colored-dot
-// divIcons, same sizing as the acorn/book glyphs. Unlike Journals/Field Boss, these three
-// have no independent scraped-location roster -- confirmed_locations.json is their only
-// location source, so every visible pin is already "confirmed" by construction. Anthony
-// asked (2026-07-05) to just render them uniformly green rather than build out a fake
-// red/yellow distinction for signals that don't apply here; he'll add per-category icons
-// later. `found` still dims via the shared .eff-map-found opacity rule as a lightweight
-// found/not-found cue. Landmarks has no per-player state, so it keeps its own purple and is
-// unaffected (found always undefined).
+// NPC and Landmarks (discovered areas, everything else) have no dedicated art -- plain
+// colored-dot divIcons, same sizing as the acorn/book glyphs. Landmarks has no per-player
+// state, so it keeps its own purple and is unaffected (found always undefined).
 function simpleDotIcon(colorHex,found){
   var k='dot:'+colorHex+'|'+(found?'1':'0');
   if(_iconMemo[k]) return _iconMemo[k];
@@ -3208,7 +3202,31 @@ function simpleDotIcon(colorHex,found){
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
 }
-function wantedFugitiveIcon(found){ return simpleDotIcon('#3fb950',found); }
+// Wanted Fugitive (human/Syndicate bosses), Eagle Statue (fast-travel points), and Tower
+// (raid bosses) now OVERLAY real paldb-scraped rosters (added 2026-07-06, see
+// Merge-ConfirmedWantedFugitives/EagleStatues/Towers) with the same red/yellow/green
+// status-ring convention as Journals/Field Boss, using paldb's own compass icons instead of
+// a flat dot. Tower has no per-player "cleared" signal yet, so its status can only reach
+// confirmed (yellow) or unconfirmed (red) in practice -- never found (green) -- until that's
+// built.
+function wantedFugitiveIcon(status){
+  var k='wf:'+status;
+  if(_iconMemo[k]) return _iconMemo[k];
+  var img='<img src="https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_Bounty.webp" alt="">';
+  return _iconMemo[k]=statusRingIcon(img,status,EFF_ACORN_SZ);
+}
+function eagleStatueIcon(status){
+  var k='es:'+status;
+  if(_iconMemo[k]) return _iconMemo[k];
+  var img='<img src="https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_FTtower.webp" alt="">';
+  return _iconMemo[k]=statusRingIcon(img,status,EFF_ACORN_SZ);
+}
+function towerIcon(status){
+  var k='tw:'+status;
+  if(_iconMemo[k]) return _iconMemo[k];
+  var img='<img src="https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_tower.webp" alt="">';
+  return _iconMemo[k]=statusRingIcon(img,status,EFF_ACORN_SZ);
+}
 function landmarkIcon(){ return simpleDotIcon('#a371f7'); }
 // Live player position marker: a colored dot, plus (if the save has a current Rotation --
 // it's briefly absent right after a teleport/spawn, see /palworld-dataminer) a small
@@ -3238,7 +3256,6 @@ function playerMarkerIcon(yawDeg,followed){
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
 }
-function eagleStatueIcon(found){ return simpleDotIcon('#3fb950',found); }
 function npcIcon(found){ return simpleDotIcon('#3fb950',found); }
 
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
@@ -3340,13 +3357,54 @@ function toggleBountyConfirm(species,checked){
     })
     .catch(function(){ toast('Failed to update confirm status.','error'); });
 }
+// Same manual-confirm pattern, keyed by NAME (paldb's scrape has no GUID/species id for
+// these three) -- Tower/Wanted Fugitive/Eagle Statue popup checkboxes, persisted to
+// tower_confirmed_keys.json/fugitive_confirmed_keys.json/eagle_confirmed_keys.json via
+// /api/tower-confirm//api/fugitive-confirm//api/eagle-confirm, unioned into
+// Merge-ConfirmedTowers/WantedFugitives/EagleStatues server-side.
+function toggleTowerConfirm(name,checked){
+  if(!EFFIGY_CONFIRM_ENABLED)return;
+  fetch('/api/tower-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,confirmed:checked})})
+    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
+    .then(function(){
+      var entry=towerLocations&&towerLocations.find(function(t){return t.name&&t.name.toUpperCase()===name.toUpperCase();});
+      if(entry) entry.m=checked;
+      renderEffigyMap();
+      toast(checked?'Tower confirmed.':'Tower unconfirmed.','success');
+    })
+    .catch(function(){ toast('Failed to update confirm status.','error'); });
+}
+function toggleFugitiveConfirm(name,checked){
+  if(!EFFIGY_CONFIRM_ENABLED)return;
+  fetch('/api/fugitive-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,confirmed:checked})})
+    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
+    .then(function(){
+      var entry=wantedFugitiveLocations&&wantedFugitiveLocations.find(function(h){return h.name&&h.name.toUpperCase()===name.toUpperCase();});
+      if(entry) entry.m=checked;
+      renderEffigyMap();
+      toast(checked?'Wanted Fugitive confirmed.':'Wanted Fugitive unconfirmed.','success');
+    })
+    .catch(function(){ toast('Failed to update confirm status.','error'); });
+}
+function toggleEagleConfirm(name,checked){
+  if(!EFFIGY_CONFIRM_ENABLED)return;
+  fetch('/api/eagle-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,confirmed:checked})})
+    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
+    .then(function(){
+      var entry=eagleStatueLocations&&eagleStatueLocations.find(function(es){return es.name&&es.name.toUpperCase()===name.toUpperCase();});
+      if(entry) entry.m=checked;
+      renderEffigyMap();
+      toast(checked?'Eagle Statue confirmed.':'Eagle Statue unconfirmed.','success');
+    })
+    .catch(function(){ toast('Failed to update confirm status.','error'); });
+}
 
 // Global visibility filter for the effigy map. Two independent toggles let the player hide
 // the effigies they have already found or the ones still new/undiscovered, to declutter the
 // map. This is a VIEW filter only -- it never changes a Pal's actual found state (which comes
 // solely from the save). Both default on. effigyShowJournal/effigyShowBounty are independent
 // toggles for the journal-note / bounty-boss overlays (unrelated to found/new).
-var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowNpc=true, effigyShowLandmark=true, effigyShowPlayers=true;
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowNpc=true, effigyShowLandmark=true, effigyShowPlayers=true;
 
 // "Layers" panel: collapsible so it doesn't sit open over most of a phone-sized map (it
 // used to be an always-open overlay). Collapsed by default only on phone widths, applied
@@ -3363,13 +3421,14 @@ function initFilterPanelCollapse(){
 }
 
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bp=document.getElementById('eff-filt-npc'), bl=document.getElementById('eff-filt-landmark'), bpl=document.getElementById('eff-filt-players');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bp=document.getElementById('eff-filt-npc'), bl=document.getElementById('eff-filt-landmark'), bpl=document.getElementById('eff-filt-players');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
   if(bj) bj.style.opacity=effigyShowJournal?'1':'0.4';
   if(bb) bb.style.opacity=effigyShowBounty?'1':'0.4';
   if(bh) bh.style.opacity=effigyShowFugitive?'1':'0.4';
   if(be) be.style.opacity=effigyShowEagle?'1':'0.4';
+  if(bt) bt.style.opacity=effigyShowTower?'1':'0.4';
   if(bp) bp.style.opacity=effigyShowNpc?'1':'0.4';
   if(bl) bl.style.opacity=effigyShowLandmark?'1':'0.4';
   if(bpl) bpl.style.opacity=effigyShowPlayers?'1':'0.4';
@@ -3381,6 +3440,7 @@ function toggleEffigyFilter(which){
   else if(which==='bounty') effigyShowBounty=!effigyShowBounty;
   else if(which==='fugitive') effigyShowFugitive=!effigyShowFugitive;
   else if(which==='eagle') effigyShowEagle=!effigyShowEagle;
+  else if(which==='tower') effigyShowTower=!effigyShowTower;
   else if(which==='npc') effigyShowNpc=!effigyShowNpc;
   else if(which==='landmark') effigyShowLandmark=!effigyShowLandmark;
   else effigyShowNew=!effigyShowNew;
@@ -3426,6 +3486,17 @@ function effDesire(key,sig,build){
   return e;
 }
 
+// Admin-only line shown in every map marker popup: the raw save-data flag key (GUID for
+// effigies, string flag key for everything else) a marker is linked to, or an explicit
+// missing-note when no such key is known (e.g. an unconfirmed roster-only pin, or Towers,
+// which have no save-flag concept at all). Gated by the caller via EFFIGY_CONFIRM_ENABLED --
+// this is debugging/admin info, not something to surface on the public player-facing site.
+function saveKeyRow(key){
+  return key
+    ? '<br><span style="color:#5a6573;font-size:11px;">Save key: <code>'+esc(key)+'</code></span>'
+    : '<br><span style="color:#8a8f98;font-size:11px;font-style:italic;">No save data key linked</span>';
+}
+
 function buildEffigyMarker(id,pos,got,confirmed,status){
   var _g=worldToGrid(pos.x,pos.y), cx=_g.cx, cy=_g.cy;
   var tipLabel=status==='found' ? '<span style="color:#3fb950">&#10003; Found & confirmed</span>'
@@ -3438,7 +3509,7 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
   m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   if(EFFIGY_CONFIRM_ENABLED){
     var chkId='eff-confirm-'+id;
-    m.bindPopup(tip+'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+    m.bindPopup(tip+saveKeyRow(id)+'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
       +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
       {className:'eff-tip'});
     m.on('popupopen',function(e){
@@ -3461,17 +3532,21 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
   jm.bindTooltip('<b style="color:#1673d1">'+j.name+'</b><br>'+jTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   jm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
-  if(EFFIGY_CONFIRM_ENABLED&&trackable){
+  if(EFFIGY_CONFIRM_ENABLED){
+    var jPopup='<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+saveKeyRow(j.key);
     var jChkId='journal-confirm-'+j.key;
-    jm.bindPopup('<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip
-      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+jChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
-      {className:'eff-tip'});
-    jm.on('popupopen',function(e){
-      var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+jChkId);
-      if(!box) return;
-      box.onchange=function(){ toggleJournalConfirm(j.key,box.checked); };
-    });
+    if(trackable){
+      jPopup+='<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+        +'<input type="checkbox" id="'+jChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
+    }
+    jm.bindPopup(jPopup,{className:'eff-tip'});
+    if(trackable){
+      jm.on('popupopen',function(e){
+        var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+jChkId);
+        if(!box) return;
+        box.onchange=function(){ toggleJournalConfirm(j.key,box.checked); };
+      });
+    }
   }
   return jm;
 }
@@ -3494,6 +3569,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
         +(bManual?'Unmark defeated':'Mark defeated')+'</button>';
     }
     if(EFFIGY_CONFIRM_ENABLED){
+      bPopup+=saveKeyRow(b.key);
       bPopup+='<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+bChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
     }
@@ -3520,36 +3596,96 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
   return bm;
 }
 
-function buildFugitiveMarker(h,hGot){
-  var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hGot),interactive:true});
+function buildFugitiveMarker(h,confirmed,hGot,hStatus){
+  var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hStatus),interactive:true});
   var _g=worldToGrid(h.x,h.y), cx=_g.cx, cy=_g.cy;
-  var hStatus=hGot?'<span style="color:#5a6573">&#10003; Defeated</span>':'<b style="color:#f85149">Wanted Fugitive</b>';
-  hm.bindTooltip('<b style="color:#111;">'+h.name+'</b><br>'+hStatus
-    +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
+  var hStatusLabel=hStatus==='found' ? '<span style="color:#3fb950">&#10003; Defeated & confirmed</span>'
+    : hGot ? '<b style="color:#e3b341">Defeated (not yet confirmed)</b>'
+    : confirmed ? '<b style="color:#e3b341">Confirmed (not yet defeated)</b>'
+    : '<b style="color:#f85149">Unconfirmed</b>';
+  var hTip=hStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  hm.bindTooltip('<b style="color:#111;">'+h.name+'</b><br>'+hTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   hm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  if(EFFIGY_CONFIRM_ENABLED){
+    var hChkId='fugitive-confirm-'+h.name.replace(/[^a-zA-Z0-9]/g,'_');
+    hm.bindPopup('<b style="color:#111;">'+esc(h.name)+'</b><br>'+hTip+saveKeyRow(h.key)
+      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+      +'<input type="checkbox" id="'+hChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
+      {className:'eff-tip'});
+    hm.on('popupopen',function(e){
+      var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+hChkId);
+      if(!box) return;
+      box.onchange=function(){ toggleFugitiveConfirm(h.name,box.checked); };
+    });
+  }
   return hm;
 }
 
-function buildEagleMarker(es,esGot){
-  var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esGot),interactive:true});
+function buildEagleMarker(es,confirmed,esGot,esStatus){
+  var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esStatus),interactive:true});
   var _g=worldToGrid(es.x,es.y), cx=_g.cx, cy=_g.cy;
-  var esStatus=esGot?'<span style="color:#5a6573">&#10003; Unlocked</span>':'<b style="color:#e8b339">Not yet unlocked</b>';
-  esm.bindTooltip('<b style="color:#111;">'+es.name+'</b><br>'+esStatus
-    +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
+  var esStatusLabel=esStatus==='found' ? '<span style="color:#3fb950">&#10003; Unlocked & confirmed</span>'
+    : esGot ? '<b style="color:#e3b341">Unlocked (not yet confirmed)</b>'
+    : confirmed ? '<b style="color:#e3b341">Confirmed (not yet unlocked)</b>'
+    : '<b style="color:#f85149">Unconfirmed</b>';
+  var esTip=esStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  esm.bindTooltip('<b style="color:#111;">'+es.name+'</b><br>'+esTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   esm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  if(EFFIGY_CONFIRM_ENABLED){
+    var esChkId='eagle-confirm-'+es.name.replace(/[^a-zA-Z0-9]/g,'_');
+    esm.bindPopup('<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+saveKeyRow(es.key)
+      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+      +'<input type="checkbox" id="'+esChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
+      {className:'eff-tip'});
+    esm.on('popupopen',function(e){
+      var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+esChkId);
+      if(!box) return;
+      box.onchange=function(){ toggleEagleConfirm(es.name,box.checked); };
+    });
+  }
   return esm;
+}
+
+function buildTowerMarker(t,confirmed){
+  var tStatus=confirmed?'confirmed':'unconfirmed';
+  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(tStatus),interactive:true});
+  var _g=worldToGrid(t.x,t.y), cx=_g.cx, cy=_g.cy;
+  var tStatusLabel=confirmed?'<b style="color:#e3b341">Confirmed</b>':'<b style="color:#f85149">Unconfirmed</b>';
+  var tLvl=t.lv?(' <span style="color:var(--muted)">(Lv '+t.lv+')</span>'):'';
+  var tTip=tStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  tm.bindTooltip('<b style="color:#111;">'+t.name+'</b>'+tLvl+'<br>'+tTip,
+    {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+  tm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  if(EFFIGY_CONFIRM_ENABLED){
+    var tChkId='tower-confirm-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
+    tm.bindPopup('<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+saveKeyRow(t.key)
+      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+      +'<input type="checkbox" id="'+tChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
+      {className:'eff-tip'});
+    tm.on('popupopen',function(e){
+      var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+tChkId);
+      if(!box) return;
+      box.onchange=function(){ toggleTowerConfirm(t.name,box.checked); };
+    });
+  }
+  return tm;
 }
 
 function buildNpcMarker(n,nGot){
   var nm=L.marker(effigyRposToLatLng(n.x,n.y),{icon:npcIcon(nGot),interactive:true});
   var _g=worldToGrid(n.x,n.y), cx=_g.cx, cy=_g.cy;
   var nStatus=nGot?'<span style="color:#5a6573">&#10003; Met</span>':'<b style="color:#39c5bb">Not yet met</b>';
-  nm.bindTooltip('<b style="color:#111;">'+n.name+'</b><br>'+nStatus
-    +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
-    {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+  var nTip='<b style="color:#111;">'+n.name+'</b><br>'+nStatus
+    +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  nm.bindTooltip(nTip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   nm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  if(EFFIGY_CONFIRM_ENABLED){
+    nm.bindPopup('<b style="color:#111;">'+esc(n.name)+'</b><br>'+nStatus
+      +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+saveKeyRow(n.key),
+      {className:'eff-tip'});
+  }
   return nm;
 }
 
@@ -3560,6 +3696,11 @@ function buildLandmarkMarker(lm){
     +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   lmk.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  if(EFFIGY_CONFIRM_ENABLED){
+    lmk.bindPopup('<b style="color:#a371f7">'+esc(lm.name)+'</b>'
+      +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+saveKeyRow(lm.key),
+      {className:'eff-tip'});
+  }
   return lmk;
 }
 
@@ -3811,6 +3952,7 @@ function initEffigyView(){
       fetchBossLocations();
       fetchWantedFugitives();
       fetchEagleStatues();
+      fetchTowerLocations();
       fetchNPCs();
       fetchLandmarks();
       fetchPlayerLocations();
@@ -3953,6 +4095,18 @@ async function fetchEagleStatues(){
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
     eagleStatueLocations=[];
+  }
+}
+// "Towers" (raid bosses) -- static, same loading convention as above. Split out of Eagle
+// Statues (see Merge-ConfirmedTowers).
+var towerLocations=null;
+async function fetchTowerLocations(){
+  if(towerLocations)return;
+  try{
+    towerLocations=await api('/api/towers');
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    towerLocations=[];
   }
 }
 // NPC locations -- static list, but DOES get per-player found/unfound state (see
@@ -4404,29 +4558,48 @@ function renderEffigyMapNow(){
     });
   }
 
-  // Wanted Fugitive (human/Syndicate bosses) -- static named pins, matched by exact key
-  // against NormalBossDefeatFlag (see extract_fugitive_data / fetchFugitivePlayer). Same
-  // found/new fade convention as effigies/bounty: grey+faded once defeated.
+  // Wanted Fugitive (human/Syndicate bosses) -- OVERLAYS the full paldb-scraped
+  // wanted_fugitives.json roster (added 2026-07-06, see Merge-ConfirmedWantedFugitives).
+  // "confirmed" (h.m) = name/coord match against confirmed_locations.json; "found" =
+  // NormalBossDefeatFlag, only trackable once a match supplies a real key. Same
+  // green/yellow/red status formula as journals/bounty.
   if(effigyShowFugitive&&wantedFugitiveLocations&&wantedFugitiveLocations.length){
     var fugitiveCollectedSet=new Set(fugitiveCollected.map(function(s){return s.toUpperCase();}));
     wantedFugitiveLocations.forEach(function(h,idx){
-      var hGot=h.key&&fugitiveCollectedSet.has(h.key.toUpperCase());
+      var confirmed=!!h.m;
+      var hGot=!!(h.key&&fugitiveCollectedSet.has(h.key.toUpperCase()));
       if(hGot&&!effigyShowFound) return;
-      effDesire('h:'+(h.key||idx),hGot?'1':'0',function(){
-        return buildFugitiveMarker(h,hGot);
+      var hStatus=(confirmed&&hGot)?'found':(confirmed||hGot)?'confirmed':'unconfirmed';
+      effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed,function(){
+        return buildFugitiveMarker(h,confirmed,hGot,hStatus);
       });
     });
   }
-  // Eagle Statue (fast-travel points) -- static named pins, matched by exact key against
-  // FastTravelPointUnlockFlag (see extract_fast_travel_data / fetchEaglePlayer). Same
-  // found/new fade convention as effigies/bounty: grey+faded once unlocked.
+  // Eagle Statue (fast-travel points) -- OVERLAYS the full paldb-scraped
+  // eagle_travel_locations.json roster (added 2026-07-06, see Merge-ConfirmedEagleStatues).
+  // Same confirmed/found status formula as Wanted Fugitive above.
   if(effigyShowEagle&&eagleStatueLocations&&eagleStatueLocations.length){
     var eagleCollectedSet=new Set(eagleCollected.map(function(s){return s.toUpperCase();}));
     eagleStatueLocations.forEach(function(es,idx){
-      var esGot=es.key&&eagleCollectedSet.has(es.key.toUpperCase());
+      var confirmed=!!es.m;
+      var esGot=!!(es.key&&eagleCollectedSet.has(es.key.toUpperCase()));
       if(esGot&&!effigyShowFound) return;
-      effDesire('es:'+(es.key||idx),esGot?'1':'0',function(){
-        return buildEagleMarker(es,esGot);
+      var esStatus=(confirmed&&esGot)?'found':(confirmed||esGot)?'confirmed':'unconfirmed';
+      effDesire('es:'+(es.key||es.name||idx),esStatus+'|'+confirmed,function(){
+        return buildEagleMarker(es,confirmed,esGot,esStatus);
+      });
+    });
+  }
+  // Tower (raid bosses) -- OVERLAYS the 7-entry paldb-scraped towers.json roster (added
+  // 2026-07-06, see Merge-ConfirmedTowers). Split out of Eagle Statues -- Anthony had been
+  // confirming these under that bucket since walking up to one behaves like a fast-travel
+  // point. No per-player "cleared" signal exists yet, so status only reaches
+  // confirmed/unconfirmed for now.
+  if(effigyShowTower&&towerLocations&&towerLocations.length){
+    towerLocations.forEach(function(t,idx){
+      var confirmed=!!t.m;
+      effDesire('tw:'+(t.name||idx),confirmed?'1':'0',function(){
+        return buildTowerMarker(t,confirmed);
       });
     });
   }
