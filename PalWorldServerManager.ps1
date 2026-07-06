@@ -3110,13 +3110,17 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/datamine-mapping' -and $method -eq 'POST') {
-                    # Upserts one Data Mine browser edit. Body: {property,key,name,gx,gy}.
+                    # Upserts one Data Mine browser edit. Body: {property,key,name,gx,gy,verified?}.
                     # Spatial properties (real map-location meaning, see
                     # $script:DatamineSpatialProperties above) go into confirmed_locations.json
                     # itself, stamped source=<property> -- the dashboard is a second trusted
                     # writer to that file for this feature specifically (Anthony's explicit
                     # call, see /palworld-dataminer skill). Everything else goes into the
-                    # separate datamine_labels.json.
+                    # separate datamine_labels.json. "verified" defaults to true when omitted --
+                    # this route is only ever called from the dashboard's own editable Name/
+                    # Coordinates/Key fields, i.e. Anthony typing something in himself, which
+                    # counts as his own confirmation. Auto-filled public-scrape suggestions go
+                    # through /api/datamine-mapping-batch instead, which always passes false.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $property = [string]$body.property
@@ -3125,6 +3129,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $name = if ($null -ne $body.name -and [string]$body.name -ne '') { [string]$body.name } else { $null }
                         $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
                         $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
+                        $verifiedFlag = if ($null -ne $body.verified) { [bool]$body.verified } else { $true }
 
                         if ($script:DatamineSpatialProperties -contains $property) {
                             $f = "$ServerDir\confirmed_locations.json"
@@ -3135,8 +3140,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $existing.gx = $gx
                                 $existing.gy = $gy
                                 $existing | Add-Member -MemberType NoteProperty -Name source -Value $property -Force
+                                $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
                             } else {
-                                $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property }
+                                $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property; verified = $verifiedFlag }
                                 $arr = $arr + $newEntry
                             }
                             # No-BOM UTF8 -- confirmed_locations.json is also read by the
@@ -3152,8 +3158,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $existing.name = $name
                                 $existing.gx = $gx
                                 $existing.gy = $gy
+                                $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
                             } else {
-                                $newEntry = [pscustomobject]@{ property = $property; key = $key; name = $name; gx = $gx; gy = $gy }
+                                $newEntry = [pscustomobject]@{ property = $property; key = $key; name = $name; gx = $gx; gy = $gy; verified = $verifiedFlag }
                                 $arr = $arr + $newEntry
                             }
                             # No-BOM UTF8 -- confirmed_locations.json is also read by the
@@ -3163,6 +3170,110 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
                         }
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/datamine-verify' -and $method -eq 'POST') {
+                    # Toggles ONLY the verified flag on an existing Data Mine mapping -- ticking
+                    # the checkbox shouldn't require resubmitting name/gx/gy too. Body:
+                    # {property,key,verified}. Errors if no mapping exists yet for that key
+                    # (nothing to verify until a name/coordinates/key has actually been saved).
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $property = [string]$body.property
+                        $key = [string]$body.key
+                        if (-not $property -or -not $key) { throw "property and key are required." }
+                        $verifiedFlag = [bool]$body.verified
+
+                        if ($script:DatamineSpatialProperties -contains $property) {
+                            $f = "$ServerDir\confirmed_locations.json"
+                            $arr = @(Get-ConfirmedLocations)
+                            $existing = $arr | Where-Object { $_.key -eq $key } | Select-Object -First 1
+                            if (-not $existing) { throw "No existing mapping for this key yet." }
+                            $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
+                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
+                        } else {
+                            $f = "$ServerDir\datamine_labels.json"
+                            $arr = @(Get-DatamineLabels)
+                            $existing = $arr | Where-Object { $_.property -eq $property -and $_.key -eq $key } | Select-Object -First 1
+                            if (-not $existing) { throw "No existing mapping for this key yet." }
+                            $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
+                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
+                        }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/datamine-mapping-batch' -and $method -eq 'POST') {
+                    # Bulk upsert for auto-filling public-scrape suggestions in one pass (see
+                    # dashboard.html's dmAutoFillFromRosters) -- one read-modify-write per
+                    # target file instead of one HTTP round-trip per entry, since a tab load can
+                    # touch 100+ keys at once. Body: {entries:[{property,key,name,gx,gy,
+                    # verified}, ...]}. Each entry's "verified" defaults to false if omitted --
+                    # unlike the singular route above, this one is for the system auto-filling
+                    # data it scraped, not Anthony typing something in himself.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $entries = $body.entries
+                        if ($null -eq $entries) { $entries = @() }
+                        $entries = @($entries)
+
+                        $confirmedArr = @(Get-ConfirmedLocations)
+                        $labelsArr = @(Get-DatamineLabels)
+                        $confirmedDirty = $false
+                        $labelsDirty = $false
+
+                        foreach ($e in $entries) {
+                            $property = [string]$e.property
+                            $key = [string]$e.key
+                            if (-not $property -or -not $key) { continue }
+                            $name = if ($null -ne $e.name -and [string]$e.name -ne '') { [string]$e.name } else { $null }
+                            $gx = if ($null -ne $e.gx -and [string]$e.gx -ne '') { [int]$e.gx } else { $null }
+                            $gy = if ($null -ne $e.gy -and [string]$e.gy -ne '') { [int]$e.gy } else { $null }
+                            $verifiedFlag = if ($null -ne $e.verified) { [bool]$e.verified } else { $false }
+
+                            if ($script:DatamineSpatialProperties -contains $property) {
+                                $existing = $confirmedArr | Where-Object { $_.key -eq $key } | Select-Object -First 1
+                                if ($existing) {
+                                    $existing.name = $name
+                                    $existing.gx = $gx
+                                    $existing.gy = $gy
+                                    $existing | Add-Member -MemberType NoteProperty -Name source -Value $property -Force
+                                    $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
+                                } else {
+                                    $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property; verified = $verifiedFlag }
+                                    $confirmedArr = $confirmedArr + $newEntry
+                                }
+                                $confirmedDirty = $true
+                            } else {
+                                $existing = $labelsArr | Where-Object { $_.property -eq $property -and $_.key -eq $key } | Select-Object -First 1
+                                if ($existing) {
+                                    $existing.name = $name
+                                    $existing.gx = $gx
+                                    $existing.gy = $gy
+                                    $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
+                                } else {
+                                    $newEntry = [pscustomobject]@{ property = $property; key = $key; name = $name; gx = $gx; gy = $gy; verified = $verifiedFlag }
+                                    $labelsArr = $labelsArr + $newEntry
+                                }
+                                $labelsDirty = $true
+                            }
+                        }
+
+                        # No-BOM UTF8 -- see /api/datamine-mapping above for why.
+                        if ($confirmedDirty) {
+                            [System.IO.File]::WriteAllText("$ServerDir\confirmed_locations.json", (ConvertTo-Json -InputObject @($confirmedArr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
+                        }
+                        if ($labelsDirty) {
+                            [System.IO.File]::WriteAllText("$ServerDir\datamine_labels.json", (ConvertTo-Json -InputObject @($labelsArr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
+                        }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; count=$entries.Count } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }

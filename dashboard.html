@@ -4301,29 +4301,35 @@ function dmPropByName(name){
   return DATAMINE_PROPERTIES.filter(function(p){return p.name===name;})[0];
 }
 
-// Looks up the currently-saved {name,gx,gy} for one (property,key) pair -- confirmed_locations.json
-// for spatial properties, datamine_labels.json for everything else.
+// Looks up the currently-saved {name,gx,gy,fallback,verified} for one (property,key) pair --
+// confirmed_locations.json for spatial properties, datamine_labels.json for everything else.
+// "verified" is Anthony's own signal (he typed/saved it himself, or it predates this field and
+// is treated as his own prior confirmation -- see the backfill note in /palworld-server skill)
+// vs. false for anything system-auto-filled from a public scrape (dmAutoFillFromRosters).
+// fallback:true means neither store has this key at all yet (shouldn't normally be visible
+// post-auto-fill, kept as a defensive display-only path).
 function dmMappingFor(propName,key){
-  if(!dmMappings) return {name:null,gx:null,gy:null,fallback:false};
+  if(!dmMappings) return {name:null,gx:null,gy:null,fallback:false,verified:null};
   var prop=dmPropByName(propName);
   if(prop&&prop.spatial){
     var m=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key===key;})[0];
-    if(m&&m.name) return {name:m.name,gx:m.gx,gy:m.gy,fallback:false};
-    // Not (yet) in confirmed_locations.json by name -- fall back to whichever existing
-    // scraped/curated roster already names this key (effigies.json, journal_locations.json),
-    // so a key Anthony already has real data for elsewhere doesn't render blank just because
-    // he never separately typed it into THIS UI. Coordinates from confirmed_locations.json
-    // (if present, e.g. a gx/gy-only entry with no name yet) win over the roster's, since
-    // his own hands-on data is more trusted than a scrape.
+    // "has data" means name OR coordinates set -- not just name, since noName properties
+    // (RelicObtainForInstanceFlag) only ever carry coordinates.
+    if(m&&(m.name||m.gx!=null||m.gy!=null)) return {name:m.name,gx:m.gx,gy:m.gy,fallback:false,verified:m.verified!==false};
+    // Not yet in confirmed_locations.json -- fall back to whichever existing scraped/curated
+    // roster already has this key (effigies.json, journal_locations.json, PAL_LIST), so a key
+    // Anthony already has real data for elsewhere doesn't render blank just because he never
+    // separately typed it into THIS UI. Normally auto-persisted (as unverified) by
+    // dmAutoFillFromRosters before this path is ever reached in a real render.
     var fb=dmRosterFallback(propName,key);
-    if(fb) return {name:fb.name,gx:(m&&m.gx!=null?m.gx:fb.gx),gy:(m&&m.gy!=null?m.gy:fb.gy),fallback:true};
-    return {name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false};
+    if(fb) return {name:fb.name,gx:(m&&m.gx!=null?m.gx:fb.gx),gy:(m&&m.gy!=null?m.gy:fb.gy),fallback:true,verified:false};
+    return {name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false,verified:m?m.verified!==false:null};
   }
   var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key===key;})[0];
-  if(m2&&m2.name) return {name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false};
+  if(m2&&m2.name) return {name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false,verified:m2.verified!==false};
   var fb2=dmRosterFallback(propName,key);
-  if(fb2) return {name:fb2.name,gx:(m2&&m2.gx!=null?m2.gx:null),gy:(m2&&m2.gy!=null?m2.gy:null),fallback:true};
-  return {name:null,gx:m2?m2.gx:null,gy:m2?m2.gy:null,fallback:false};
+  if(fb2) return {name:fb2.name,gx:(m2&&m2.gx!=null?m2.gx:null),gy:(m2&&m2.gy!=null?m2.gy:null),fallback:true,verified:false};
+  return {name:null,gx:m2?m2.gx:null,gy:m2?m2.gy:null,fallback:false,verified:m2?m2.verified!==false:null};
 }
 
 // PAL_LIST (species roster already used by the Pals/Paldeck tab) doubles as a name lookup
@@ -4349,10 +4355,13 @@ function dmPalSpeciesName(key){
 // finished loading yet, same as an unmatched key.
 function dmRosterFallback(propName,key){
   if(propName==='RelicObtainForInstanceFlag'&&effigyLocations){
+    // effigies.json has no name field at all (see dashboard's noName flag on this property) --
+    // only coordinates, which it DOES have for all 605 keys. Don't gate on e.name like the
+    // other branches below; a present entry is enough.
     var e=effigyLocations[key]||effigyLocations[key.toUpperCase()];
-    if(e&&e.name){
+    if(e){
       var g=worldToGrid(e.x,e.y);
-      return {name:e.name,gx:g.cx,gy:g.cy};
+      return {name:e.name||null,gx:g.cx,gy:g.cy};
     }
   }
   if(propName==='NoteObtainForInstanceFlag'&&journalLocations){
@@ -4417,8 +4426,22 @@ function dmKeyRowHtml(prop,key,players){
     +(prop.noName?'':'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)">'
       +(m.fallback?' <span class="dm-kind-badge" title="Not yet in confirmed_locations.json -- shown from the existing scraped roster (effigies.json/journal_locations.json). Click Save to promote it.">roster</span>':'')+'</td>')
     +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td>'
+    +'<td class="syn-check">'+dmVerifiedCellHtml(prop,key,m)+'</td>'
     +players.map(function(p){ return '<td class="syn-check">'+dmPlayerCellHtml(prop,p,key)+'</td>'; }).join('')
     +'</tr>';
+}
+
+// Verified checkbox: checked = Anthony's own confirmation (typed/saved himself, or predates
+// this field and is treated as a prior confirmation -- see the confirmed_locations.json
+// backfill note). Unchecked = system-auto-filled from a public scrape (dmAutoFillFromRosters),
+// not yet personally verified. Em-dash if there's no data at all yet to verify.
+function dmVerifiedCellHtml(prop,key,m){
+  var hasData=!!(m.name||m.gx!=null||m.gy!=null);
+  if(!hasData) return '<span style="color:var(--muted);">&#8212;</span>';
+  var pJs=dmEscJs(prop.name), kJs=dmEscJs(key);
+  return '<input type="checkbox"'+(m.verified?' checked':'')
+    +' onchange="toggleDatamineVerified(\''+pJs+'\',\''+kJs+'\',this.checked)"'
+    +' title="Checked = you\'ve personally verified this. Unchecked = auto-filled from a public scrape, not yet confirmed by you.">';
 }
 
 // A row for a map-icon roster entry (Eagle Statue/Wanted Fugitive/Field Boss/Journal) with no
@@ -4435,6 +4458,7 @@ function dmIconRowHtml(prop,row,players){
     +'<td class="syn-key">X: '+esc(row.gx)+', Y: '+esc(row.gy)+'</td>'
     +(prop.noName?'':'<td>'+esc(row.name)+' <span class="dm-kind-badge" title="From the '+esc(row.catLabel)+' map roster -- no matching save key yet. Type the key once identified and Save.">roster</span></td>')
     +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineIconKey(\''+lJs+'\',\''+nJs+'\','+row.gx+','+row.gy+',\''+rowId+'\')">Save</button></td>'
+    +'<td class="syn-check"><span style="color:var(--muted);" title="Nothing saved yet -- fill in the key first">&#8212;</span></td>'
     +players.map(function(){ return '<td class="syn-check"><span style="color:var(--muted);" title="No matching save key yet -- can\'t check per-player status">?</span></td>'; }).join('')
     +'</tr>';
 }
@@ -4465,7 +4489,7 @@ function dmPropertyRows(prop){
 function dmTableHtml(prop,rows,players){
   if(!rows.length) return '<div class="empty-state">None found</div>';
   return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th><th>Coordinates</th>'
-    +(prop.noName?'':'<th>Display Name</th>')+'<th></th>'
+    +(prop.noName?'':'<th>Display Name</th>')+'<th></th><th>Verified</th>'
     +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
     +'</tr></thead><tbody>'
     +rows.map(function(r){return dmRowHtml(prop,r,players);}).join('')
@@ -4494,6 +4518,7 @@ async function fetchDataMine(){
       var d=results[i+1]||{properties:{}};
       return {guid:p.guid,name:p.name,properties:d.properties||{}};
     });
+    await dmAutoFillFromRosters();
     renderDataMine();
   }catch(e){
     var msg='<div class="empty-state">Failed to load: '+esc(String(e&&e.message||e))+'</div>';
@@ -4532,9 +4557,11 @@ async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
   var key=keyEl.value.trim();
   if(!key){ toast('Enter the raw save key first.','error'); return; }
   try{
-    await api('/api/datamine-mapping','POST',{property:cat.property,key:key,name:name,gx:gx,gy:gy});
+    // verified:true -- Anthony typed this key in himself, so it's his own confirmation, not
+    // an auto-filled scrape suggestion.
+    await api('/api/datamine-mapping','POST',{property:cat.property,key:key,name:name,gx:gx,gy:gy,verified:true});
     dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key!==key;});
-    dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:cat.property});
+    dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:cat.property,verified:true});
     // Refetch this category's roster so the just-matched entry's own "key" field updates and
     // it drops out of the unmatched list immediately, instead of lingering until a full reload.
     await cat.refetch();
@@ -4619,19 +4646,71 @@ async function saveDatamineMapping(propName,key,scope){
   var gx=gxEl.value.trim()===''?null:gxEl.value.trim();
   var gy=gyEl.value.trim()===''?null:gyEl.value.trim();
   try{
-    await api('/api/datamine-mapping','POST',{property:propName,key:key,name:name,gx:gx,gy:gy});
+    // verified:true -- Anthony typed this in himself via the editable Name/Coordinates
+    // fields, so it's his own confirmation, not an auto-filled scrape suggestion.
+    await api('/api/datamine-mapping','POST',{property:propName,key:key,name:name,gx:gx,gy:gy,verified:true});
     var prop=dmPropByName(propName);
     if(prop&&prop.spatial){
       dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key!==key;});
-      dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:propName});
+      dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:propName,verified:true});
     } else {
       dmMappings.labels=(dmMappings.labels||[]).filter(function(l){return !(l.property===propName&&l.key===key);});
-      dmMappings.labels.push({property:propName,key:key,name:name,gx:gx,gy:gy});
+      dmMappings.labels.push({property:propName,key:key,name:name,gx:gx,gy:gy,verified:true});
     }
     toast('Saved.','success');
     renderDataMine();
   }catch(e){
     toast('Failed to save: '+String(e&&e.message||e),'error');
+  }
+}
+
+async function toggleDatamineVerified(propName,key,checked){
+  try{
+    await api('/api/datamine-verify','POST',{property:propName,key:key,verified:checked});
+    var prop=dmPropByName(propName);
+    if(prop&&prop.spatial){
+      var m=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key===key;})[0];
+      if(m) m.verified=checked;
+    } else {
+      var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key===key;})[0];
+      if(m2) m2.verified=checked;
+    }
+    toast(checked?'Marked verified.':'Marked unverified.','success');
+  }catch(e){
+    toast('Failed to update: '+String(e&&e.message||e),'error');
+  }
+}
+
+// One-time-per-load auto-fill: any raw key currently only resolved via dmRosterFallback (not
+// yet a real confirmed_locations.json/datamine_labels.json entry) gets persisted for real,
+// marked verified:false -- Anthony asked for public-scrape data to be "fully filled in" but
+// never silently counted as something HE verified. Batched into one request (can touch 100+
+// keys the first time this runs) rather than one POST per key.
+async function dmAutoFillFromRosters(){
+  var batch=[];
+  DATAMINE_PROPERTIES.forEach(function(prop){
+    dmAllKeysFor(prop.name).forEach(function(key){
+      var m=dmMappingFor(prop.name,key);
+      if(!m.fallback) return;
+      if(!m.name&&m.gx==null&&m.gy==null) return;
+      batch.push({property:prop.name,key:key,name:m.name,gx:m.gx,gy:m.gy,verified:false});
+    });
+  });
+  if(!batch.length) return;
+  try{
+    await api('/api/datamine-mapping-batch','POST',{entries:batch});
+    batch.forEach(function(e){
+      var prop=dmPropByName(e.property);
+      if(prop&&prop.spatial){
+        dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key!==e.key;});
+        dmMappings.confirmedLocations.push({key:e.key,name:e.name,gx:e.gx,gy:e.gy,source:e.property,verified:false});
+      } else {
+        dmMappings.labels=(dmMappings.labels||[]).filter(function(l){return !(l.property===e.property&&l.key===e.key);});
+        dmMappings.labels.push({property:e.property,key:e.key,name:e.name,gx:e.gx,gy:e.gy,verified:false});
+      }
+    });
+  }catch(e){
+    toast('Auto-fill from public rosters failed: '+String(e&&e.message||e),'error');
   }
 }
 
