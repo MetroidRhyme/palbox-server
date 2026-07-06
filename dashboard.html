@@ -1228,14 +1228,17 @@ function switchView(name){
   if(name==='eggs') fetchEggs();
   if(name==='datamine' && typeof fetchDataMine==='function') fetchDataMine();
   try{localStorage.setItem('palbox_active_tab',name);}catch(e){}
-  // Player positions move in real time, unlike the rest of the Map tab's mostly-static
-  // overlays -- poll faster than the 5-minute refreshAll cadence, but only while the tab
-  // is actually on screen (stopped immediately on tab-away, not left running in the
-  // background racking up needless save reads).
-  if(_playerLocPollTimer){clearInterval(_playerLocPollTimer);_playerLocPollTimer=null;}
-  if(name==='effigies'){_playerLocPollTimer=setInterval(fetchPlayerLocations,5000);}
+  // Player positions AND each overlay's found/collected state (effigies, journals,
+  // bosses, npcs, fugitives, eagles) can all change while the player is mid-session --
+  // poll faster than the 5-minute refreshAll cadence, but only while the tab is actually
+  // on screen (stopped immediately on tab-away, not left running in the background
+  // racking up needless save reads). Cheap even at 5s: Get-CachedReaderOutput keys on
+  // the save file's own LastWriteTimeUtc, so a poll between actual saves is a dictionary
+  // lookup, not a fresh Python/reader spawn.
+  if(_mapLivePollTimer){clearInterval(_mapLivePollTimer);_mapLivePollTimer=null;}
+  if(name==='effigies'){_mapLivePollTimer=setInterval(function(){fetchPlayerLocations();fetchEffigyPlayer();},5000);}
 }
-var _playerLocPollTimer=null;
+var _mapLivePollTimer=null;
 // "New content" pulse dot on a nav tab -- lit when a watch match (or other tracked
 // event) surfaces while the user isn't already looking at that tab, cleared the moment
 // they click into it (switchView above). Keyed by data-tab so callers just pass the tab
@@ -3595,9 +3598,12 @@ async function fetchLandmarks(){
 }
 
 // Live player positions -- UNLIKE the static overlays above, this is re-fetched on a timer
-// (see refreshAll) whenever the Map tab is on screen, so markers track players as they move.
-// A failed fetch leaves the previous positions on screen rather than clearing them (a
-// transient save-read error shouldn't make everyone vanish from the map).
+// (see the _mapLivePollTimer set up in switchView) whenever the Map tab is on screen, so
+// markers track players as they move. That same timer also re-fetches each overlay's
+// found/collected state via fetchEffigyPlayer, so picked-up effigies/journals/etc turn
+// yellow live instead of needing a manual refresh. A failed fetch leaves the previous
+// positions on screen rather than clearing them (a transient save-read error shouldn't
+// make everyone vanish from the map).
 var playerLocations=null;
 // Guid of the player currently being "followed" -- set by clicking their marker in
 // renderEffigyMap, cleared by clicking them again or clicking empty map (see
