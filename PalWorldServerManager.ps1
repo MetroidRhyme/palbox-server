@@ -614,6 +614,34 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     function Get-FugitiveConfirmedNames { return Get-ManualConfirmSet 'fugitive_confirmed_keys.json' }
     function Get-EagleConfirmedNames { return Get-ManualConfirmSet 'eagle_confirmed_keys.json' }
 
+    # Registry for the admin dashboard's generic Data Mine key/property browser (mirrors
+    # pal_save_reader.py's DATAMINE_PROPERTIES -- keep both lists in sync). Properties in
+    # this set have real map-location meaning, so an edit to one is upserted directly into
+    # confirmed_locations.json (stamped source=<property>) -- Anthony explicitly opted into
+    # treating the dashboard as a second trusted writer alongside the Desktop dataminer
+    # script for this feature (see /palworld-dataminer skill), even though every OTHER
+    # manual-confirm feature above deliberately avoids that file. Anything not in this set
+    # (item/quest/recipe counts and names -- no location meaning) is upserted into the
+    # separate datamine_labels.json instead.
+    $script:DatamineSpatialProperties = @(
+        'NormalBossDefeatFlag', 'RelicObtainForInstanceFlag', 'NoteObtainForInstanceFlag',
+        'FastTravelPointUnlockFlag', 'FindAreaFlagMap', 'NPCTalkCountMap'
+    )
+
+    # datamine_labels.json holds {property,key,name,gx,gy} for non-spatial properties --
+    # read fresh every call, same no-caching convention as the other small roster files.
+    function Get-DatamineLabels {
+        $f = "$ServerDir\datamine_labels.json"
+        if (Test-Path -LiteralPath $f) {
+            try {
+                $arr = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($null -eq $arr) { $arr = @() }
+                return $arr
+            } catch { return @() }
+        }
+        return @()
+    }
+
     # Anthony wants ONLY his own confirmed locations on the map for Journals/Bounty -- those
     # Merge-Confirmed* functions FILTER the base public/wiki-sourced data down to matches only
     # (not overlay onto the full set). Effigies is the one exception (reverted 2026-07-05):
@@ -3039,6 +3067,94 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             ($j -join '')
                         }
                         Send-Response $res 200 "application/json" $rawJson
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/player-datamine-full' -and $method -eq 'GET') {
+                    # Every DATAMINE_PROPERTIES entry (see pal_save_reader.py) for one player --
+                    # backs the generic Data Mine key/property browser (all keys, all parent
+                    # properties, not just NormalBossDefeatFlag like /api/player-datamine above).
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = Get-CachedReaderOutput "datamine-full:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir datamine-full $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/datamine-mappings' -and $method -eq 'GET') {
+                    # Current Display Name / Coordinates edits for the Data Mine browser --
+                    # confirmedLocations for spatial properties (source-stamped subset of
+                    # confirmed_locations.json), labels for everything else (datamine_labels.json).
+                    try {
+                        $confirmed = @(Get-ConfirmedLocations)
+                        $labels = @(Get-DatamineLabels)
+                        Send-Response $res 200 "application/json" (ConvertTo-Json -InputObject @{ confirmedLocations = $confirmed; labels = $labels } -Depth 6 -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/datamine-mapping' -and $method -eq 'POST') {
+                    # Upserts one Data Mine browser edit. Body: {property,key,name,gx,gy}.
+                    # Spatial properties (real map-location meaning, see
+                    # $script:DatamineSpatialProperties above) go into confirmed_locations.json
+                    # itself, stamped source=<property> -- the dashboard is a second trusted
+                    # writer to that file for this feature specifically (Anthony's explicit
+                    # call, see /palworld-dataminer skill). Everything else goes into the
+                    # separate datamine_labels.json.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $property = [string]$body.property
+                        $key = [string]$body.key
+                        if (-not $property -or -not $key) { throw "property and key are required." }
+                        $name = if ($null -ne $body.name -and [string]$body.name -ne '') { [string]$body.name } else { $null }
+                        $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
+                        $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
+
+                        if ($script:DatamineSpatialProperties -contains $property) {
+                            $f = "$ServerDir\confirmed_locations.json"
+                            $arr = @(Get-ConfirmedLocations)
+                            $existing = $arr | Where-Object { $_.key -eq $key } | Select-Object -First 1
+                            if ($existing) {
+                                $existing.name = $name
+                                $existing.gx = $gx
+                                $existing.gy = $gy
+                                $existing | Add-Member -MemberType NoteProperty -Name source -Value $property -Force
+                            } else {
+                                $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property }
+                                $arr = $arr + $newEntry
+                            }
+                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), [Text.Encoding]::UTF8)
+                        } else {
+                            $f = "$ServerDir\datamine_labels.json"
+                            $arr = @(Get-DatamineLabels)
+                            $existing = $arr | Where-Object { $_.property -eq $property -and $_.key -eq $key } | Select-Object -First 1
+                            if ($existing) {
+                                $existing.name = $name
+                                $existing.gx = $gx
+                                $existing.gy = $gy
+                            } else {
+                                $newEntry = [pscustomobject]@{ property = $property; key = $key; name = $name; gx = $gx; gy = $gy }
+                                $arr = $arr + $newEntry
+                            }
+                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), [Text.Encoding]::UTF8)
+                        }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }

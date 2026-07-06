@@ -568,10 +568,6 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 
 <div id="view-datamine" class="page" style="display:none">
   <style>
-    .syn-stats{display:flex;gap:18px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);}
-    .syn-stat-card{min-width:150px;}
-    .syn-stat-card .syn-stat-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;}
-    .syn-stat-card .syn-stat-row{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;}
     table.syn-table{width:100%;border-collapse:collapse;font-size:12px;}
     table.syn-table th,table.syn-table td{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;}
     table.syn-table th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;background:var(--bg);}
@@ -582,6 +578,11 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     .dm-section-sub{padding:0 14px 8px;color:var(--muted);font-size:11px;}
     .dm-section.collapsed .dm-section-hdr .dm-arrow{transform:rotate(-90deg);}
     .dm-section.collapsed .dm-section-body{display:none;}
+    .dm-kind-badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);border:1px solid var(--border);border-radius:3px;padding:1px 6px;}
+    .dm-edit-input{background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;padding:3px 5px;}
+    .dm-edit-input.dm-coord{width:56px;}
+    .dm-edit-input.dm-name{width:150px;}
+    .dm-save-btn{font-size:10px;padding:2px 7px;}
   </style>
   <div class="panel">
     <div class="panel-header">
@@ -592,47 +593,22 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       </div>
     </div>
     <div style="padding:8px 14px 0;color:var(--muted);font-size:11px;">
-      Everything pulled from each player's NormalBossDefeatFlag save data, in one place: named
-      Alpha bounty bosses (known location + species), human/Syndicate "boss" fights (no
-      location data), and leftover zone-numbered field-alpha spawns whose species isn't
-      recoverable from the save. Labels not sourced from paldb/wiki are inferred from the raw
-      key name, not confirmed in-game text -- raw keys are always shown alongside labels.
+      Every enumerable per-key property in the save (see DATAMINE_PROPERTIES in
+      pal_save_reader.py), aggregated across every player. Click into a row's Display Name /
+      Coordinates cells to assign what a raw key actually means; Coordinates apply to
+      location-bearing properties (written into confirmed_locations.json, same file the
+      Desktop dataminer script writes) -- everything else is saved to datamine_labels.json.
     </div>
-    <div id="dm-stats" class="syn-stats"></div>
 
-    <div class="dm-section" id="dm-sec-bounty">
-      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-bounty')"><span class="dm-arrow">&#9660;</span>Alpha Bounty Bosses</div>
+    <div class="dm-section" id="dm-sec-unmapped">
+      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-unmapped')"><span class="dm-arrow">&#9660;</span>Unmapped Keys</div>
       <div class="dm-section-body">
-        <div class="dm-section-sub">Named legendary Alphas with a single known fixed world location (bounty_bosses.json). Species/location sourced from paldb.cc + wiki -- see the palbox-bounty-tracker skill for provenance.</div>
-        <div id="dm-bounty-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+        <div class="dm-section-sub">Every key, across all properties below, with no Display Name assigned yet -- kept up top so nothing new slips by unnoticed.</div>
+        <div id="dm-unmapped-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
       </div>
     </div>
 
-    <div class="dm-section" id="dm-sec-syndicate">
-      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-syndicate')"><span class="dm-arrow">&#9660;</span>Syndicate / NPC Bosses</div>
-      <div class="dm-section-body">
-        <div class="dm-section-sub">Human "boss" fights (Syndicate Towers and similar). No location data exists for these in the save.</div>
-        <div id="dm-syndicate-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
-      </div>
-    </div>
-
-    <div class="dm-section" id="dm-sec-anon">
-      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-anon')"><span class="dm-arrow">&#9660;</span>Anonymous Field-Alpha Spawns</div>
-      <div class="dm-section-body">
-        <div class="dm-section-sub">Zone-numbered field-alpha defeat keys that didn't match a known bounty species. Species for these is baked into the game's .pak assets, not the save -- raw keys only, auto-discovered from whatever's in each player's save (not a fixed roster).</div>
-        <div id="dm-anon-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
-      </div>
-    </div>
-
-    <div class="dm-section" id="dm-sec-journal">
-      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-journal')"><span class="dm-arrow">&#9660;</span>Journal / Diary Notes</div>
-      <div class="dm-section-body">
-        <div class="dm-section-sub">From NoteObtainForInstanceFlag (same mechanism as effigies). Mixes lore-journal/diary "DayN" pickups with dungeon-boss lore notes under one flag map, so the "N / 49" total on the Effigy map can never reach 49 from map pins alone. See the palbox-journal-overlay skill for full provenance rules -- a raw key only earns a "key" in journal_locations.json (and real found/new coloring on the map) after being directly observed flipping true in a live save diff.</div>
-        <div id="dm-journal-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
-        <div class="dm-section-sub" style="padding-top:10px;">Every raw key that has actually appeared as collected in at least one player's save, including ones already tied to a confirmed pin above (Mapped Pin column shows which). Rows with no Mapped Pin are either one of the still-unconfirmed diary pins on the map (blue, "Found status unknown"; needs a live-save diff to match it to a pin), or a dungeon-boss lore note with no map location at all (awarded on boss kill: GrassBoss1/2/3, ForestBoss3/4, VikingBoss1/2, SakurajimaBoss2/5, SnowBoss1 observed so far). Not auto-classified between the two -- confirm manually before editing journal_locations.json.</div>
-        <div id="dm-journal-unmapped-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
-      </div>
-    </div>
+    <div id="dm-property-sections"><div class="empty-state">Loading...</div></div>
   </div>
 </div>
 
@@ -4284,189 +4260,214 @@ function renderBountySummary(){
 }
 
 // -- Data Mine tab ------------------------------------------------------------
-// Everything extracted from NormalBossDefeatFlag, side by side: named Alpha bounty bosses
-// (bounty_bosses.json, known location), Syndicate/NPC "boss" fights (syndicate_bosses.json,
-// flat keys, no location), and anonymous zone-numbered field-alpha spawns (no roster at all --
-// auto-discovered per player). See extract_datamine_data in pal_save_reader.py. Journal/diary
-// notes (NoteObtainForInstanceFlag, the journals + player-notes routes) are folded in
-// alongside these -- same "raw key, no roster" shape as the anonymous section, cross-
-// referenced against journal_locations.json's confirmed pins. See palbox-journal-overlay skill.
-var dmBountyRoster=null;    // [{species,name,x,y,z}, ...] from bounty_bosses.json
-var dmSyndicateRoster=null; // [{key,label}, ...] from syndicate_bosses.json
-var dmJournalRoster=null;   // [{name,x,y,gx,gy,key?}, ...] from journal_locations.json
-var dmPlayers=null;         // [{guid,name,bounty:[...species],syndicate:[...keys],anonymous:[...keys],journal:[...keys],predatorDefeatCount,...}, ...]
+// Generic browser over every enumerable per-key save property, across every player -- lets
+// Anthony assign a Display Name / Coordinates to a raw key directly from the dashboard,
+// replacing the console-prompt workflow in the Desktop palworld_full_save_dump.py script
+// (see /palworld-dataminer skill). MUST mirror pal_save_reader.py's DATAMINE_PROPERTIES
+// list -- add a new property to both places when a new save key is reverse-engineered.
+// "spatial" properties (real map-location meaning) persist Display Name/Coordinates into
+// confirmed_locations.json itself (source-stamped), same file the Desktop script writes --
+// Anthony explicitly opted into treating the dashboard as a second trusted writer for this
+// feature. Everything else persists into the separate datamine_labels.json.
+var DATAMINE_PROPERTIES=[
+  {name:'NormalBossDefeatFlag',kind:'bool_map',spatial:true,desc:'Boss / field-alpha defeat flags (Field Boss + Wanted Fugitive map categories).'},
+  {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,desc:'Effigy pickups.'},
+  {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,desc:'Journal / diary note pickups.'},
+  {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,desc:'Eagle Statue (fast travel) unlocks.'},
+  {name:'FindAreaFlagMap',kind:'bool_map',spatial:true,desc:'Discovered map zones (Landmarks).'},
+  {name:'NPCTalkCountMap',kind:'int_map',spatial:true,desc:'Per-NPC talk counts (count > 0 = met).'},
+  {name:'PaldeckUnlockFlag',kind:'bool_map',spatial:false,desc:'Paldeck species unlocks.'},
+  {name:'InvokeNPCNetworkEventMap',kind:'bool_map',spatial:false,desc:'NPC gifts given.'},
+  {name:'PalCaptureCount',kind:'int_map',spatial:false,desc:'Lifetime per-species capture counts.'},
+  {name:'PalCaptureBonusCount',kind:'int_map',spatial:false,desc:'Lifetime per-species bonus-capture counts.'},
+  {name:'CraftItemCount',kind:'int_map',spatial:false,desc:'Lifetime crafted-item counts.'},
+  {name:'UnlockedRecipeTechnologyNames',kind:'name_array',spatial:false,desc:'Unlocked recipes / technologies.'},
+  {name:'CompletedQuestArray',kind:'name_array',spatial:false,desc:'Completed quests.'}
+];
+var DATAMINE_KIND_LABEL={bool_map:'Bool',int_map:'Int',name_array:'Name'};
+
+var dmFullPlayers=null; // [{guid,name,properties:{PropName:{kind,entries}}}, ...]
+var dmMappings=null;    // {confirmedLocations:[{key,name,gx,gy,source}], labels:[{property,key,name,gx,gy}]}
 
 function toggleDmSection(id){
   var el=document.getElementById(id);
   if(el) el.classList.toggle('collapsed');
 }
 
-async function fetchDataMine(){
-  ['dm-bounty-area','dm-syndicate-area','dm-anon-area','dm-journal-area','dm-journal-unmapped-area'].forEach(function(id){
-    document.getElementById(id).innerHTML='<div class="empty-state">Loading...</div>';
+function dmPropByName(name){
+  return DATAMINE_PROPERTIES.filter(function(p){return p.name===name;})[0];
+}
+
+// Looks up the currently-saved {name,gx,gy} for one (property,key) pair -- confirmed_locations.json
+// for spatial properties, datamine_labels.json for everything else.
+function dmMappingFor(propName,key){
+  if(!dmMappings) return {name:null,gx:null,gy:null};
+  var prop=dmPropByName(propName);
+  if(prop&&prop.spatial){
+    var m=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key===key;})[0];
+    return m?{name:m.name,gx:m.gx,gy:m.gy}:{name:null,gx:null,gy:null};
+  }
+  var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key===key;})[0];
+  return m2?{name:m2.name,gx:m2.gx,gy:m2.gy}:{name:null,gx:null,gy:null};
+}
+
+function dmRowId(propName,key){
+  return 'dm-row-'+propName+'-'+key.replace(/[^A-Za-z0-9_-]/g,'_');
+}
+
+// Union of every distinct key seen across all players for one property, regardless of kind.
+function dmAllKeysFor(propName){
+  var keys={};
+  (dmFullPlayers||[]).forEach(function(p){
+    var d=(p.properties||{})[propName];
+    if(!d) return;
+    if(d.kind==='name_array'){ (d.entries||[]).forEach(function(k){ keys[k]=1; }); }
+    else { Object.keys(d.entries||{}).forEach(function(k){ keys[k]=1; }); }
   });
+  return Object.keys(keys).sort();
+}
+
+// Per-player cell HTML for one key of one property: checkmark for bool_map/name_array
+// presence, the actual count for int_map (more useful than a checkmark -- lets Anthony see
+// magnitude at a glance), em-dash otherwise.
+function dmPlayerCellHtml(prop,player,key){
+  var d=(player.properties||{})[prop.name];
+  var entries=d?d.entries:(prop.kind==='name_array'?[]:{});
+  if(prop.kind==='name_array'){
+    var present=entries.indexOf(key)!==-1;
+    return present?'<span style="color:#3fb950;">&#10003;</span>':'<span style="color:var(--muted);">&#8212;</span>';
+  }
+  if(prop.kind==='int_map'){
+    var n=entries[key]||0;
+    return n>0?String(n):'<span style="color:var(--muted);">&#8212;</span>';
+  }
+  var v=entries[key];
+  return v===true?'<span style="color:#3fb950;">&#10003;</span>':'<span style="color:var(--muted);">&#8212;</span>';
+}
+
+function dmEscJs(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function dmRowHtml(prop,key,players){
+  var m=dmMappingFor(prop.name,key);
+  var rowId=dmRowId(prop.name,key);
+  var pJs=dmEscJs(prop.name), kJs=dmEscJs(key);
+  return '<tr><td class="syn-key">'+esc(key)+'</td>'
+    +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span></td>'
+    +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
+      +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>'
+    +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)"></td>'
+    +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td>'
+    +players.map(function(p){ return '<td class="syn-check">'+dmPlayerCellHtml(prop,p,key)+'</td>'; }).join('')
+    +'</tr>';
+}
+
+function dmTableHtml(prop,keys,players){
+  if(!keys.length) return '<div class="empty-state">None found</div>';
+  return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th><th>Coordinates</th><th>Display Name</th><th></th>'
+    +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
+    +'</tr></thead><tbody>'
+    +keys.map(function(k){return dmRowHtml(prop,k,players);}).join('')
+    +'</tbody></table>';
+}
+
+async function fetchDataMine(){
+  document.getElementById('dm-unmapped-area').innerHTML='<div class="empty-state">Loading...</div>';
+  document.getElementById('dm-property-sections').innerHTML='<div class="empty-state">Loading...</div>';
   try{
     if(!paldeckData) await fetchPaldeck();
     var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
-    var bountyPromise=dmBountyRoster?Promise.resolve(dmBountyRoster):api('/api/bounty-bosses');
-    var syndicatePromise=dmSyndicateRoster?Promise.resolve(dmSyndicateRoster):api('/api/syndicate-bosses');
-    var journalPromise=dmJournalRoster?Promise.resolve(dmJournalRoster):(journalLocations?Promise.resolve(journalLocations):api('/api/journals'));
-    var results=await Promise.all([bountyPromise,syndicatePromise,journalPromise].concat(roster.map(function(p){
-      return Promise.all([
-        api('/api/player-datamine?guid='+encodeURIComponent(p.guid)).catch(function(e){
-          return {guid:p.guid,bounty:[],syndicate:[],anonymous:[],error:String(e&&e.message||e)};
-        }),
-        api('/api/player-notes?guid='+encodeURIComponent(p.guid)).catch(function(e){
-          return {guid:p.guid,collected:[],error:String(e&&e.message||e)};
-        })
-      ]);
-    })));
-    dmBountyRoster=results[0]||[];
-    dmSyndicateRoster=results[1]||[];
-    dmJournalRoster=results[2]||[];
-    dmPlayers=roster.map(function(p,i){
-      var pair=results[i+3]||[{},{}];
-      var d=pair[0]||{}, n=pair[1]||{};
-      return {
-        guid:p.guid, name:p.name,
-        bounty:d.bounty||[], syndicate:d.syndicate||[], anonymous:d.anonymous||[],
-        journal:n.collected||[],
-        predatorDefeatCount:d.predatorDefeatCount||0,
-        fixedDungeonClearCount:d.fixedDungeonClearCount||0,
-        normalDungeonClearCount:d.normalDungeonClearCount||0
-      };
+    var mappingsPromise=api('/api/datamine-mappings');
+    var playerPromises=roster.map(function(p){
+      return api('/api/player-datamine-full?guid='+encodeURIComponent(p.guid)).catch(function(e){
+        return {guid:p.guid,properties:{},error:String(e&&e.message||e)};
+      });
+    });
+    var results=await Promise.all([mappingsPromise].concat(playerPromises));
+    dmMappings=results[0]||{confirmedLocations:[],labels:[]};
+    dmFullPlayers=roster.map(function(p,i){
+      var d=results[i+1]||{properties:{}};
+      return {guid:p.guid,name:p.name,properties:d.properties||{}};
     });
     renderDataMine();
   }catch(e){
     var msg='<div class="empty-state">Failed to load: '+esc(String(e&&e.message||e))+'</div>';
-    document.getElementById('dm-bounty-area').innerHTML=msg;
-    document.getElementById('dm-syndicate-area').innerHTML='';
-    document.getElementById('dm-anon-area').innerHTML='';
-    document.getElementById('dm-journal-area').innerHTML='';
-    document.getElementById('dm-journal-unmapped-area').innerHTML='';
+    document.getElementById('dm-unmapped-area').innerHTML=msg;
+    document.getElementById('dm-property-sections').innerHTML='';
   }
-}
-
-// Builds a rows x players checkmark table. rowLabelHtml(row) renders the left-hand cell;
-// hasFn(player,row) decides if that player's cell is checked. extraCols (optional) inserts
-// extra [{header,cell(row)}] columns between the label and the player columns. rowHeader/
-// doneLabel (optional) customize the row-label column header and the checkmark title text
-// (default "Boss"/"Defeated"), so this can double as the journal-notes table.
-function dmBuildTable(rows,players,rowLabelHtml,hasFn,extraCols,rowHeader,doneLabel){
-  extraCols=extraCols||[];
-  doneLabel=doneLabel||'Defeated';
-  var html='<table class="syn-table"><thead><tr><th>'+esc(rowHeader||'Boss')+'</th>'
-    +extraCols.map(function(c){return '<th>'+esc(c.header)+'</th>';}).join('')
-    +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
-    +'</tr></thead><tbody>';
-  rows.forEach(function(r){
-    html+='<tr><td>'+rowLabelHtml(r)+'</td>';
-    extraCols.forEach(function(c){ html+='<td>'+c.cell(r)+'</td>'; });
-    players.forEach(function(p){
-      var done=hasFn(p,r);
-      html+='<td class="syn-check" title="'+(done?doneLabel:'Not '+doneLabel.toLowerCase())+'">'+(done?'<span style="color:#3fb950;">&#10003;</span>':'<span style="color:var(--muted);">&#8212;</span>')+'</td>';
-    });
-    html+='</tr>';
-  });
-  return html+'</tbody></table>';
 }
 
 function renderDataMine(){
-  var statsEl=document.getElementById('dm-stats');
   var sumEl=document.getElementById('dm-summary');
-  var bountyArea=document.getElementById('dm-bounty-area');
-  var syndicateArea=document.getElementById('dm-syndicate-area');
-  var anonArea=document.getElementById('dm-anon-area');
-  var journalArea=document.getElementById('dm-journal-area');
-  var journalUnmappedArea=document.getElementById('dm-journal-unmapped-area');
-  if(!dmBountyRoster||!dmSyndicateRoster||!dmJournalRoster||!dmPlayers){ return; }
-  if(!dmPlayers.length){
-    [bountyArea,syndicateArea,anonArea,journalArea,journalUnmappedArea].forEach(function(a){a.innerHTML='<div class="empty-state">No player data</div>';});
-    statsEl.innerHTML=''; sumEl.textContent='';
+  var unmappedArea=document.getElementById('dm-unmapped-area');
+  var sectionsEl=document.getElementById('dm-property-sections');
+  if(!dmFullPlayers||!dmMappings){ return; }
+  if(!dmFullPlayers.length){
+    unmappedArea.innerHTML='<div class="empty-state">No player data</div>';
+    sectionsEl.innerHTML='';
+    sumEl.textContent='';
     return;
   }
 
-  statsEl.innerHTML=dmPlayers.map(function(p){
-    return '<div class="syn-stat-card"><div class="syn-stat-name">'+esc(p.name)+'</div>'
-      +'<div class="syn-stat-row"><span>Predators defeated</span><b>'+p.predatorDefeatCount+'</b></div>'
-      +'<div class="syn-stat-row"><span>Fixed dungeons cleared</span><b>'+p.fixedDungeonClearCount+'</b></div>'
-      +'<div class="syn-stat-row"><span>Normal dungeons cleared</span><b>'+p.normalDungeonClearCount+'</b></div>'
-      +'</div>';
-  }).join('')+'<div style="font-size:10px;color:var(--muted);width:100%;">Account-wide totals from the save -- not broken down per boss below (the save has no per-boss counter, only a defeated/not-defeated flag).</div>';
+  var totalKeys=0, unmappedRows=[];
+  var sectionsHtml=DATAMINE_PROPERTIES.map(function(prop){
+    var keys=dmAllKeysFor(prop.name);
+    totalKeys+=keys.length;
+    keys.forEach(function(k){
+      if(!dmMappingFor(prop.name,k).name) unmappedRows.push({prop:prop,key:k});
+    });
+    var id='dm-sec-'+prop.name;
+    return '<div class="dm-section" id="'+id+'">'
+      +'<div class="dm-section-hdr" onclick="toggleDmSection(\''+id+'\')"><span class="dm-arrow">&#9660;</span>'+esc(prop.name)
+        +' <span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span>'
+        +(prop.spatial?'':' <span class="dm-kind-badge" title="Saved to datamine_labels.json, not confirmed_locations.json">no location</span>')
+        +' <span style="font-weight:400;color:var(--muted);font-size:11px;">('+keys.length+' keys)</span></div>'
+      +'<div class="dm-section-body">'
+      +'<div class="dm-section-sub">'+esc(prop.desc)+'</div>'
+      +'<div style="overflow:auto;">'+dmTableHtml(prop,keys,dmFullPlayers)+'</div>'
+      +'</div></div>';
+  }).join('');
+  sectionsEl.innerHTML=sectionsHtml;
 
-  // Bounty section: fixed roster (locations are the whole point of this one), sorted by name.
-  var bountyRows=dmBountyRoster.slice().sort(function(a,b){return a.name<b.name?-1:a.name>b.name?1:0;});
-  bountyArea.innerHTML=dmBuildTable(bountyRows,dmPlayers,function(r){
-    var loc=Math.round(r.x)+', '+Math.round(r.y)+', '+Math.round(r.z);
-    return esc(r.name)+'<div class="syn-key">'+esc(r.species)+' &bull; '+loc+'</div>';
-  },function(p,r){return p.bounty.indexOf(r.species)!==-1;},[
-    {header:'In-Game Coords',cell:function(r){
-      // Same raw-world -> in-game conversion used by the effigy map tooltip
-      // (via worldToGrid) so this matches what the player sees on
-      // their in-game map, not the raw save/world units in the Species/Location line above.
-      var _g=worldToGrid(r.x,r.y), cx=_g.cx, cy=_g.cy;
-      return '<span class="syn-key">X: '+cx+', Y: '+cy+'</span>';
-    }}
-  ]);
+  unmappedArea.innerHTML=unmappedRows.length
+    ? '<table class="syn-table"><thead><tr><th>Property</th><th>Key</th><th>Key Value</th><th>Coordinates</th><th>Display Name</th><th></th></tr></thead><tbody>'
+      +unmappedRows.map(function(r){
+        var rowId=dmRowId(r.prop.name,r.key), pJs=dmEscJs(r.prop.name), kJs=dmEscJs(r.key);
+        return '<tr><td>'+esc(r.prop.name)+'</td><td class="syn-key">'+esc(r.key)+'</td>'
+          +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[r.prop.kind]+'</span></td>'
+          +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" placeholder="gx">'
+            +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" placeholder="gy"></td>'
+          +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" placeholder="(unmapped)"></td>'
+          +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td></tr>';
+      }).join('')+'</tbody></table>'
+    : '<div class="empty-state">Nothing unmapped</div>';
 
-  // Syndicate section: static roster unioned with any newly-observed key (mirrors the
-  // owner-select union pattern used for eggs), so an unseen boss key still shows up.
-  var synRows=dmSyndicateRoster.slice();
-  var synKnown={}; synRows.forEach(function(r){synKnown[r.key]=1;});
-  dmPlayers.forEach(function(p){
-    p.syndicate.forEach(function(k){ if(!synKnown[k]){ synKnown[k]=1; synRows.push({key:k,label:null}); } });
-  });
-  synRows.sort(function(a,b){return a.key<b.key?-1:a.key>b.key?1:0;});
-  syndicateArea.innerHTML=dmBuildTable(synRows,dmPlayers,function(r){
-    return esc(r.label||r.key)+(r.label?'<div class="syn-key">'+esc(r.key)+'</div>':'');
-  },function(p,r){return p.syndicate.indexOf(r.key)!==-1;});
+  sumEl.textContent=totalKeys+' keys across '+DATAMINE_PROPERTIES.length+' properties, '+unmappedRows.length+' unmapped, '+dmFullPlayers.length+' players';
+}
 
-  // Anonymous section: no roster at all, purely auto-discovered from whatever's in the saves.
-  var anonKeys={};
-  dmPlayers.forEach(function(p){ p.anonymous.forEach(function(k){ anonKeys[k]=1; }); });
-  var anonRows=Object.keys(anonKeys).sort().map(function(k){return {key:k};});
-  anonArea.innerHTML=anonRows.length
-    ? dmBuildTable(anonRows,dmPlayers,function(r){return '<span class="syn-key">'+esc(r.key)+'</span>';},function(p,r){return p.anonymous.indexOf(r.key)!==-1;})
-    : '<div class="empty-state">None found</div>';
-
-  // Journal section 1: confirmed map pins (journal_locations.json entries carrying a "key"),
-  // same case-insensitive match convention as the Effigy map (renderEffigyMap's
-  // journalCollectedSet). Sorted by name.
-  var journalHas=function(p,key){
-    return p.journal.map(function(k){return k.toUpperCase();}).indexOf(key.toUpperCase())!==-1;
-  };
-  var journalRows=dmJournalRoster.filter(function(r){return !!r.key;})
-    .sort(function(a,b){return a.name<b.name?-1:a.name>b.name?1:0;});
-  journalArea.innerHTML=journalRows.length
-    ? dmBuildTable(journalRows,dmPlayers,function(r){
-        return esc(r.name)+'<div class="syn-key">'+esc(r.key)+' &bull; X: '+r.gx+', Y: '+r.gy+'</div>';
-      },function(p,r){return journalHas(p,r.key);},null,'Journal Entry','Found')
-    : '<div class="empty-state">No confirmed pins yet</div>';
-
-  // Journal section 2: every raw NoteObtainForInstanceFlag key observed in ANY player's save,
-  // confirmed or not -- lets the key<->name mapping above be audited against the full raw list
-  // instead of trusting it silently. Mapped rows show which pin they're tied to; unmapped rows
-  // are either an unconfirmed diary pin (needs a live-save diff to identify which) or a
-  // dungeon-boss lore note (no map pin at all, ever) -- not auto-classified between the two.
-  var confirmedKeyNames={}; journalRows.forEach(function(r){confirmedKeyNames[r.key.toUpperCase()]=r.name;});
-  var allRawKeys={};
-  dmPlayers.forEach(function(p){ p.journal.forEach(function(k){ allRawKeys[k]=1; }); });
-  var journalRawRows=Object.keys(allRawKeys).sort().map(function(k){return {key:k};});
-  journalUnmappedArea.innerHTML=journalRawRows.length
-    ? dmBuildTable(journalRawRows,dmPlayers,function(r){return '<span class="syn-key">'+esc(r.key)+'</span>';},function(p,r){return journalHas(p,r.key);},[
-        {header:'Mapped Pin',cell:function(r){
-          var name=confirmedKeyNames[r.key.toUpperCase()];
-          return name?esc(name):'<span style="color:var(--muted);">unmapped</span>';
-        }}
-      ],'Raw Key','Found')
-    : '<div class="empty-state">None found</div>';
-
-  var bountyDone=bountyRows.filter(function(r){return dmPlayers.some(function(p){return p.bounty.indexOf(r.species)!==-1;});}).length;
-  var synDone=synRows.filter(function(r){return dmPlayers.some(function(p){return p.syndicate.indexOf(r.key)!==-1;});}).length;
-  var journalDone=journalRows.filter(function(r){return dmPlayers.some(function(p){return journalHas(p,r.key);});}).length;
-  var journalUnmappedCount=journalRawRows.filter(function(r){return !confirmedKeyNames[r.key.toUpperCase()];}).length;
-  sumEl.textContent=bountyDone+'/'+bountyRows.length+' bounty | '+synDone+'/'+synRows.length+' syndicate | '+anonRows.length+' anonymous keys | '
-    +journalDone+'/'+journalRows.length+' journal pins | '+journalRawRows.length+' raw journal keys ('+journalUnmappedCount+' unmapped)';
+async function saveDatamineMapping(propName,key){
+  var rowId=dmRowId(propName,key);
+  var nameEl=document.getElementById(rowId+'-name');
+  var gxEl=document.getElementById(rowId+'-gx');
+  var gyEl=document.getElementById(rowId+'-gy');
+  if(!nameEl){ toast('Could not find that row -- try reloading.','error'); return; }
+  var name=nameEl.value.trim()||null;
+  var gx=gxEl.value.trim()===''?null:gxEl.value.trim();
+  var gy=gyEl.value.trim()===''?null:gyEl.value.trim();
+  try{
+    await api('/api/datamine-mapping','POST',{property:propName,key:key,name:name,gx:gx,gy:gy});
+    var prop=dmPropByName(propName);
+    if(prop&&prop.spatial){
+      dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key!==key;});
+      dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:propName});
+    } else {
+      dmMappings.labels=(dmMappings.labels||[]).filter(function(l){return !(l.property===propName&&l.key===key);});
+      dmMappings.labels.push({property:propName,key:key,name:name,gx:gx,gy:gy});
+    }
+    toast('Saved.','success');
+    renderDataMine();
+  }catch(e){
+    toast('Failed to save: '+String(e&&e.message||e),'error');
+  }
 }
 
 // Coalesces N renderEffigyMap() calls within one animation frame into a single real

@@ -116,6 +116,25 @@ def parse_name_int_map(raw, pos):
     return result
 
 
+def parse_name_array(raw, pos):
+    """ArrayProperty of NameProperty/StrProperty (e.g. CompletedQuestArray,
+    UnlockedRecipeTechnologyNames): InnerType FString, 1-byte HasPropertyGuid, 4-byte count,
+    then each element is its own back-to-back length-prefixed FString -- no per-element
+    wrapper. Same header offset (+8) as parse_name_bool_map/parse_name_int_map, confirmed
+    against real save bytes -- see /palworld-dataminer skill's decode_name_array note."""
+    pos += 8
+    _, pos = read_fstring(raw, pos)  # inner type ("NameProperty" or "StrProperty")
+    pos += 1  # HasPropertyGuid
+    count = struct.unpack_from("<I", raw, pos)[0]
+    pos += 4
+    result = []
+    for _ in range(count):
+        name, pos = read_fstring(raw, pos)
+        if name:
+            result.append(name)
+    return result
+
+
 def extract_effigy_data(sav_path):
     """Return list of uppercase hex GUID strings for collected effigies."""
     raw = decompress_save(sav_path)
@@ -331,6 +350,55 @@ def extract_datamine_data(sav_path):
         "fixedDungeonClearCount": read_int_stat("FixedDungeonClearCount"),
         "normalDungeonClearCount": read_int_stat("NormalDungeonClearCount"),
     }
+
+
+# Every top-level save property known (per /palworld-dataminer's reverse-engineering) to
+# hold enumerable per-key data -- the registry behind the admin dashboard's generic Data
+# Mine key/property browser. "kind" picks the matching raw parser above. Extending this list
+# is the ONLY step needed to expose a newly-decoded property in that browser -- no dashboard
+# code changes required beyond mirroring the same (name, kind) pair in dashboard.html.
+DATAMINE_PROPERTIES = [
+    ("NormalBossDefeatFlag", "bool_map"),
+    ("RelicObtainForInstanceFlag", "bool_map"),
+    ("NoteObtainForInstanceFlag", "bool_map"),
+    ("FastTravelPointUnlockFlag", "bool_map"),
+    ("FindAreaFlagMap", "bool_map"),
+    ("PaldeckUnlockFlag", "bool_map"),
+    ("InvokeNPCNetworkEventMap", "bool_map"),
+    ("NPCTalkCountMap", "int_map"),
+    ("PalCaptureCount", "int_map"),
+    ("PalCaptureBonusCount", "int_map"),
+    ("CraftItemCount", "int_map"),
+    ("UnlockedRecipeTechnologyNames", "name_array"),
+    ("CompletedQuestArray", "name_array"),
+]
+
+
+def extract_all_datamine_properties(sav_path):
+    """Every DATAMINE_PROPERTIES entry for one player's save, keyed by property name --
+    {"entries": {}} / {"entries": []} (empty, matching "kind") for any property not yet
+    present in this particular save rather than omitting the key, so the dashboard can
+    always rely on every registered property being present in the response."""
+    raw = decompress_save(sav_path)
+    out = {}
+    for name, kind in DATAMINE_PROPERTIES:
+        pos = find_property(raw, name)
+        if pos == -1:
+            out[name] = {"kind": kind, "entries": [] if kind == "name_array" else {}}
+            continue
+        _, p = read_fstring(raw, pos)
+        _, p = read_fstring(raw, p)
+        try:
+            if kind == "bool_map":
+                entries = parse_name_bool_map_full(raw, p)
+            elif kind == "int_map":
+                entries = parse_name_int_map(raw, p)
+            else:
+                entries = parse_name_array(raw, p)
+        except Exception:
+            entries = [] if kind == "name_array" else {}
+        out[name] = {"kind": kind, "entries": entries}
+    return out
 
 
 def extract_player_data(sav_path):
@@ -602,6 +670,22 @@ def main():
             print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
+        return
+
+    # datamine-full mode: python pal_save_reader.py <save_dir> datamine-full <guid>
+    # Every DATAMINE_PROPERTIES entry for one player -- backs the admin dashboard's generic
+    # Data Mine key/property browser (see /palworld-dataminer skill).
+    if len(sys.argv) > 2 and sys.argv[2] == "datamine-full":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            properties = extract_all_datamine_properties(sav_path)
+            print(json.dumps({"guid": guid, "properties": properties}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "properties": {}, "error": str(e)}))
         return
 
     players_dir = os.path.join(save_dir, "Players")
