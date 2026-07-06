@@ -340,7 +340,7 @@ $pubFetchPlayerLocations = @'
 async function fetchPlayerLocations(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
-  if(!guid){ if(effigyLeaflet) renderEffigyMap(); return; }
+  if(!guid){ if(effigyLeaflet) renderPlayerMarkers(); return; }
   try{
     var r=await fetch('data/player-location/'+encodeURIComponent(guid)+'.json',{cache:'no-store'});
     var d=r.ok?await r.json():{};
@@ -349,7 +349,7 @@ async function fetchPlayerLocations(){
   }catch(e){
     playerLocations=[];
   }
-  if(effigyLeaflet) renderEffigyMap();
+  if(effigyLeaflet) renderPlayerMarkers();
 }
 '@
 $before = $html
@@ -600,6 +600,15 @@ if (-not $html.Contains('function cryptName(')) { throw "paldeck spoiler: cryptN
 if (-not $html.Contains('var _msk=(count===0)')) { throw "paldeck spoiler: mask flag missing from output" }
 if (-not $html.Contains('var revealedSet=new Set()')) { throw "effigy spoiler: revealed-set computation missing from output" }
 if (-not $html.Contains('!revealedSet.has(id.toUpperCase())')) { throw "effigy spoiler: render-loop skip missing from output" }
+# Marker cache + diff engine (2026-07-06 perf pass): renderEffigyMapNow/renderPlayerMarkers
+# must survive intact and exactly-once -- both are string-surgery-adjacent to the anchors
+# above (collectedCount/revealedSet live inside renderEffigyMapNow), so a future edit that
+# shifts them out of place would otherwise gen clean and only surface as a silent perf
+# regression or blank map on the live site.
+$rmnCount = ([regex]::Matches($html, 'function renderEffigyMapNow\(')).Count
+if ($rmnCount -ne 1) { throw "renderEffigyMapNow found $rmnCount times in output (expected 1)" }
+$rpmCount = ([regex]::Matches($html, 'function renderPlayerMarkers\(')).Count
+if ($rpmCount -ne 1) { throw "renderPlayerMarkers found $rpmCount times in output (expected 1)" }
 if (-not $html.Contains('var PREFS_ENABLED=true;')) { throw "prefs: were not enabled for the public site" }
 if (-not $html.Contains('fetchPaldeck();loadPrefs();')) { throw "prefs: loadPrefs was not wired into boot" }
 if ($html.Contains('__GEN_TS__')) { throw "data-age generation stamp placeholder was not substituted" }
