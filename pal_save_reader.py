@@ -362,15 +362,9 @@ DATAMINE_PROPERTIES = [
     ("RelicObtainForInstanceFlag", "bool_map"),
     ("NoteObtainForInstanceFlag", "bool_map"),
     ("FastTravelPointUnlockFlag", "bool_map"),
-    ("FindAreaFlagMap", "bool_map"),
     ("PaldeckUnlockFlag", "bool_map"),
-    ("InvokeNPCNetworkEventMap", "bool_map"),
     ("NPCTalkCountMap", "int_map"),
-    ("PalCaptureCount", "int_map"),
     ("PalCaptureBonusCount", "int_map"),
-    ("CraftItemCount", "int_map"),
-    ("UnlockedRecipeTechnologyNames", "name_array"),
-    ("CompletedQuestArray", "name_array"),
 ]
 
 

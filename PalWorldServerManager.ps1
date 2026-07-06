@@ -625,7 +625,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # separate datamine_labels.json instead.
     $script:DatamineSpatialProperties = @(
         'NormalBossDefeatFlag', 'RelicObtainForInstanceFlag', 'NoteObtainForInstanceFlag',
-        'FastTravelPointUnlockFlag', 'FindAreaFlagMap', 'NPCTalkCountMap'
+        'FastTravelPointUnlockFlag', 'NPCTalkCountMap'
     )
 
     # datamine_labels.json holds {property,key,name,gx,gy} for non-spatial properties --
