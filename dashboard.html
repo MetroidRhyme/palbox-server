@@ -4287,6 +4287,11 @@ var DATAMINE_KIND_LABEL={bool_map:'Bool',int_map:'Int',name_array:'Name'};
 
 var dmFullPlayers=null; // [{guid,name,properties:{PropName:{kind,entries}}}, ...]
 var dmMappings=null;    // {confirmedLocations:[{key,name,gx,gy,source}], labels:[{property,key,name,gx,gy}]}
+// Rebuilt every renderDataMine() call -- {propName:[{catLabel,name,gx,gy}, ...]}, the same
+// keyless map-icon roster entries dmPropertyRows appends as icon rows, just indexed by
+// property so an Unmapped Keys row's "map to existing" dropdown can look one up by index at
+// onchange time without re-deriving it from scratch.
+var dmRosterCandidatesCache={};
 
 function toggleDmSection(id){
   var el=document.getElementById(id);
@@ -4490,6 +4495,23 @@ function dmPropertyRows(prop){
   return rows.concat(iconRows);
 }
 
+// Same keyless-roster-entry set dmPropertyRows appends as icon rows, but as a flat list for a
+// property (not merged with its key rows) -- feeds the Unmapped Keys "map to existing" dropdown.
+function dmRosterCandidatesFor(propName){
+  var prop=dmPropByName(propName);
+  var out=[];
+  (prop&&prop.iconCategories||[]).forEach(function(label){
+    var cat=dmIconCatByLabel(label);
+    if(!cat) return;
+    cat.getRoster().filter(function(r){return !r.key;}).forEach(function(r){
+      var g=cat.getGxGy(r);
+      out.push({catLabel:label,name:r.name,gx:g.cx,gy:g.cy});
+    });
+  });
+  out.sort(function(a,b){return a.name<b.name?-1:a.name>b.name?1:0;});
+  return out;
+}
+
 function dmTableHtml(prop,rows,players){
   if(!rows.length) return '<div class="empty-state">None found</div>';
   return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th><th>Coordinates</th>'
@@ -4588,6 +4610,12 @@ function renderDataMine(){
     return;
   }
 
+  var candidatesCache={};
+  DATAMINE_PROPERTIES.forEach(function(prop){
+    if(prop.iconCategories&&prop.iconCategories.length) candidatesCache[prop.name]=dmRosterCandidatesFor(prop.name);
+  });
+  dmRosterCandidatesCache=candidatesCache;
+
   var totalKeys=0, unmappedRows=[], totalIconRows=0;
   var sectionsHtml=DATAMINE_PROPERTIES.map(function(prop){
     var keys=dmAllKeysFor(prop.name);
@@ -4625,17 +4653,45 @@ function renderDataMine(){
       +unmappedRows.map(function(r){
         var m=dmMappingFor(r.prop.name,r.key);
         var rowId=dmRowId(r.prop.name,r.key,'um'), pJs=dmEscJs(r.prop.name), kJs=dmEscJs(r.key);
+        var candidates=dmRosterCandidatesCache[r.prop.name]||[];
+        // "Map to existing" -- picks a keyless map-icon roster entry (e.g. an Eagle Statue
+        // pin already on the map with no save key yet) and fills in its name/coords, instead
+        // of Anthony typing them from scratch. Only shown when this property actually has
+        // linked icon categories with at least one still-unmatched entry to offer.
+        var mapSelect=candidates.length
+          ?' <select class="dm-edit-input" style="width:150px;" id="'+rowId+'-maproster" onchange="dmApplyRosterMap(\''+pJs+'\',\''+rowId+'\',this.value)">'
+            +'<option value="">Map to existing...</option>'
+            +candidates.map(function(c,i){return '<option value="'+i+'">'+esc(c.name)+' ('+esc(c.catLabel)+')</option>';}).join('')
+            +'</select>'
+          :'';
         return '<tr><td>'+esc(r.prop.name)+'</td><td class="syn-key">'+esc(r.key)+'</td>'
           +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[r.prop.kind]+'</span></td>'
           +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
             +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>'
-          +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" placeholder="(unmapped)"></td>'
+          +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" placeholder="(unmapped)">'+mapSelect+'</td>'
           +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\',\'um\')">Save</button></td></tr>';
       }).join('')+'</tbody></table>'
     : '<div class="empty-state">Nothing unmapped</div>';
 
   sumEl.textContent=totalKeys+' keys across '+DATAMINE_PROPERTIES.length+' properties, '+unmappedRows.length+' unmapped, '
     +totalIconRows+' unmatched map pins, '+dmFullPlayers.length+' players';
+}
+
+// Fills the Unmapped Keys row's Name/Coordinates inputs from a picked roster candidate --
+// doesn't save by itself, Anthony still reviews and clicks Save same as manual typing (Save
+// itself refetches the matched icon category so the roster entry's own row drops off the
+// unmatched list, see saveDatamineMapping below).
+function dmApplyRosterMap(propName,rowId,idxStr){
+  if(idxStr==='') return;
+  var c=(dmRosterCandidatesCache[propName]||[])[parseInt(idxStr,10)];
+  if(!c) return;
+  var nameEl=document.getElementById(rowId+'-name');
+  var gxEl=document.getElementById(rowId+'-gx');
+  var gyEl=document.getElementById(rowId+'-gy');
+  if(nameEl) nameEl.value=c.name;
+  if(gxEl) gxEl.value=c.gx;
+  if(gyEl) gyEl.value=c.gy;
+  toast('Filled in from the '+c.catLabel+' roster -- click Save to confirm.','success');
 }
 
 async function saveDatamineMapping(propName,key,scope){
@@ -4660,6 +4716,16 @@ async function saveDatamineMapping(propName,key,scope){
     } else {
       dmMappings.labels=(dmMappings.labels||[]).filter(function(l){return !(l.property===propName&&l.key===key);});
       dmMappings.labels.push({property:propName,key:key,name:name,gx:gx,gy:gy,verified:true});
+    }
+    // If this property has linked map-icon categories (e.g. Eagle Statue), refetch them so a
+    // roster entry just matched by name (via dmApplyRosterMap, or a plain coincidental match)
+    // picks up its new key and drops out of the unmatched list immediately instead of
+    // lingering until a full tab reload.
+    if(prop&&prop.iconCategories&&prop.iconCategories.length){
+      await Promise.all(prop.iconCategories.map(function(label){
+        var cat=dmIconCatByLabel(label);
+        return cat?cat.refetch():null;
+      }));
     }
     toast('Saved.','success');
     renderDataMine();
