@@ -1,723 +1,730 @@
 [
-  {
-    "key": "02A0A1BD4E38FE8878DAC8B643DA302F",
-    "name": null,
-    "gx": 263,
-    "gy": -210
-  },
-  {
-    "key": "099440764403D1508D9BADADF4848697",
-    "name": "Tower of the PAL Genetic Research Unit",
-    "gx": -148,
-    "gy": 447
-  },
-  {
-    "key": "0B9C64E849BA38D328DD28AA02FE30BB",
-    "name": "Feybreak Tower",
-    "gx": -1294,
-    "gy": -1669,
-    "source": "FastTravelPointUnlockFlag"
-  },
-  {
-    "key": "11BA233D4DF76C83A529DF83EAFDF23A",
-    "name": "Skilled Islander",
-    "gx": 158,
-    "gy": -466
-  },
-  {
-    "key": "1DC0898A45ED48935297D297D0F72718",
-    "name": null,
-    "gx": 196,
-    "gy": 2
-  },
-  {
-    "key": "1_10_PLAIN_F_BOSS_FAIRYDRAGON",
-    "name": "Chillet",
-    "gx": 173,
-    "gy": -418
-  },
-  {
-    "key": "20EBCF62447D3E25EAE3FAA4B28BC611",
-    "name": null,
-    "gx": -676,
-    "gy": -239
-  },
-  {
-    "key": "229CFE1641228D892249A0A948AA8B79",
-    "name": null,
-    "gx": 135,
-    "gy": -355
-  },
-  {
-    "key": "236E7DD447C9BD09C08D319E5CF6EDCF",
-    "name": null,
-    "gx": -634,
-    "gy": -1032
-  },
-  {
-    "key": "2801DF834644293C3766F19AE7052C12",
-    "name": "Cautious PIDF Officer",
-    "gx": 433,
-    "gy": -347
-  },
-  {
-    "key": "2BC5E46049E69D3549CFB58948BE3288",
-    "name": "Sand Dunes Entrance",
-    "gx": 282,
-    "gy": 159
-  },
-  {
-    "key": "2D2B0E174E5D7B24F0C3EE802D1B86E0",
-    "name": null,
-    "gx": 174,
-    "gy": -452
-  },
-  {
-    "key": "2DE1702048A1D4A82126168C49BE51A9",
-    "name": "Mossanda Forest",
-    "gx": 233,
-    "gy": -118
-  },
-  {
-    "key": "32B472714CB2984C4A2EF8B1EF716838",
-    "name": null,
-    "gx": 268,
-    "gy": -315
-  },
-  {
-    "key": "3A84A3DD43C34B936CE6F18842A6FE1D",
-    "name": "Emberstone Plateau",
-    "gx": -720,
-    "gy": -1195
-  },
-  {
-    "key": "40441363454B4F6C391848989032BA49",
-    "name": null,
-    "gx": -473,
-    "gy": -530
-  },
-  {
-    "key": "41727100495D21DC905D309C53989914",
-    "name": "Fort Ruins",
-    "gx": 182,
-    "gy": -390
-  },
-  {
-    "key": "426A93FF4B8C31DF8E9D4E8BF331C1E5",
-    "name": null,
-    "gx": 514,
-    "gy": -90
-  },
-  {
-    "key": "49C3516D459F15C70ABEE88CD7F4D331",
-    "name": "Moonflower Tower Entrance",
-    "gx": -603,
-    "gy": 214
-  },
-  {
-    "key": "513E166044565A0BD3360F94142577E8",
-    "name": "Marsh Island",
-    "gx": 431,
-    "gy": -346
-  },
-  {
-    "key": "52C921BC4C9C65C0FEBA0788C18254F2",
-    "name": "Cowardly Victim",
-    "gx": 425,
-    "gy": -346
-  },
-  {
-    "key": "5669E36645C97EE9F38D308738ED30A7",
-    "name": "Frostbitten Isle",
-    "gx": -80,
-    "gy": -946
-  },
-  {
-    "key": "596996B948716D3FD2283C8B5C6E829C",
-    "name": "Sea Breeze Archipelago - Castaway Beach",
-    "gx": -99,
-    "gy": -712
-  },
-  {
-    "key": "5970E8E648D2A83AFDFF7C9151D9BEF5",
-    "name": "Eternal Pyre Tower Entrance",
-    "gx": -594,
-    "gy": -531
-  },
-  {
-    "key": "603ED0CD4CFB9AFDC9E11F805594CCE5",
-    "name": "Rayne Syndicate Tower Entrance",
-    "gx": 118,
-    "gy": -423
-  },
-  {
-    "key": "6231802D40C81C00445379AE238D9F90",
-    "name": "Eastern Wild Island",
-    "gx": 549,
-    "gy": -103
-  },
-  {
-    "key": "6282FE1E4029EDCDB14135AA4C171E4C",
-    "name": "Desolate Church",
-    "gx": 63,
-    "gy": -417
-  },
-  {
-    "key": "65B10BB14ABDA9C2109167B21901D195",
-    "name": "PIDF Tower Entrance",
-    "gx": 542,
-    "gy": 334
-  },
-  {
-    "key": "665B347C4A056FE1245ED5A8F9D39DE6",
-    "name": null,
-    "gx": 180,
-    "gy": 8
-  },
-  {
-    "key": "6683A13E48EF97BBDE3D2FAA7CAAADA0",
-    "name": null,
-    "gx": 561,
-    "gy": 239
-  },
-  {
-    "key": "6E03F8464BAD9E458B843AA30BE1CC8F",
-    "name": "Plateau of Beginnings",
-    "gx": 240,
-    "gy": -513
-  },
-  {
-    "key": "7C5E91514F6E84B0C1DEFFB52C7C4DBA",
-    "name": "Ruined Fortress City",
-    "gx": -561,
-    "gy": -247
-  },
-  {
-    "key": "7D3A585F4CEFCAFE7C262394D6DEA845",
-    "name": null,
-    "gx": 204,
-    "gy": -453
-  },
-  {
-    "key": "81_1_FOREST_FBOSS_2",
-    "name": "Warsect",
-    "gx": 161,
-    "gy": -223
-  },
-  {
-    "key": "81_1_FOREST_FBOSS_3",
-    "name": "Verdash",
-    "gx": 285,
-    "gy": 10
-  },
-  {
-    "key": "81_1_FOREST_FBOSS_4",
-    "name": "Vaelet",
-    "gx": 129,
-    "gy": -51
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_1",
-    "name": "Mammorest",
-    "gx": 189,
-    "gy": -478
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_11",
-    "name": "Bushi",
-    "gx": -116,
-    "gy": -491
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_13",
-    "name": "Jormuntide",
-    "gx": 350,
-    "gy": -85
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_18",
-    "name": "Grintale",
-    "gx": 356,
-    "gy": -246
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_2",
-    "name": "Kingpaca",
-    "gx": 50,
-    "gy": -461
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_20",
-    "name": "Katress",
-    "gx": 242,
-    "gy": -332
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_21",
-    "name": "Sweepa",
-    "gx": -227,
-    "gy": -593
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_23",
-    "name": "Univolt",
-    "gx": -117,
-    "gy": -543
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_24",
-    "name": "Broncherry",
-    "gx": -222,
-    "gy": -669
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_29",
-    "name": "Wumpo Botan",
-    "gx": 449,
-    "gy": -51
-  },
-  {
-    "key": "81_1_GRASS_FBOSS_9",
-    "name": "Penking",
-    "gx": 114,
-    "gy": -352
-  },
-  {
-    "key": "81_2_DESSERT_FBOSS_3",
-    "name": "Menasting",
-    "gx": 516,
-    "gy": 102
-  },
-  {
-    "key": "81_3_VOLCANO_FBOSS_1",
-    "name": "Jetragon",
-    "gx": -789,
-    "gy": -321
-  },
-  {
-    "key": "81_3_VOLCANO_FBOSS_3",
-    "name": "Blazamut",
-    "gx": -442,
-    "gy": -561
-  },
-  {
-    "key": "81_5_YAMIJIMA_FBOSS_15",
-    "name": "Tarantriss",
-    "gx": -1341,
-    "gy": -1429,
-    "source": "NormalBossDefeatFlag"
-  },
-  {
-    "key": "81_5_YAMIJIMA_FBOSS_18",
-    "name": "Warsect Terra",
-    "gx": -1021,
-    "gy": -1448,
-    "source": "NormalBossDefeatFlag"
-  },
-  {
-    "key": "81_5_YAMIJIMA_FBOSS_20",
-    "name": "Dazzi Noct",
-    "gx": -1343,
-    "gy": -1580,
-    "source": "NormalBossDefeatFlag"
-  },
-  {
-    "key": "81_5_YAMIJIMA_FBOSS_4",
-    "name": "Faleris Aqua",
-    "gx": -628,
-    "gy": -1048
-  },
-  {
-    "key": "834398374941399E503F70BFD132AE60",
-    "name": "Bounty Intel Dealer",
-    "gx": 148,
-    "gy": -209
-  },
-  {
-    "key": "8565CC4242BEE5A8771DEB9693B2EE35",
-    "name": null,
-    "gx": -813,
-    "gy": -430
-  },
-  {
-    "key": "866881DB443444AA7F4E7C8E5DCDAA29",
-    "name": "Marsh Island Church Ruins",
-    "gx": 399,
-    "gy": -277
-  },
-  {
-    "key": "8BCDE3654504C5823162BE83EB674216",
-    "name": null,
-    "gx": 67,
-    "gy": -409
-  },
-  {
-    "key": "8CA5E9774FF1BBC1156ABCA09E616480",
-    "name": "Small Cove",
-    "gx": -205,
-    "gy": -546
-  },
-  {
-    "key": "8D664B8B4EE1FACD644F0CB24820546B",
-    "name": null,
-    "gx": 263,
-    "gy": -210
-  },
-  {
-    "key": "902C96F44BC84002E39B52ACBFC61452",
-    "name": "Feybreak Shipwreck",
-    "gx": -1389,
-    "gy": -1471,
-    "source": "FastTravelPointUnlockFlag"
-  },
-  {
-    "key": "904C55D64A3780944F2FA19BB427D8AF",
-    "name": "Expedition Survivor",
-    "gx": 241,
-    "gy": -509
-  },
-  {
-    "key": "9521FEBF4A6D0D02AE9F80AE9513B99C",
-    "name": "Feybreak Tower Entrance",
-    "gx": -1287,
-    "gy": -1664,
-    "source": "FastTravelPointUnlockFlag"
-  },
-  {
-    "key": "979BF2044C8E8FE559B598A95A83EDE3",
-    "name": "Small Settlement",
-    "gx": 73,
-    "gy": -486
-  },
-  {
-    "key": "9B171E8246372372D29CDCAB3B1055A2",
-    "name": null,
-    "gx": 243,
-    "gy": -201
-  },
-  {
-    "key": "9FBB93D84811BE424A37C391DBFBB476",
-    "name": "Sealed Realm of the Frozen Wings",
-    "gx": 119,
-    "gy": -336
-  },
-  {
-    "key": "A1BC65AA445619EF338E0388BC010648",
-    "name": "Foot of the Volcano",
-    "gx": -352,
-    "gy": -491
-  },
-  {
-    "key": "A277AE6341EF40D84D711EA52303353F",
-    "name": "Sealed Realm of the Swift",
-    "gx": 286,
-    "gy": 18
-  },
-  {
-    "key": "A360858E448AF927AF914D8E9D74E416",
-    "name": null,
-    "gx": 157,
-    "gy": -466
-  },
-  {
-    "key": "A472FE0E4AC819A740B43F9DE27AEDAB",
-    "name": null,
-    "gx": -279,
-    "gy": 207
-  },
-  {
-    "key": "A78ABED2498158E6958D6AABA01D0D8A",
-    "name": null,
-    "gx": -627,
-    "gy": -532
-  },
-  {
-    "key": "A893B952423E429AA45A06B615A582FA",
-    "name": "Moonflower Tower",
-    "gx": -597,
-    "gy": 206
-  },
-  {
-    "key": "ACAE5FB04D48DE4197443E9C0993086B",
-    "name": "Sealed Realm of the Guardian",
-    "gx": 120,
-    "gy": -62
-  },
-  {
-    "key": "AEC6234A4075A195914E5080A42E97D4",
-    "name": null,
-    "gx": -772,
-    "gy": -163
-  },
-  {
-    "key": "AECFED0D41AFEE11F30B4F9687BC3243",
-    "name": "Mount Obsidian - Midpoint",
-    "gx": -497,
-    "gy": -444
-  },
-  {
-    "key": "B1AFFBA0405900BAA6649C8D7A338C4E",
-    "name": null,
-    "gx": -116,
-    "gy": 136
-  },
-  {
-    "key": "B639B7ED4EE18A7AA09BA189EA703032",
-    "name": "Tower of the Brothers of the Eternal Pyre",
-    "gx": -588,
-    "gy": -518
-  },
-  {
-    "key": "B93B28214BED86A7C1E2FA8375853BF2",
-    "name": "Desert Runaway",
-    "gx": 547,
-    "gy": -115
-  },
-  {
-    "key": "BA6D1B934AFB81083ABB13A4A0973798",
-    "name": null,
-    "gx": 162,
-    "gy": -8
-  },
-  {
-    "key": "BDEF577546E59F347439598FE82E8E8F",
-    "name": null,
-    "gx": -586,
-    "gy": -236
-  },
-  {
-    "key": "BF8B123244ADB794A06EA8A10503FBDD",
-    "name": "Gobfin's Turf",
-    "gx": 149,
-    "gy": -207
-  },
-  {
-    "key": "BOSS_FEMALE_SOLDIER03",
-    "name": "Aloha",
-    "gx": -592,
-    "gy": -235
-  },
-  {
-    "key": "BOSS_HUNTER_RIFLE",
-    "name": "Hawk",
-    "gx": 52,
-    "gy": -513
-  },
-  {
-    "key": "BOSS_MALE_DESERTPEOPLE",
-    "name": "Phantom",
-    "gx": 533,
-    "gy": 133
-  },
-  {
-    "key": "BOSS_MALE_PEOPLE",
-    "name": "Dyna",
-    "gx": 349,
-    "gy": -7
-  },
-  {
-    "key": "BOSS_MALE_PEOPLE03",
-    "name": "Scoot",
-    "gx": -15,
-    "gy": -482
-  },
-  {
-    "key": "BOSS_MALE_PEOPLE2",
-    "name": "Mite",
-    "gx": 349,
-    "gy": -2
-  },
-  {
-    "key": "BOSS_MALE_SOLDIER02",
-    "name": "Dart",
-    "gx": 268,
-    "gy": -216
-  },
-  {
-    "key": "BOSS_MALE_TRADER01",
-    "name": "Skim",
-    "gx": -90,
-    "gy": 144
-  },
-  {
-    "key": "BOSS_NINJA",
-    "name": "Fumble",
-    "gx": 162,
-    "gy": -2
-  },
-  {
-    "key": "BOSS_VIKINGELITE",
-    "name": "Cache",
-    "gx": -1386,
-    "gy": -1485,
-    "source": "NormalBossDefeatFlag"
-  },
-  {
-    "key": "CB436F1A4047E5852B9500BD3694DD6B",
-    "name": null,
-    "gx": 151,
-    "gy": -14
-  },
-  {
-    "key": "CBB18C5D4F5766E1F0068394325B79D7",
-    "name": null,
-    "gx": -620,
-    "gy": -1056
-  },
-  {
-    "key": "D1917BED4C918F31E082C4872AC226FA",
-    "name": null,
-    "gx": 191,
-    "gy": -378
-  },
-  {
-    "key": "D27AFCAD472164F000D33A8D8B61FE8B",
-    "name": "Tower of the Rayne Syndicate",
-    "gx": 111,
-    "gy": -431
-  },
-  {
-    "key": "D84FBE7D4670D6DE3B559992E1BC30B0",
-    "name": null,
-    "gx": -359,
-    "gy": -495
-  },
-  {
-    "key": "D979B15740FF4660777D4D9BC1C4BA5E",
-    "name": null,
-    "gx": -588,
-    "gy": -521
-  },
-  {
-    "key": "DA1E148D43AC682FF5EC868DEA164738",
-    "name": null,
-    "gx": -210,
-    "gy": -537
-  },
-  {
-    "key": "DAY-XX",
-    "name": "Castaway's Journal - Day XX",
-    "gx": 151,
-    "gy": -465
-  },
-  {
-    "key": "DAY1-1",
-    "name": "Castaway's Journal - Day 1-1",
-    "gx": 259,
-    "gy": -522
-  },
-  {
-    "key": "DAY2",
-    "name": "Castaway's Journal - Day 2",
-    "gx": 239,
-    "gy": -506
-  },
-  {
-    "key": "DAY3",
-    "name": "Castaway's Journal - Day 3",
-    "gx": 189,
-    "gy": -379
-  },
-  {
-    "key": "DAY8",
-    "name": "Castaway's Journal - Day 8",
-    "gx": 64,
-    "gy": -418
-  },
-  {
-    "key": "DDBBFFAF43D9219AE68DF98744DF0831",
-    "name": "Grassy Behemoth Hills",
-    "gx": 172,
-    "gy": -475
-  },
-  {
-    "key": "DF9FB9CB41B43052A9C74FA79A826A50",
-    "name": "Sealed Realm of the Swordmaster",
-    "gx": -109,
-    "gy": -467
-  },
-  {
-    "key": "E0819EFB41581AEAC3A029B0EE2FE195",
-    "name": "Genetic Research Unit Tower Entrance",
-    "gx": -139,
-    "gy": 466
-  },
-  {
-    "key": "E0EB2FAF49B39196D9F71E9485CADA3E",
-    "name": null,
-    "gx": 308,
-    "gy": -108
-  },
-  {
-    "key": "E188669B4A16E1ECDBE29F9C6EEAD15A",
-    "name": null,
-    "gx": -220,
-    "gy": -594
-  },
-  {
-    "key": "E2F0D38D4BF7A68056125382AFAA8E6C",
-    "name": null,
-    "gx": -845,
-    "gy": -397
-  },
-  {
-    "key": "E88379634CB5B6117DA2E7B8810BFE0A",
-    "name": "Tower of the Free Pal Alliance",
-    "gx": 182,
-    "gy": 30
-  },
-  {
-    "key": "EC20140543804F88E0943F9A5C1765EB",
-    "name": null,
-    "gx": 50,
-    "gy": -513
-  },
-  {
-    "key": "EC94023A4CA571FF0FD19E90944F4231",
-    "name": "Icy Weasel Hill",
-    "gx": 4,
-    "gy": 183
-  },
-  {
-    "key": "F382ADAE4259150BF994FF873ECF242B",
-    "name": "Ice Wind Island",
-    "gx": -352,
-    "gy": 76
-  },
-  {
-    "key": "F6C005A14B38FE0B57F1C7869FD899CB",
-    "name": "Natural Bridge",
-    "gx": 377,
-    "gy": -213
-  },
-  {
-    "key": "F8C928554A80DEBF93C25FAC6E5AD604",
-    "name": null,
-    "gx": 169,
-    "gy": -350
-  },
-  {
-    "key": "FE45304945C418937F0909BAA0F2059A",
-    "name": "Mercenary With a Wounded Knee",
-    "gx": -107,
-    "gy": -711
-  },
-  {
-    "key": "FE90632845114C7FBFA4669D071E285F",
-    "name": "Tower of the PIDF",
-    "gx": 556,
-    "gy": 335
-  },
-  {
-    "key": "GRASSBOSS3",
-    "name": "Zoe Rayne's Diary - 3",
-    "gx": 126,
-    "gy": -337
-  },
-  {
-    "key": "SNOWBOSS1",
-    "name": "Victor Ashford's Diary - 1",
-    "gx": -87,
-    "gy": 178
-  }
+    {
+        "key":  "02A0A1BD4E38FE8878DAC8B643DA302F",
+        "name":  null,
+        "gx":  263,
+        "gy":  -210
+    },
+    {
+        "key":  "099440764403D1508D9BADADF4848697",
+        "name":  "Tower of the PAL Genetic Research Unit",
+        "gx":  -148,
+        "gy":  447
+    },
+    {
+        "key":  "0B9C64E849BA38D328DD28AA02FE30BB",
+        "name":  "Feybreak Tower",
+        "gx":  -1294,
+        "gy":  -1669,
+        "source":  "FastTravelPointUnlockFlag"
+    },
+    {
+        "key":  "11BA233D4DF76C83A529DF83EAFDF23A",
+        "name":  "Skilled Islander",
+        "gx":  158,
+        "gy":  -466
+    },
+    {
+        "key":  "1DC0898A45ED48935297D297D0F72718",
+        "name":  null,
+        "gx":  196,
+        "gy":  2
+    },
+    {
+        "key":  "1_10_PLAIN_F_BOSS_FAIRYDRAGON",
+        "name":  "Chillet",
+        "gx":  173,
+        "gy":  -418
+    },
+    {
+        "key":  "20EBCF62447D3E25EAE3FAA4B28BC611",
+        "name":  null,
+        "gx":  -676,
+        "gy":  -239
+    },
+    {
+        "key":  "229CFE1641228D892249A0A948AA8B79",
+        "name":  null,
+        "gx":  135,
+        "gy":  -355
+    },
+    {
+        "key":  "236E7DD447C9BD09C08D319E5CF6EDCF",
+        "name":  null,
+        "gx":  -634,
+        "gy":  -1032
+    },
+    {
+        "key":  "2801DF834644293C3766F19AE7052C12",
+        "name":  "Cautious PIDF Officer",
+        "gx":  433,
+        "gy":  -347
+    },
+    {
+        "key":  "2BC5E46049E69D3549CFB58948BE3288",
+        "name":  "Sand Dunes Entrance",
+        "gx":  282,
+        "gy":  159
+    },
+    {
+        "key":  "2D2B0E174E5D7B24F0C3EE802D1B86E0",
+        "name":  null,
+        "gx":  174,
+        "gy":  -452
+    },
+    {
+        "key":  "2DE1702048A1D4A82126168C49BE51A9",
+        "name":  "Mossanda Forest",
+        "gx":  233,
+        "gy":  -118
+    },
+    {
+        "key":  "32B472714CB2984C4A2EF8B1EF716838",
+        "name":  null,
+        "gx":  268,
+        "gy":  -315
+    },
+    {
+        "key":  "3A84A3DD43C34B936CE6F18842A6FE1D",
+        "name":  "Emberstone Plateau",
+        "gx":  -720,
+        "gy":  -1195
+    },
+    {
+        "key":  "40441363454B4F6C391848989032BA49",
+        "name":  null,
+        "gx":  -473,
+        "gy":  -530
+    },
+    {
+        "key":  "41727100495D21DC905D309C53989914",
+        "name":  "Fort Ruins",
+        "gx":  182,
+        "gy":  -390
+    },
+    {
+        "key":  "426A93FF4B8C31DF8E9D4E8BF331C1E5",
+        "name":  null,
+        "gx":  514,
+        "gy":  -90
+    },
+    {
+        "key":  "49C3516D459F15C70ABEE88CD7F4D331",
+        "name":  "Moonflower Tower Entrance",
+        "gx":  -603,
+        "gy":  214
+    },
+    {
+        "key":  "513E166044565A0BD3360F94142577E8",
+        "name":  "Marsh Island",
+        "gx":  431,
+        "gy":  -346
+    },
+    {
+        "key":  "52C921BC4C9C65C0FEBA0788C18254F2",
+        "name":  "Cowardly Victim",
+        "gx":  425,
+        "gy":  -346
+    },
+    {
+        "key":  "5669E36645C97EE9F38D308738ED30A7",
+        "name":  "Frostbitten Isle",
+        "gx":  -80,
+        "gy":  -946
+    },
+    {
+        "key":  "596996B948716D3FD2283C8B5C6E829C",
+        "name":  "Sea Breeze Archipelago - Castaway Beach",
+        "gx":  -99,
+        "gy":  -712
+    },
+    {
+        "key":  "5970E8E648D2A83AFDFF7C9151D9BEF5",
+        "name":  "Eternal Pyre Tower Entrance",
+        "gx":  -594,
+        "gy":  -531
+    },
+    {
+        "key":  "603ED0CD4CFB9AFDC9E11F805594CCE5",
+        "name":  "Rayne Syndicate Tower Entrance",
+        "gx":  118,
+        "gy":  -423
+    },
+    {
+        "key":  "6231802D40C81C00445379AE238D9F90",
+        "name":  "Eastern Wild Island",
+        "gx":  549,
+        "gy":  -103
+    },
+    {
+        "key":  "6282FE1E4029EDCDB14135AA4C171E4C",
+        "name":  "Desolate Church",
+        "gx":  63,
+        "gy":  -417
+    },
+    {
+        "key":  "65B10BB14ABDA9C2109167B21901D195",
+        "name":  "PIDF Tower Entrance",
+        "gx":  542,
+        "gy":  334
+    },
+    {
+        "key":  "665B347C4A056FE1245ED5A8F9D39DE6",
+        "name":  null,
+        "gx":  180,
+        "gy":  8
+    },
+    {
+        "key":  "6683A13E48EF97BBDE3D2FAA7CAAADA0",
+        "name":  null,
+        "gx":  561,
+        "gy":  239
+    },
+    {
+        "key":  "6E03F8464BAD9E458B843AA30BE1CC8F",
+        "name":  "Plateau of Beginnings",
+        "gx":  240,
+        "gy":  -513
+    },
+    {
+        "key":  "7C5E91514F6E84B0C1DEFFB52C7C4DBA",
+        "name":  "Ruined Fortress City",
+        "gx":  -561,
+        "gy":  -247
+    },
+    {
+        "key":  "7D3A585F4CEFCAFE7C262394D6DEA845",
+        "name":  null,
+        "gx":  204,
+        "gy":  -453
+    },
+    {
+        "key":  "81_1_FOREST_FBOSS_2",
+        "name":  "Warsect",
+        "gx":  161,
+        "gy":  -223
+    },
+    {
+        "key":  "81_1_FOREST_FBOSS_3",
+        "name":  "Verdash",
+        "gx":  285,
+        "gy":  10
+    },
+    {
+        "key":  "81_1_FOREST_FBOSS_4",
+        "name":  "Vaelet",
+        "gx":  129,
+        "gy":  -51
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_1",
+        "name":  "Mammorest",
+        "gx":  189,
+        "gy":  -478
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_11",
+        "name":  "Bushi",
+        "gx":  -116,
+        "gy":  -491
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_13",
+        "name":  "Jormuntide",
+        "gx":  350,
+        "gy":  -85
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_18",
+        "name":  "Grintale",
+        "gx":  356,
+        "gy":  -246
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_2",
+        "name":  "Kingpaca",
+        "gx":  50,
+        "gy":  -461
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_20",
+        "name":  "Katress",
+        "gx":  242,
+        "gy":  -332
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_21",
+        "name":  "Sweepa",
+        "gx":  -227,
+        "gy":  -593
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_23",
+        "name":  "Univolt",
+        "gx":  -117,
+        "gy":  -543
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_24",
+        "name":  "Broncherry",
+        "gx":  -222,
+        "gy":  -669
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_29",
+        "name":  "Wumpo Botan",
+        "gx":  449,
+        "gy":  -51
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_9",
+        "name":  "Penking",
+        "gx":  114,
+        "gy":  -352
+    },
+    {
+        "key":  "81_2_DESSERT_FBOSS_3",
+        "name":  "Menasting",
+        "gx":  516,
+        "gy":  102
+    },
+    {
+        "key":  "81_3_VOLCANO_FBOSS_1",
+        "name":  "Jetragon",
+        "gx":  -789,
+        "gy":  -321
+    },
+    {
+        "key":  "81_3_VOLCANO_FBOSS_3",
+        "name":  "Blazamut",
+        "gx":  -442,
+        "gy":  -561
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_15",
+        "name":  "Tarantriss",
+        "gx":  -1341,
+        "gy":  -1429,
+        "source":  "NormalBossDefeatFlag"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_18",
+        "name":  "Warsect Terra",
+        "gx":  -1021,
+        "gy":  -1448,
+        "source":  "NormalBossDefeatFlag"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_20",
+        "name":  "Dazzi Noct",
+        "gx":  -1343,
+        "gy":  -1580,
+        "source":  "NormalBossDefeatFlag"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_4",
+        "name":  "Faleris Aqua",
+        "gx":  -628,
+        "gy":  -1048
+    },
+    {
+        "key":  "834398374941399E503F70BFD132AE60",
+        "name":  "Bounty Intel Dealer",
+        "gx":  148,
+        "gy":  -209
+    },
+    {
+        "key":  "8565CC4242BEE5A8771DEB9693B2EE35",
+        "name":  null,
+        "gx":  -813,
+        "gy":  -430
+    },
+    {
+        "key":  "866881DB443444AA7F4E7C8E5DCDAA29",
+        "name":  "Marsh Island Church Ruins",
+        "gx":  399,
+        "gy":  -277
+    },
+    {
+        "key":  "8BCDE3654504C5823162BE83EB674216",
+        "name":  null,
+        "gx":  67,
+        "gy":  -409
+    },
+    {
+        "key":  "8CA5E9774FF1BBC1156ABCA09E616480",
+        "name":  "Small Cove",
+        "gx":  -205,
+        "gy":  -546
+    },
+    {
+        "key":  "8D664B8B4EE1FACD644F0CB24820546B",
+        "name":  null,
+        "gx":  263,
+        "gy":  -210
+    },
+    {
+        "key":  "902C96F44BC84002E39B52ACBFC61452",
+        "name":  "Feybreak Shipwreck",
+        "gx":  -1389,
+        "gy":  -1471,
+        "source":  "FastTravelPointUnlockFlag"
+    },
+    {
+        "key":  "904C55D64A3780944F2FA19BB427D8AF",
+        "name":  "Expedition Survivor",
+        "gx":  241,
+        "gy":  -509
+    },
+    {
+        "key":  "9521FEBF4A6D0D02AE9F80AE9513B99C",
+        "name":  "Feybreak Tower Entrance",
+        "gx":  -1287,
+        "gy":  -1664,
+        "source":  "FastTravelPointUnlockFlag"
+    },
+    {
+        "key":  "979BF2044C8E8FE559B598A95A83EDE3",
+        "name":  "Small Settlement",
+        "gx":  73,
+        "gy":  -486
+    },
+    {
+        "key":  "9B171E8246372372D29CDCAB3B1055A2",
+        "name":  null,
+        "gx":  243,
+        "gy":  -201
+    },
+    {
+        "key":  "9FBB93D84811BE424A37C391DBFBB476",
+        "name":  "Sealed Realm of the Frozen Wings",
+        "gx":  119,
+        "gy":  -336
+    },
+    {
+        "key":  "A1BC65AA445619EF338E0388BC010648",
+        "name":  "Foot of the Volcano",
+        "gx":  -352,
+        "gy":  -491
+    },
+    {
+        "key":  "A277AE6341EF40D84D711EA52303353F",
+        "name":  "Sealed Realm of the Swift",
+        "gx":  286,
+        "gy":  18
+    },
+    {
+        "key":  "A360858E448AF927AF914D8E9D74E416",
+        "name":  null,
+        "gx":  157,
+        "gy":  -466
+    },
+    {
+        "key":  "A472FE0E4AC819A740B43F9DE27AEDAB",
+        "name":  null,
+        "gx":  -279,
+        "gy":  207
+    },
+    {
+        "key":  "A78ABED2498158E6958D6AABA01D0D8A",
+        "name":  null,
+        "gx":  -627,
+        "gy":  -532
+    },
+    {
+        "key":  "A893B952423E429AA45A06B615A582FA",
+        "name":  "Moonflower Tower",
+        "gx":  -597,
+        "gy":  206
+    },
+    {
+        "key":  "ACAE5FB04D48DE4197443E9C0993086B",
+        "name":  "Sealed Realm of the Guardian",
+        "gx":  120,
+        "gy":  -62
+    },
+    {
+        "key":  "AEC6234A4075A195914E5080A42E97D4",
+        "name":  null,
+        "gx":  -772,
+        "gy":  -163
+    },
+    {
+        "key":  "AECFED0D41AFEE11F30B4F9687BC3243",
+        "name":  "Mount Obsidian - Midpoint",
+        "gx":  -497,
+        "gy":  -444
+    },
+    {
+        "key":  "B1AFFBA0405900BAA6649C8D7A338C4E",
+        "name":  null,
+        "gx":  -116,
+        "gy":  136
+    },
+    {
+        "key":  "B639B7ED4EE18A7AA09BA189EA703032",
+        "name":  "Tower of the Brothers of the Eternal Pyre",
+        "gx":  -588,
+        "gy":  -518
+    },
+    {
+        "key":  "B93B28214BED86A7C1E2FA8375853BF2",
+        "name":  "Desert Runaway",
+        "gx":  547,
+        "gy":  -115
+    },
+    {
+        "key":  "BA6D1B934AFB81083ABB13A4A0973798",
+        "name":  null,
+        "gx":  162,
+        "gy":  -8
+    },
+    {
+        "key":  "BDEF577546E59F347439598FE82E8E8F",
+        "name":  null,
+        "gx":  -586,
+        "gy":  -236
+    },
+    {
+        "key":  "BF8B123244ADB794A06EA8A10503FBDD",
+        "name":  "Gobfin\u0027s Turf",
+        "gx":  149,
+        "gy":  -207
+    },
+    {
+        "key":  "BOSS_FEMALE_SOLDIER03",
+        "name":  "Aloha",
+        "gx":  -592,
+        "gy":  -235
+    },
+    {
+        "key":  "BOSS_HUNTER_RIFLE",
+        "name":  "Hawk",
+        "gx":  52,
+        "gy":  -513
+    },
+    {
+        "key":  "BOSS_MALE_DESERTPEOPLE",
+        "name":  "Phantom",
+        "gx":  533,
+        "gy":  133
+    },
+    {
+        "key":  "BOSS_MALE_PEOPLE",
+        "name":  "Dyna",
+        "gx":  349,
+        "gy":  -7
+    },
+    {
+        "key":  "BOSS_MALE_PEOPLE03",
+        "name":  "Scoot",
+        "gx":  -15,
+        "gy":  -482
+    },
+    {
+        "key":  "BOSS_MALE_PEOPLE2",
+        "name":  "Mite",
+        "gx":  349,
+        "gy":  -2
+    },
+    {
+        "key":  "BOSS_MALE_SOLDIER02",
+        "name":  "Dart",
+        "gx":  268,
+        "gy":  -216
+    },
+    {
+        "key":  "BOSS_MALE_TRADER01",
+        "name":  "Skim",
+        "gx":  -90,
+        "gy":  144
+    },
+    {
+        "key":  "BOSS_NINJA",
+        "name":  "Fumble",
+        "gx":  162,
+        "gy":  -2
+    },
+    {
+        "key":  "BOSS_VIKINGELITE",
+        "name":  "Cache",
+        "gx":  -1386,
+        "gy":  -1485,
+        "source":  "NormalBossDefeatFlag"
+    },
+    {
+        "key":  "CB436F1A4047E5852B9500BD3694DD6B",
+        "name":  null,
+        "gx":  151,
+        "gy":  -14
+    },
+    {
+        "key":  "CBB18C5D4F5766E1F0068394325B79D7",
+        "name":  null,
+        "gx":  -620,
+        "gy":  -1056
+    },
+    {
+        "key":  "D1917BED4C918F31E082C4872AC226FA",
+        "name":  null,
+        "gx":  191,
+        "gy":  -378
+    },
+    {
+        "key":  "D27AFCAD472164F000D33A8D8B61FE8B",
+        "name":  "Tower of the Rayne Syndicate",
+        "gx":  111,
+        "gy":  -431
+    },
+    {
+        "key":  "D84FBE7D4670D6DE3B559992E1BC30B0",
+        "name":  null,
+        "gx":  -359,
+        "gy":  -495
+    },
+    {
+        "key":  "D979B15740FF4660777D4D9BC1C4BA5E",
+        "name":  null,
+        "gx":  -588,
+        "gy":  -521
+    },
+    {
+        "key":  "DA1E148D43AC682FF5EC868DEA164738",
+        "name":  null,
+        "gx":  -210,
+        "gy":  -537
+    },
+    {
+        "key":  "DAY-XX",
+        "name":  "Castaway\u0027s Journal - Day XX",
+        "gx":  151,
+        "gy":  -465
+    },
+    {
+        "key":  "DAY1-1",
+        "name":  "Castaway\u0027s Journal - Day 1-1",
+        "gx":  259,
+        "gy":  -522
+    },
+    {
+        "key":  "DAY2",
+        "name":  "Castaway\u0027s Journal - Day 2",
+        "gx":  239,
+        "gy":  -506
+    },
+    {
+        "key":  "DAY3",
+        "name":  "Castaway\u0027s Journal - Day 3",
+        "gx":  189,
+        "gy":  -379
+    },
+    {
+        "key":  "DAY8",
+        "name":  "Castaway\u0027s Journal - Day 8",
+        "gx":  64,
+        "gy":  -418
+    },
+    {
+        "key":  "DDBBFFAF43D9219AE68DF98744DF0831",
+        "name":  "Grassy Behemoth Hills",
+        "gx":  172,
+        "gy":  -475
+    },
+    {
+        "key":  "DF9FB9CB41B43052A9C74FA79A826A50",
+        "name":  "Sealed Realm of the Swordmaster",
+        "gx":  -109,
+        "gy":  -467
+    },
+    {
+        "key":  "E0819EFB41581AEAC3A029B0EE2FE195",
+        "name":  "Genetic Research Unit Tower Entrance",
+        "gx":  -139,
+        "gy":  466
+    },
+    {
+        "key":  "E0EB2FAF49B39196D9F71E9485CADA3E",
+        "name":  null,
+        "gx":  308,
+        "gy":  -108
+    },
+    {
+        "key":  "E188669B4A16E1ECDBE29F9C6EEAD15A",
+        "name":  null,
+        "gx":  -220,
+        "gy":  -594
+    },
+    {
+        "key":  "E2F0D38D4BF7A68056125382AFAA8E6C",
+        "name":  null,
+        "gx":  -845,
+        "gy":  -397
+    },
+    {
+        "key":  "E88379634CB5B6117DA2E7B8810BFE0A",
+        "name":  "Tower of the Free Pal Alliance",
+        "gx":  182,
+        "gy":  30
+    },
+    {
+        "key":  "EC20140543804F88E0943F9A5C1765EB",
+        "name":  null,
+        "gx":  50,
+        "gy":  -513
+    },
+    {
+        "key":  "EC94023A4CA571FF0FD19E90944F4231",
+        "name":  "Icy Weasel Hill",
+        "gx":  4,
+        "gy":  183
+    },
+    {
+        "key":  "F382ADAE4259150BF994FF873ECF242B",
+        "name":  "Ice Wind Island",
+        "gx":  -352,
+        "gy":  76
+    },
+    {
+        "key":  "F6C005A14B38FE0B57F1C7869FD899CB",
+        "name":  "Natural Bridge",
+        "gx":  377,
+        "gy":  -213
+    },
+    {
+        "key":  "F8C928554A80DEBF93C25FAC6E5AD604",
+        "name":  null,
+        "gx":  169,
+        "gy":  -350
+    },
+    {
+        "key":  "FE45304945C418937F0909BAA0F2059A",
+        "name":  "Mercenary With a Wounded Knee",
+        "gx":  -107,
+        "gy":  -711
+    },
+    {
+        "key":  "FE90632845114C7FBFA4669D071E285F",
+        "name":  "Tower of the PIDF",
+        "gx":  556,
+        "gy":  335
+    },
+    {
+        "key":  "GRASSBOSS3",
+        "name":  "Zoe Rayne\u0027s Diary - 3",
+        "gx":  126,
+        "gy":  -337
+    },
+    {
+        "key":  "SNOWBOSS1",
+        "name":  "Victor Ashford\u0027s Diary - 1",
+        "gx":  -87,
+        "gy":  178
+    },
+    {
+        "key":  "PVPISLAND_003",
+        "name":  "Ice Wind Island",
+        "gx":  -352,
+        "gy":  76,
+        "source":  "FindAreaFlagMap"
+    }
 ]

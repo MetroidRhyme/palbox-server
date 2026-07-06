@@ -4301,14 +4301,44 @@ function dmPropByName(name){
 // Looks up the currently-saved {name,gx,gy} for one (property,key) pair -- confirmed_locations.json
 // for spatial properties, datamine_labels.json for everything else.
 function dmMappingFor(propName,key){
-  if(!dmMappings) return {name:null,gx:null,gy:null};
+  if(!dmMappings) return {name:null,gx:null,gy:null,fallback:false};
   var prop=dmPropByName(propName);
   if(prop&&prop.spatial){
     var m=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key===key;})[0];
-    return m?{name:m.name,gx:m.gx,gy:m.gy}:{name:null,gx:null,gy:null};
+    if(m&&m.name) return {name:m.name,gx:m.gx,gy:m.gy,fallback:false};
+    // Not (yet) in confirmed_locations.json by name -- fall back to whichever existing
+    // scraped/curated roster already names this key (effigies.json, journal_locations.json),
+    // so a key Anthony already has real data for elsewhere doesn't render blank just because
+    // he never separately typed it into THIS UI. Coordinates from confirmed_locations.json
+    // (if present, e.g. a gx/gy-only entry with no name yet) win over the roster's, since
+    // his own hands-on data is more trusted than a scrape.
+    var fb=dmRosterFallback(propName,key);
+    if(fb) return {name:fb.name,gx:(m&&m.gx!=null?m.gx:fb.gx),gy:(m&&m.gy!=null?m.gy:fb.gy),fallback:true};
+    return {name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false};
   }
   var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key===key;})[0];
-  return m2?{name:m2.name,gx:m2.gx,gy:m2.gy}:{name:null,gx:null,gy:null};
+  return m2?{name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false}:{name:null,gx:null,gy:null,fallback:false};
+}
+
+// Read-only fallback name/location lookup against the existing curated roster files for
+// properties that already have real-world names from prior scraping work (effigies.json's
+// 605-entry public roster; journal_locations.json's wiki-sourced pins) -- these are loaded
+// client-side already for the Map tab (effigyLocations/journalLocations), just never
+// consulted by this tab before. Returns null (not just no-match) if the roster itself
+// hasn't finished loading yet, same as an unmatched key.
+function dmRosterFallback(propName,key){
+  if(propName==='RelicObtainForInstanceFlag'&&effigyLocations){
+    var e=effigyLocations[key]||effigyLocations[key.toUpperCase()];
+    if(e&&e.name){
+      var g=worldToGrid(e.x,e.y);
+      return {name:e.name,gx:g.cx,gy:g.cy};
+    }
+  }
+  if(propName==='NoteObtainForInstanceFlag'&&journalLocations){
+    var j=journalLocations.filter(function(r){return r.key&&r.key.toUpperCase()===key.toUpperCase();})[0];
+    if(j&&j.name) return {name:j.name,gx:j.gx,gy:j.gy};
+  }
+  return null;
 }
 
 function dmRowId(propName,key){
@@ -4355,7 +4385,8 @@ function dmRowHtml(prop,key,players){
     +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span></td>'
     +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
       +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>'
-    +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)"></td>'
+    +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)">'
+      +(m.fallback?' <span class="dm-kind-badge" title="Not yet in confirmed_locations.json -- shown from the existing scraped roster (effigies.json/journal_locations.json). Click Save to promote it.">roster</span>':'')+'</td>'
     +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td>'
     +players.map(function(p){ return '<td class="syn-check">'+dmPlayerCellHtml(prop,p,key)+'</td>'; }).join('')
     +'</tr>';
@@ -4375,6 +4406,9 @@ async function fetchDataMine(){
   document.getElementById('dm-property-sections').innerHTML='<div class="empty-state">Loading...</div>';
   try{
     if(!paldeckData) await fetchPaldeck();
+    // dmRosterFallback needs these loaded (effigies.json/journal_locations.json, same data
+    // the Map tab uses) -- both functions no-op if already loaded elsewhere in the session.
+    await Promise.all([fetchEffigyLocations(),fetchJournalLocations()]);
     var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
     var mappingsPromise=api('/api/datamine-mappings');
     var playerPromises=roster.map(function(p){

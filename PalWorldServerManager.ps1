@@ -3139,7 +3139,11 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property }
                                 $arr = $arr + $newEntry
                             }
-                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), [Text.Encoding]::UTF8)
+                            # No-BOM UTF8 -- confirmed_locations.json is also read by the
+                            # Desktop dataminer script via plain Python json.load(encoding="utf-8"),
+                            # which chokes on a BOM. [Text.Encoding]::UTF8 (used by the other
+                            # manual-confirm routes above) writes one; this doesn't.
+                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
                         } else {
                             $f = "$ServerDir\datamine_labels.json"
                             $arr = @(Get-DatamineLabels)
@@ -3152,7 +3156,11 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $newEntry = [pscustomobject]@{ property = $property; key = $key; name = $name; gx = $gx; gy = $gy }
                                 $arr = $arr + $newEntry
                             }
-                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), [Text.Encoding]::UTF8)
+                            # No-BOM UTF8 -- confirmed_locations.json is also read by the
+                            # Desktop dataminer script via plain Python json.load(encoding="utf-8"),
+                            # which chokes on a BOM. [Text.Encoding]::UTF8 (used by the other
+                            # manual-confirm routes above) writes one; this doesn't.
+                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
                         }
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
                     } catch {
