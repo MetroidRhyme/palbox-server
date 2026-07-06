@@ -128,22 +128,48 @@ function ConvertTo-WorldXY([int]$gx, [int]$gy) {
   return @{ x = ($gy * $mc.scale) - $mc.offsetX; y = ($gx * $mc.scale) + $mc.offsetY }
 }
 
-# Anthony wants ONLY his own confirmed locations on the map -- these Merge-Confirmed*
-# functions FILTER the base public/wiki-sourced data down to matches only (not overlay
-# onto the full set). NOTE: build with -InputObject rather than piping into
-# ConvertTo-Json -- piping a PowerShell array with exactly one element unwraps it into a
-# bare JSON object instead of a 1-item array (confirmed via direct test), which would
-# break the client's .forEach() the moment a filtered list happens to have one entry.
+# Effigy keys Anthony has manually clicked "Confirm" on in the admin dashboard popup --
+# kept in its own file rather than confirmed_locations.json, which stays owned exclusively
+# by the Desktop dataminer script. See the matching PalWorldServerManager.ps1 function's
+# comment for why this is a separate signal from "picked up in-game".
+function Get-EffigyConfirmedKeys {
+  $keys = @{}
+  $f = "$Root\effigy_confirmed_keys.json"
+  if (Test-Path -LiteralPath $f) {
+    try {
+      $arr = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
+      if ($null -eq $arr) { $arr = @() }
+      if ($arr -is [string]) { $arr = @($arr) }
+      foreach ($k in $arr) { if ($k) { $keys[$k.ToUpper()] = $true } }
+    } catch {}
+  }
+  return $keys
+}
+
+# Anthony wants ONLY his own confirmed locations on the map for Journals/Bounty -- those
+# Merge-Confirmed* functions FILTER the base public/wiki-sourced data down to matches only
+# (not overlay onto the full set). Effigies is the one exception (reverted 2026-07-05):
+# Anthony asked for the full scraped roster back so he can see unconfirmed effigies he hasn't
+# logged yet, just tagged with whether he's manually confirmed each one -- so this one
+# function OVERLAYS instead of filtering, using the scraped x/y/z as-is (more accurate than
+# the gx/gy round-trip) and adding an m:true flag for an exact GUID-key match against EITHER
+# confirmed_locations.json (the Desktop script) OR effigy_confirmed_keys.json (a manual
+# dashboard click). NOTE: build with -InputObject rather than piping into ConvertTo-Json --
+# piping a PowerShell array with exactly one element unwraps it into a bare JSON object
+# instead of a 1-item array (confirmed via direct test), which would break the client's
+# .forEach() the moment a filtered list happens to have one entry.
 function Merge-ConfirmedEffigies([string]$json) {
   $confirmed = Get-ConfirmedLocations
+  $manualKeys = @{}
+  foreach ($c in $confirmed) { if ($c.key) { $manualKeys[$c.key.ToUpper()] = $true } }
+  foreach ($k in (Get-EffigyConfirmedKeys).Keys) { $manualKeys[$k] = $true }
   try { $obj = $json | ConvertFrom-Json } catch { $obj = $null }
-  $props = @{}
-  if ($obj) { foreach ($p in $obj.PSObject.Properties) { $props[$p.Name.ToUpper()] = $p.Name } }
   $result = [ordered]@{}
-  foreach ($c in $confirmed) {
-    if ($props.ContainsKey($c.key.ToUpper())) {
-      $xy = ConvertTo-WorldXY $c.gx $c.gy
-      $result[$c.key] = @{ x = $xy.x; y = $xy.y; z = 0 }
+  if ($obj) {
+    foreach ($p in $obj.PSObject.Properties) {
+      $entry = @{ x = $p.Value.x; y = $p.Value.y; z = $p.Value.z }
+      if ($manualKeys.ContainsKey($p.Name.ToUpper())) { $entry.m = $true }
+      $result[$p.Name] = $entry
     }
   }
   return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)

@@ -177,6 +177,24 @@ $before = $html
 $html = $html.Replace('var PREFS_ENABLED=false;', 'var PREFS_ENABLED=true;')
 if ($html -eq $before) { throw "prefs: PREFS_ENABLED flag not found to enable" }
 
+# (4e) Disable the admin-only effigy "Confirm" checkbox (ADMIN ONLY, reverse of the flag
+# above). The shared source ships EFFIGY_CONFIRM_ENABLED=true so the admin dashboard shows
+# the popup checkbox that POSTs to /api/effigy-confirm; that route only exists in the
+# Manager's own HttpListener, not in _worker.js, so it must be flipped off here or the
+# public site would show a control that always fails.
+$before = $html
+$html = $html.Replace('var EFFIGY_CONFIRM_ENABLED=true;', 'var EFFIGY_CONFIRM_ENABLED=false;')
+if ($html -eq $before) { throw "effigy confirm: EFFIGY_CONFIRM_ENABLED flag not found to disable" }
+
+# toggleEffigyConfirm itself is dead code on the public site (its own EFFIGY_CONFIRM_ENABLED
+# check above already no-ops it) but its fetch('/api/effigy-confirm') literal would still
+# trip the generic leaked-route scan further down, so remove the whole function rather than
+# whitelist a route that genuinely doesn't exist in _worker.js.
+$before = $html
+$html = [System.Text.RegularExpressions.Regex]::Replace(
+  $html, '// Admin-only manual effigy confirm.*?(?=// Global visibility filter for the effigy map)', '', $rxOpts)
+if ($html -eq $before) { throw "toggleEffigyConfirm function was not found to remove" }
+
 # (4b) Make the public Pals view self-heal and stay refreshable. The Pals "Reload"
 # button was removed in (2b), so the only Pals load is the boot's guarded fetch -- if
 # that first fetch is interrupted (a transient Access re-auth or network blip right

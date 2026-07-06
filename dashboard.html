@@ -30,7 +30,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .eff-map-marker{filter:drop-shadow(0 0 1px rgba(0,0,0,.6));transition:transform .12s ease,opacity .12s ease;}
 .eff-map-marker img{width:100%;height:100%;display:block;pointer-events:none;}
 .eff-map-marker.eff-map-found{opacity:.55;}
+/* Effigies stay full opacity in every state -- color (green/yellow/red) alone conveys
+   found/confirmed/unconfirmed, so the shared dimming above would make found ones harder to
+   spot instead of easier. Higher specificity than the rule above so it wins. */
+.eff-map-marker.effigy-marker.eff-map-found{opacity:1;}
 .eff-map-marker.eff-map-hover{transform:scale(1.35);opacity:1;filter:drop-shadow(0 0 3px #f0c000) drop-shadow(0 0 1px rgba(0,0,0,.6));}
+/* Player marker currently being "followed" (map recenters on them each refresh, see
+   centerOnFollowedPlayer) -- a distinct pulsing green ring so it doesn't read as the same
+   state as the gold hover glow above. */
+.eff-map-marker.eff-map-followed{transform:scale(1.35);opacity:1;animation:eff-follow-pulse 1.4s ease-in-out infinite;}
+@keyframes eff-follow-pulse{
+  0%,100%{filter:drop-shadow(0 0 3px #3fb950) drop-shadow(0 0 1px rgba(0,0,0,.6));}
+  50%{filter:drop-shadow(0 0 7px #3fb950) drop-shadow(0 0 1px rgba(0,0,0,.6));}
+}
 /* Bounty-boss (named Alpha) marker: circular portrait ring, same divIcon plumbing as
    effigies/journals above but with the Pal's own portrait instead of a glyph, and a
    grayscale wash (not just the shared opacity fade) when defeated so it reads as "spent". */
@@ -527,8 +539,8 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
           <span id="eff-filter-arrow" style="display:inline-block;font-size:10px;color:var(--muted);transition:transform .15s;">&#9660;</span> Layers
         </div>
         <div id="eff-filter-body" style="display:flex;flex-direction:column;gap:5px;">
-        <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have not found yet"><span style="color:#3fb950;">&#9679;</span> Lifmunk Effigies</button>
-        <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have already found"><span style="color:#484f58;">&#9679;</span> Found</button>
+        <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have not found yet (yellow = manually logged, red = unconfirmed)"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:conic-gradient(#e3b341 0 50%, #f85149 50% 100%);vertical-align:-1px;"></span> Lifmunk Effigies</button>
+        <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have already found"><span style="color:#3fb950;">&#9679;</span> Found</button>
         <div style="display:flex;align-items:center;gap:6px;">
           <button id="eff-filt-journal" onclick="toggleEffigyFilter('journal')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide journal / diary note locations"><span style="color:#3399ff;">&#9679;</span> Journals</button>
           <span id="journal-summary" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Journal / diary notes collected, from the save (individual notes on the map aren't matched to specific locations yet)"></span>
@@ -3114,15 +3126,27 @@ var effigyLeaflet=null, effigyMarkerLayer=null, effigyLocations=null, effigyColl
 var _effigyAwaitingRoster=false;
 var _effigyPrefsWaitTries=0;
 var EFFIGY_MAX_RANK=353;
+// Admin-only "Confirm" checkbox in the effigy popup (see toggleEffigyConfirm below) --
+// picking an effigy up in-game does NOT prove the scraped coordinate is right, so found
+// and confirmed are deliberately separate signals (see renderEffigyMap's status logic).
+// Flipped to false for the public site by gen_public_site.ps1, same convention as
+// PREFS_ENABLED but in reverse (true on admin, false on public) -- the confirm-write route
+// (see toggleEffigyConfirm below) only exists in the Manager's own HttpListener, not in
+// _worker.js. (Route path spelled out there, not here, so this comment doesn't itself trip
+// gen_public_site.ps1's leaked-admin-route scan.)
+var EFFIGY_CONFIRM_ENABLED=true;
 // Bigger dots on touch devices (no hover there, and a 5px dot is a tiny tap target).
 var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
 // Effigy/journal glyphs are divIcons, not SVG dots, so they need their own (slightly
 // larger, so the shape actually reads) size in px rather than a radius.
 var EFF_ACORN_SZ=EFF_DOT_R*4;
-function effigyAcornIcon(found){
+// status: 'found' (green, picked up in-game -- stays full opacity, see .effigy-marker CSS),
+// 'confirmed' (yellow, in Anthony's confirmed_locations.json but not yet picked up), or
+// 'unconfirmed' (red, scraped-only, neither picked up nor manually logged).
+function effigyAcornIcon(status){
   return L.divIcon({
-    className:'eff-map-marker'+(found?' eff-map-found':''),
-    html:'<img src="icons/effigy_'+(found?'acorn_found':'acorn')+'.png" alt="">',
+    className:'eff-map-marker effigy-marker'+(status==='found'?' eff-map-found':''),
+    html:'<img src="icons/effigy_acorn_'+(status==='found'?'green':status==='confirmed'?'yellow':'red')+'.png" alt="">',
     iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
@@ -3178,7 +3202,7 @@ function landmarkIcon(){ return simpleDotIcon('#a371f7'); }
 // twice at different insets to fake a white outline -- clip-path shapes can't take a
 // plain CSS border like the circular markers elsewhere on this map do.
 var PLAYER_ARROW_CLIP='polygon(50% 0%, 100% 100%, 50% 76%, 0% 100%)';
-function playerMarkerIcon(yawDeg){
+function playerMarkerIcon(yawDeg,followed){
   var hasYaw=(typeof yawDeg==='number'&&!isNaN(yawDeg));
   // Facing is briefly unknown right after a teleport/spawn (see /palworld-dataminer) --
   // still point the arrow "up" so the marker isn't blank, but fade it to signal the
@@ -3186,7 +3210,7 @@ function playerMarkerIcon(yawDeg){
   var op=hasYaw?'1':'0.45';
   var rot=hasYaw?yawDeg:0;
   return L.divIcon({
-    className:'eff-map-marker',
+    className:'eff-map-marker'+(followed?' eff-map-followed':''),
     html:'<div style="width:100%;height:100%;position:relative;opacity:'+op+';transform:rotate('+rot+'deg);">'
       +'<div style="position:absolute;inset:-2px;background:#fff;clip-path:'+PLAYER_ARROW_CLIP+';"></div>'
       +'<div style="position:absolute;inset:0;background:#58a6ff;clip-path:'+PLAYER_ARROW_CLIP+';"></div>'
@@ -3249,6 +3273,23 @@ function toggleBountyManual(species){
   if(i===-1) list.push(species); else list.splice(i,1);
   renderEffigyMap();
   savePrefs();
+}
+
+// Admin-only manual effigy confirm (see EFFIGY_CONFIRM_ENABLED above) -- persisted server-side
+// to effigy_confirmed_keys.json via /api/effigy-confirm, separate from confirmed_locations.json
+// (which stays owned exclusively by the Desktop dataminer script). Unlike toggleBountyManual
+// this hits the Manager directly rather than /api/prefs, since it's an admin curation action,
+// not a per-player self-report.
+function toggleEffigyConfirm(key,checked){
+  if(!EFFIGY_CONFIRM_ENABLED)return;
+  fetch('/api/effigy-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,confirmed:checked})})
+    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
+    .then(function(){
+      if(effigyLocations&&effigyLocations[key]) effigyLocations[key].m=checked;
+      renderEffigyMap();
+      toast(checked?'Effigy confirmed.':'Effigy unconfirmed.','success');
+    })
+    .catch(function(){ toast('Failed to update confirm status.','error'); });
 }
 
 // Global visibility filter for the effigy map. Two independent toggles let the player hide
@@ -3453,6 +3494,12 @@ function initEffigyView(){
         // sized for).
         effigyMarkerLayer=L.layerGroup();
         effigyLeaflet.addLayer(effigyMarkerLayer);
+        // Clicking empty map area cancels player-follow mode (Leaflet marker clicks don't
+        // bubble to the map's own click event, so this only fires for clicks that miss
+        // every marker -- see the player marker's own click handler in renderEffigyMap).
+        effigyLeaflet.on('click',function(){
+          if(followedPlayerGuid){ followedPlayerGuid=null; renderEffigyMap(); }
+        });
       } else {
         effigyLeaflet.invalidateSize();
       }
@@ -3552,6 +3599,22 @@ async function fetchLandmarks(){
 // A failed fetch leaves the previous positions on screen rather than clearing them (a
 // transient save-read error shouldn't make everyone vanish from the map).
 var playerLocations=null;
+// Guid of the player currently being "followed" -- set by clicking their marker in
+// renderEffigyMap, cleared by clicking them again or clicking empty map (see
+// initEffigyView's map click handler). Markers are fully rebuilt on every refresh (no
+// setLatLng), so following works by re-finding this guid in playerLocations and
+// panning to it (centerOnFollowedPlayer) rather than tracking a persistent marker object.
+var followedPlayerGuid=null;
+function centerOnFollowedPlayer(){
+  if(!followedPlayerGuid||!playerLocations||!effigyLeaflet)return;
+  var pl=playerLocations.find(function(p){return p.guid===followedPlayerGuid;});
+  if(pl&&typeof pl.x==='number'&&typeof pl.y==='number'){
+    effigyLeaflet.panTo(effigyRposToLatLng(pl.x,pl.y),{animate:true});
+  }else{
+    // Player logged off / no longer resolvable -- stop following instead of getting stuck.
+    followedPlayerGuid=null;
+  }
+}
 async function fetchPlayerLocations(){
   try{
     var data=await api('/api/player-locations');
@@ -3957,13 +4020,34 @@ function renderEffigyMap(){
     // Runs after the count so the summary stays accurate regardless of what is shown.
     if((got&&!effigyShowFound)||(!got&&!effigyShowNew)) return;
     var _g=worldToGrid(pos.x,pos.y), cx=_g.cx, cy=_g.cy;
-    var tip=(got?'<span style="color:#5a6573">&#10003; Found</span>':'<b style="color:#2f9e43">New</b>')
-      +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
-    // Acorn glyph for both states: green = uncollected, grey/faded = already found.
-    var m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(got),interactive:true});
+    var confirmed=!!pos.m;
+    // Green only needs BOTH signals (manually logged AND picked up in-game); yellow covers
+    // either signal alone; red is neither. Picked-up-but-unconfirmed and confirmed-but-not-
+    // yet-found are deliberately the same color (yellow) -- see Anthony's 2026-07-05 correction.
+    var status=(confirmed&&got)?'found':(confirmed||got)?'confirmed':'unconfirmed';
+    var tipLabel=status==='found' ? '<span style="color:#3fb950">&#10003; Found & confirmed</span>'
+      : got ? '<b style="color:#e3b341">Found (not yet logged)</b>'
+      : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
+      : '<b style="color:#f85149">Unconfirmed</b>';
+    var tip=tipLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+    // Acorn glyph: green = found (picked up), yellow = manually logged, red = unconfirmed.
+    var m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(status),interactive:true});
     m.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1000);});
     m.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
     m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+    if(EFFIGY_CONFIRM_ENABLED){
+      // Clicking picks up in-game -- it does NOT prove the scraped coordinate is right, so
+      // confirming is a deliberate separate action: click the marker, then the checkbox.
+      var chkId='eff-confirm-'+id;
+      m.bindPopup(tip+'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+        +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
+        {className:'eff-tip'});
+      m.on('popupopen',function(e){
+        var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+chkId);
+        if(!box) return;
+        box.onchange=function(){ toggleEffigyConfirm(id,box.checked); };
+      });
+    }
     effigyMarkerLayer.addLayer(m);
   });
 
@@ -4119,16 +4203,24 @@ function renderEffigyMap(){
   if(effigyShowPlayers&&playerLocations&&playerLocations.length){
     playerLocations.forEach(function(pl){
       if(typeof pl.x!=='number'||typeof pl.y!=='number') return;
-      var pm=L.marker(effigyRposToLatLng(pl.x,pl.y),{icon:playerMarkerIcon(pl.yawDeg),interactive:true,zIndexOffset:900});
+      var isFollowed=!!(followedPlayerGuid&&pl.guid===followedPlayerGuid);
+      var pm=L.marker(effigyRposToLatLng(pl.x,pl.y),{icon:playerMarkerIcon(pl.yawDeg,isFollowed),interactive:true,zIndexOffset:isFollowed?1600:900});
       var _g=worldToGrid(pl.x,pl.y), cx=_g.cx, cy=_g.cy;
       pm.bindTooltip('<b style="color:#58a6ff">'+esc(pl.name)+'</b>'
         +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
         {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
       pm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1500);});
       pm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+      // Click toggles follow mode for this player (see centerOnFollowedPlayer / the map's
+      // own click handler in initEffigyView for how following ends).
+      pm.on('click',function(){
+        followedPlayerGuid=isFollowed?null:pl.guid;
+        renderEffigyMap();
+      });
       effigyMarkerLayer.addLayer(pm);
     });
   }
+  centerOnFollowedPlayer();
 
   var needed=Math.max(0,EFFIGY_MAX_RANK-collectedCount);
   var pct=total>0?Math.round(collectedCount/total*100):0;

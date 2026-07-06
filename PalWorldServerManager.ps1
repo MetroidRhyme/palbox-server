@@ -583,22 +583,55 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return @{ x = ($gy * $mc.scale) - $mc.offsetX; y = ($gx * $mc.scale) + $mc.offsetY }
     }
 
-    # Anthony wants ONLY his own confirmed locations on the map -- these Merge-Confirmed*
-    # functions FILTER the base public/wiki-sourced data down to matches only (not overlay
-    # onto the full set). NOTE: build with -InputObject rather than piping into
-    # ConvertTo-Json -- piping a PowerShell array with exactly one element unwraps it into
-    # a bare JSON object instead of a 1-item array (confirmed via direct test), which would
-    # break the client's .forEach() the moment a filtered list happens to have one entry.
+    # Effigy keys Anthony has manually clicked "Confirm" on in the dashboard popup (see
+    # EFFIGY_CONFIRM_ENABLED / toggleEffigyConfirm in dashboard.html and the
+    # /api/effigy-confirm route below). Kept in its OWN file rather than
+    # confirmed_locations.json, which stays owned exclusively by the Desktop dataminer
+    # script -- picking an effigy up in-game doesn't prove the scraped coordinate is right,
+    # so this is a separate, purely UI-driven confirmation signal. Read fresh every call,
+    # same convention as the other small roster files (anonymous_boss_keys.json etc.) --
+    # no caching needed for a file this size.
+    function Get-EffigyConfirmedKeys {
+        $keys = @{}
+        $f = "$ServerDir\effigy_confirmed_keys.json"
+        if (Test-Path -LiteralPath $f) {
+            try {
+                # No @() wrap around the ConvertFrom-Json pipe -- see the critical PS 5.1
+                # gotcha documented on Get-ConfirmedLocations/Merge-ConfirmedJournals above.
+                $arr = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($null -eq $arr) { $arr = @() }
+                if ($arr -is [string]) { $arr = @($arr) }
+                foreach ($k in $arr) { if ($k) { $keys[$k.ToUpper()] = $true } }
+            } catch {}
+        }
+        return $keys
+    }
+
+    # Anthony wants ONLY his own confirmed locations on the map for Journals/Bounty -- those
+    # Merge-Confirmed* functions FILTER the base public/wiki-sourced data down to matches only
+    # (not overlay onto the full set). Effigies is the one exception (reverted 2026-07-05):
+    # Anthony asked for the full scraped roster back so he can see grey/unconfirmed effigies
+    # he hasn't logged yet, just tagged with whether he's manually confirmed each one -- so
+    # this one function OVERLAYS instead of filtering, using the scraped x/y/z as-is (more
+    # accurate than the gx/gy round-trip) and adding an `m:true` flag for an exact GUID-key
+    # match against EITHER confirmed_locations.json (the Desktop script) OR
+    # effigy_confirmed_keys.json (a manual dashboard click). NOTE: build with -InputObject
+    # rather than piping into ConvertTo-Json -- piping a PowerShell array with exactly one
+    # element unwraps it into a bare JSON object instead of a 1-item array (confirmed via
+    # direct test), which would break the client's .forEach() the moment a filtered list
+    # happens to have one entry.
     function Merge-ConfirmedEffigies([string]$json) {
         $confirmed = Get-ConfirmedLocations
+        $manualKeys = @{}
+        foreach ($c in $confirmed) { if ($c.key) { $manualKeys[$c.key.ToUpper()] = $true } }
+        foreach ($k in (Get-EffigyConfirmedKeys).Keys) { $manualKeys[$k] = $true }
         try { $obj = $json | ConvertFrom-Json } catch { $obj = $null }
-        $props = @{}
-        if ($obj) { foreach ($p in $obj.PSObject.Properties) { $props[$p.Name.ToUpper()] = $p.Name } }
         $result = [ordered]@{}
-        foreach ($c in $confirmed) {
-            if ($props.ContainsKey($c.key.ToUpper())) {
-                $xy = ConvertTo-WorldXY $c.gx $c.gy
-                $result[$c.key] = @{ x = $xy.x; y = $xy.y; z = 0 }
+        if ($obj) {
+            foreach ($p in $obj.PSObject.Properties) {
+                $entry = @{ x = $p.Value.x; y = $p.Value.y; z = $p.Value.z }
+                if ($manualKeys.ContainsKey($p.Name.ToUpper())) { $entry.m = $true }
+                $result[$p.Name] = $entry
             }
         }
         return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)
@@ -2323,6 +2356,33 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         # the public/upstream data -- see Merge-ConfirmedEffigies above.
                         $script:effigyData = Merge-ConfirmedEffigies $raw
                         Send-Response $res 200 "application/json" $script:effigyData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/effigy-confirm' -and $method -eq 'POST') {
+                    # Admin-only manual confirm from the dashboard's effigy popup checkbox
+                    # (see EFFIGY_CONFIRM_ENABLED / toggleEffigyConfirm in dashboard.html).
+                    # Body: { key:"<GUID>", confirmed:true|false }. Stored in its own file
+                    # (not confirmed_locations.json -- that stays owned exclusively by the
+                    # Desktop dataminer script) and unioned into Merge-ConfirmedEffigies's
+                    # manualKeys. Not exposed on the public site -- see gen_public_site.ps1's
+                    # EFFIGY_CONFIRM_ENABLED flip.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $key = [string]$body.key
+                        if (-not $key) { throw "No key provided." }
+                        $keyU = $key.ToUpper()
+                        $confirmFlag = [bool]$body.confirmed
+                        $set = New-Object System.Collections.Generic.HashSet[string]
+                        foreach ($k in (Get-EffigyConfirmedKeys).Keys) { [void]$set.Add($k) }
+                        if ($confirmFlag) { [void]$set.Add($keyU) } else { [void]$set.Remove($keyU) }
+                        $outArr = @($set)
+                        $f = "$ServerDir\effigy_confirmed_keys.json"
+                        [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject $outArr -Compress), [Text.Encoding]::UTF8)
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; key=$keyU; confirmed=$confirmFlag } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
