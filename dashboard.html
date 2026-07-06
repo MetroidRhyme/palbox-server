@@ -598,6 +598,9 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       Coordinates cells to assign what a raw key actually means; Coordinates apply to
       location-bearing properties (written into confirmed_locations.json, same file the
       Desktop dataminer script writes) -- everything else is saved to datamine_labels.json.
+      Some properties also fold in map-icon roster entries (Eagle Statue/Wanted Fugitive/
+      Field Boss/Journal) that have no matching raw key yet -- those rows show the already-
+      known name/coordinates with a fillable Key field instead.
     </div>
 
     <div class="dm-section" id="dm-sec-unmapped">
@@ -605,14 +608,6 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       <div class="dm-section-body">
         <div class="dm-section-sub">Every key, across all properties below, with no Display Name assigned yet -- kept up top so nothing new slips by unnoticed.</div>
         <div id="dm-unmapped-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
-      </div>
-    </div>
-
-    <div class="dm-section" id="dm-sec-unmatched-icons">
-      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-unmatched-icons')"><span class="dm-arrow">&#9660;</span>Map Icons Without a Key</div>
-      <div class="dm-section-body">
-        <div class="dm-section-sub">Map pins from the scraped rosters (Eagle Statues, Wanted Fugitive, Field Boss, Journals) whose name/location is already known but has no matching raw save key yet -- type the key in once you've identified it via a live save diff.</div>
-        <div id="dm-unmatched-icons-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
       </div>
     </div>
 
@@ -4278,10 +4273,10 @@ function renderBountySummary(){
 // Anthony explicitly opted into treating the dashboard as a second trusted writer for this
 // feature. Everything else persists into the separate datamine_labels.json.
 var DATAMINE_PROPERTIES=[
-  {name:'NormalBossDefeatFlag',kind:'bool_map',spatial:true,desc:'Boss / field-alpha defeat flags (Field Boss + Wanted Fugitive map categories).'},
+  {name:'NormalBossDefeatFlag',kind:'bool_map',spatial:true,iconCategories:['Wanted Fugitive','Field Boss'],desc:'Boss / field-alpha defeat flags (Field Boss + Wanted Fugitive map categories).'},
   {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,noName:true,desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab).'},
-  {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,desc:'Journal / diary note pickups.'},
-  {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,desc:'Eagle Statue (fast travel) unlocks.'},
+  {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Journal'],desc:'Journal / diary note pickups.'},
+  {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,iconCategories:['Eagle Statue'],desc:'Eagle Statue (fast travel) unlocks.'},
   {name:'FindAreaFlagMap',kind:'bool_map',spatial:true,desc:'Discovered map zones (Landmarks).'},
   {name:'NPCTalkCountMap',kind:'int_map',spatial:true,desc:'Per-NPC talk counts (count > 0 = met).'},
   {name:'PaldeckUnlockFlag',kind:'bool_map',spatial:false,desc:'Paldeck species unlocks.'},
@@ -4411,7 +4406,7 @@ function dmPlayerCellHtml(prop,player,key){
 
 function dmEscJs(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
-function dmRowHtml(prop,key,players){
+function dmKeyRowHtml(prop,key,players){
   var m=dmMappingFor(prop.name,key);
   var rowId=dmRowId(prop.name,key);
   var pJs=dmEscJs(prop.name), kJs=dmEscJs(key);
@@ -4426,25 +4421,65 @@ function dmRowHtml(prop,key,players){
     +'</tr>';
 }
 
-function dmTableHtml(prop,keys,players){
-  if(!keys.length) return '<div class="empty-state">None found</div>';
+// A row for a map-icon roster entry (Eagle Statue/Wanted Fugitive/Field Boss/Journal) with no
+// matching raw save key yet -- the inverse of dmKeyRowHtml (name+coords known, key missing,
+// vs key known, name/coords maybe missing). Anthony asked these be shown in the SAME table as
+// their property's raw keys rather than a separate section, since they're the same underlying
+// data just discovered from opposite directions. Per-player status can't be computed (no key
+// to check against anyone's raw save entries yet), shown as a muted "?".
+function dmIconRowHtml(prop,row,players){
+  var rowId=dmIconRowId(prop.name,row.catLabel,row.name);
+  var lJs=dmEscJs(row.catLabel), nJs=dmEscJs(row.name);
+  return '<tr><td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-key" placeholder="raw save key"></td>'
+    +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span></td>'
+    +'<td class="syn-key">X: '+esc(row.gx)+', Y: '+esc(row.gy)+'</td>'
+    +(prop.noName?'':'<td>'+esc(row.name)+' <span class="dm-kind-badge" title="From the '+esc(row.catLabel)+' map roster -- no matching save key yet. Type the key once identified and Save.">roster</span></td>')
+    +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineIconKey(\''+lJs+'\',\''+nJs+'\','+row.gx+','+row.gy+',\''+rowId+'\')">Save</button></td>'
+    +players.map(function(){ return '<td class="syn-check"><span style="color:var(--muted);" title="No matching save key yet -- can\'t check per-player status">?</span></td>'; }).join('')
+    +'</tr>';
+}
+
+function dmRowHtml(prop,row,players){
+  return row.type==='icon' ? dmIconRowHtml(prop,row,players) : dmKeyRowHtml(prop,row.key,players);
+}
+
+// Merges a property's raw save keys with any linked map-icon roster entries that have no
+// matching key yet (prop.iconCategories -- e.g. FastTravelPointUnlockFlag <-> Eagle Statue).
+// Key rows first (already sorted by dmAllKeysFor), unmatched icon rows appended after,
+// sorted by name.
+function dmPropertyRows(prop){
+  var rows=dmAllKeysFor(prop.name).map(function(k){return {type:'key',key:k};});
+  var iconRows=[];
+  (prop.iconCategories||[]).forEach(function(label){
+    var cat=dmIconCatByLabel(label);
+    if(!cat) return;
+    cat.getRoster().filter(function(r){return !r.key;}).forEach(function(r){
+      var g=cat.getGxGy(r);
+      iconRows.push({type:'icon',catLabel:label,name:r.name,gx:g.cx,gy:g.cy});
+    });
+  });
+  iconRows.sort(function(a,b){return a.name<b.name?-1:a.name>b.name?1:0;});
+  return rows.concat(iconRows);
+}
+
+function dmTableHtml(prop,rows,players){
+  if(!rows.length) return '<div class="empty-state">None found</div>';
   return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th><th>Coordinates</th>'
     +(prop.noName?'':'<th>Display Name</th>')+'<th></th>'
     +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
     +'</tr></thead><tbody>'
-    +keys.map(function(k){return dmRowHtml(prop,k,players);}).join('')
+    +rows.map(function(r){return dmRowHtml(prop,r,players);}).join('')
     +'</tbody></table>';
 }
 
 async function fetchDataMine(){
   document.getElementById('dm-unmapped-area').innerHTML='<div class="empty-state">Loading...</div>';
-  document.getElementById('dm-unmatched-icons-area').innerHTML='<div class="empty-state">Loading...</div>';
   document.getElementById('dm-property-sections').innerHTML='<div class="empty-state">Loading...</div>';
   try{
     if(!paldeckData) await fetchPaldeck();
-    // dmRosterFallback needs these loaded (effigies.json/journal_locations.json, same data
-    // the Map tab uses) -- both no-op if already loaded elsewhere in the session. The other
-    // three are for the "Map Icons Without a Key" section below (dmIconCategoriesHtml).
+    // effigyLocations/journalLocations feed dmRosterFallback's name lookups; journalLocations/
+    // eagleStatueLocations/wantedFugitiveLocations/bossLocations also feed dmPropertyRows'
+    // unmatched-icon rows (prop.iconCategories) -- all no-op if already loaded elsewhere.
     await Promise.all([fetchEffigyLocations(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations()]);
     var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
     var mappingsPromise=api('/api/datamine-mappings');
@@ -4463,7 +4498,6 @@ async function fetchDataMine(){
   }catch(e){
     var msg='<div class="empty-state">Failed to load: '+esc(String(e&&e.message||e))+'</div>';
     document.getElementById('dm-unmapped-area').innerHTML=msg;
-    document.getElementById('dm-unmatched-icons-area').innerHTML='';
     document.getElementById('dm-property-sections').innerHTML='';
   }
 }
@@ -4490,26 +4524,6 @@ function dmIconRowId(property,label,name){
   return 'dm-icon-'+property+'-'+label+'-'+String(name).replace(/[^A-Za-z0-9_-]/g,'_');
 }
 
-function dmUnmatchedIconsHtml(){
-  var rows=[];
-  DM_ICON_CATEGORIES.forEach(function(cat){
-    cat.getRoster().filter(function(r){return !r.key;}).forEach(function(r){
-      var g=cat.getGxGy(r);
-      rows.push({cat:cat,name:r.name,gx:g.cx,gy:g.cy});
-    });
-  });
-  if(!rows.length) return '<div class="empty-state">Nothing unmatched</div>';
-  return '<table class="syn-table"><thead><tr><th>Category</th><th>Name</th><th>Coordinates</th><th>Key</th><th></th></tr></thead><tbody>'
-    +rows.map(function(r){
-      var rowId=dmIconRowId(r.cat.property,r.cat.label,r.name);
-      var lJs=dmEscJs(r.cat.label), nJs=dmEscJs(r.name);
-      return '<tr><td>'+esc(r.cat.label)+'</td><td>'+esc(r.name)+'</td>'
-        +'<td class="syn-key">X: '+esc(r.gx)+', Y: '+esc(r.gy)+'</td>'
-        +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-key" placeholder="raw save key"></td>'
-        +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineIconKey(\''+lJs+'\',\''+nJs+'\','+r.gx+','+r.gy+',\''+rowId+'\')">Save</button></td></tr>';
-    }).join('')+'</tbody></table>';
-}
-
 async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
   var cat=dmIconCatByLabel(catLabel);
   if(!cat){ toast('Unknown category.','error'); return; }
@@ -4534,19 +4548,16 @@ async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
 function renderDataMine(){
   var sumEl=document.getElementById('dm-summary');
   var unmappedArea=document.getElementById('dm-unmapped-area');
-  var unmatchedIconsArea=document.getElementById('dm-unmatched-icons-area');
   var sectionsEl=document.getElementById('dm-property-sections');
   if(!dmFullPlayers||!dmMappings){ return; }
   if(!dmFullPlayers.length){
     unmappedArea.innerHTML='<div class="empty-state">No player data</div>';
-    unmatchedIconsArea.innerHTML='';
     sectionsEl.innerHTML='';
     sumEl.textContent='';
     return;
   }
-  unmatchedIconsArea.innerHTML=dmUnmatchedIconsHtml();
 
-  var totalKeys=0, unmappedRows=[];
+  var totalKeys=0, unmappedRows=[], totalIconRows=0;
   var sectionsHtml=DATAMINE_PROPERTIES.map(function(prop){
     var keys=dmAllKeysFor(prop.name);
     totalKeys+=keys.length;
@@ -4557,15 +4568,23 @@ function renderDataMine(){
         if(!dmMappingFor(prop.name,k).name) unmappedRows.push({prop:prop,key:k});
       });
     }
+    // Includes any linked map-icon roster entries with no matching key yet (Eagle Statue/
+    // Wanted Fugitive/Field Boss/Journal) in the SAME table as this property's raw keys --
+    // Anthony asked for these combined since they're the same underlying data, just
+    // discovered from opposite directions (key known vs. name+coords known).
+    var rows=dmPropertyRows(prop);
+    var iconCount=rows.length-keys.length;
+    totalIconRows+=iconCount;
     var id='dm-sec-'+prop.name;
     return '<div class="dm-section" id="'+id+'">'
       +'<div class="dm-section-hdr" onclick="toggleDmSection(\''+id+'\')"><span class="dm-arrow">&#9660;</span>'+esc(prop.name)
         +' <span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span>'
         +(prop.spatial?'':' <span class="dm-kind-badge" title="Saved to datamine_labels.json, not confirmed_locations.json">no location</span>')
-        +' <span style="font-weight:400;color:var(--muted);font-size:11px;">('+keys.length+' keys)</span></div>'
+        +' <span style="font-weight:400;color:var(--muted);font-size:11px;">('+keys.length+' keys'
+        +(iconCount?', '+iconCount+' unmatched map pins':'')+')</span></div>'
       +'<div class="dm-section-body">'
       +'<div class="dm-section-sub">'+esc(prop.desc)+'</div>'
-      +'<div style="overflow:auto;">'+dmTableHtml(prop,keys,dmFullPlayers)+'</div>'
+      +'<div style="overflow:auto;">'+dmTableHtml(prop,rows,dmFullPlayers)+'</div>'
       +'</div></div>';
   }).join('');
   sectionsEl.innerHTML=sectionsHtml;
@@ -4584,7 +4603,8 @@ function renderDataMine(){
       }).join('')+'</tbody></table>'
     : '<div class="empty-state">Nothing unmapped</div>';
 
-  sumEl.textContent=totalKeys+' keys across '+DATAMINE_PROPERTIES.length+' properties, '+unmappedRows.length+' unmapped, '+dmFullPlayers.length+' players';
+  sumEl.textContent=totalKeys+' keys across '+DATAMINE_PROPERTIES.length+' properties, '+unmappedRows.length+' unmapped, '
+    +totalIconRows+' unmatched map pins, '+dmFullPlayers.length+' players';
 }
 
 async function saveDatamineMapping(propName,key,scope){
