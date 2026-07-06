@@ -1208,6 +1208,11 @@ function switchView(name){
   if(name==='pals' && !palsData) fetchPals();
   if(name==='eggs') fetchEggs();
   if(name==='datamine' && typeof fetchDataMine==='function') fetchDataMine();
+  if(_dmLivePollTimer){clearInterval(_dmLivePollTimer);_dmLivePollTimer=null;}
+  // Same idea as the Map tab's live poll above: a key picked up in-game should show up in
+  // Unmapped Keys without Anthony having to switch tabs or reload. Only runs while this tab
+  // is actually on screen.
+  if(name==='datamine'){_dmLivePollTimer=setInterval(dmLivePollTick,8000);}
   try{localStorage.setItem('palbox_active_tab',name);}catch(e){}
   // Player positions AND each overlay's found/collected state (effigies, journals,
   // bosses, npcs, fugitives, eagles) can all change while the player is mid-session --
@@ -1217,9 +1222,33 @@ function switchView(name){
   // the save file's own LastWriteTimeUtc, so a poll between actual saves is a dictionary
   // lookup, not a fresh Python/reader spawn.
   if(_mapLivePollTimer){clearInterval(_mapLivePollTimer);_mapLivePollTimer=null;}
-  if(name==='effigies'){_mapLivePollTimer=setInterval(function(){fetchPlayerLocations();fetchEffigyPlayer();},5000);}
+  if(_mapRosterPollTimer){clearInterval(_mapRosterPollTimer);_mapRosterPollTimer=null;}
+  if(name==='effigies'){
+    _mapLivePollTimer=setInterval(function(){fetchPlayerLocations();fetchEffigyPlayer();},5000);
+    // Static roster pins (Eagle Statue/Journal/Field Boss/Wanted Fugitive/etc) are cached
+    // forever per session by each fetchX's own guard -- a key mapped via the Data Mine tab,
+    // or confirmed by the Desktop script, would otherwise only show up here after a full
+    // page reload. Slower cadence than the 5s found-status poll above since a brand-new pin
+    // is far rarer than a found/unfound flip, and this refetches the whole ~750-entry roster
+    // set rather than one player's small collected-list.
+    refetchEffigyMapRosters();
+    _mapRosterPollTimer=setInterval(refetchEffigyMapRosters,15000);
+  }
 }
 var _mapLivePollTimer=null;
+var _mapRosterPollTimer=null;
+// Forces a fresh reload of every static map-icon roster, bypassing each fetchX's own
+// "already loaded, do nothing" cache guard by nulling the backing global first -- same
+// trick DM_ICON_CATEGORIES' refetch() already uses for the Data Mine tab's own icon rows.
+async function refetchEffigyMapRosters(){
+  effigyLocations=null; journalLocations=null; bossLocations=null; wantedFugitiveLocations=null;
+  landmarkLocations=null; eagleStatueLocations=null; towerLocations=null; npcLocations=null;
+  await Promise.all([
+    fetchEffigyLocations(),fetchJournalLocations(),fetchBossLocations(),fetchWantedFugitives(),
+    fetchLandmarks(),fetchEagleStatues(),fetchTowerLocations(),fetchNPCs()
+  ]);
+  if(effigyLeaflet) renderEffigyMap();
+}
 // "New content" pulse dot on a nav tab -- lit when a watch match (or other tracked
 // event) surfaces while the user isn't already looking at that tab, cleared the moment
 // they click into it (switchView above). Keyed by data-tab so callers just pass the tab
@@ -4292,6 +4321,11 @@ var dmMappings=null;    // {confirmedLocations:[{key,name,gx,gy,source}], labels
 // property so an Unmapped Keys row's "map to existing" dropdown can look one up by index at
 // onchange time without re-deriving it from scratch.
 var dmRosterCandidatesCache={};
+var _dmLivePollTimer=null;
+// JSON snapshot of the last dmFullPlayers/dmMappings that actually got rendered -- lets
+// dmLivePollTick skip the (fairly heavy, full-DOM-rebuild) renderDataMine() call on ticks
+// where nothing actually changed, and defer it if Anthony is mid-edit in an input.
+var _dmLastSnapshot=null;
 
 function toggleDmSection(id){
   var el=document.getElementById(id);
@@ -4522,34 +4556,64 @@ function dmTableHtml(prop,rows,players){
     +'</tbody></table>';
 }
 
+// The actual fetch-and-populate work shared by the initial tab load (fetchDataMine, which
+// shows a "Loading..." flash first) and the background live poll (dmLivePollTick, which must
+// NOT touch the DOM before it knows whether anything actually changed).
+async function dmFetchAndApply(){
+  if(!paldeckData) await fetchPaldeck();
+  // effigyLocations/journalLocations feed dmRosterFallback's name lookups; journalLocations/
+  // eagleStatueLocations/wantedFugitiveLocations/bossLocations also feed dmPropertyRows'
+  // unmatched-icon rows (prop.iconCategories) -- all no-op if already loaded elsewhere.
+  await Promise.all([fetchEffigyLocations(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations()]);
+  var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
+  var mappingsPromise=api('/api/datamine-mappings');
+  var playerPromises=roster.map(function(p){
+    return api('/api/player-datamine-full?guid='+encodeURIComponent(p.guid)).catch(function(e){
+      return {guid:p.guid,properties:{},error:String(e&&e.message||e)};
+    });
+  });
+  var results=await Promise.all([mappingsPromise].concat(playerPromises));
+  dmMappings=results[0]||{confirmedLocations:[],labels:[]};
+  dmFullPlayers=roster.map(function(p,i){
+    var d=results[i+1]||{properties:{}};
+    return {guid:p.guid,name:p.name,properties:d.properties||{}};
+  });
+  await dmAutoFillFromRosters();
+}
+
 async function fetchDataMine(){
   document.getElementById('dm-unmapped-area').innerHTML='<div class="empty-state">Loading...</div>';
   document.getElementById('dm-property-sections').innerHTML='<div class="empty-state">Loading...</div>';
   try{
-    if(!paldeckData) await fetchPaldeck();
-    // effigyLocations/journalLocations feed dmRosterFallback's name lookups; journalLocations/
-    // eagleStatueLocations/wantedFugitiveLocations/bossLocations also feed dmPropertyRows'
-    // unmatched-icon rows (prop.iconCategories) -- all no-op if already loaded elsewhere.
-    await Promise.all([fetchEffigyLocations(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations()]);
-    var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
-    var mappingsPromise=api('/api/datamine-mappings');
-    var playerPromises=roster.map(function(p){
-      return api('/api/player-datamine-full?guid='+encodeURIComponent(p.guid)).catch(function(e){
-        return {guid:p.guid,properties:{},error:String(e&&e.message||e)};
-      });
-    });
-    var results=await Promise.all([mappingsPromise].concat(playerPromises));
-    dmMappings=results[0]||{confirmedLocations:[],labels:[]};
-    dmFullPlayers=roster.map(function(p,i){
-      var d=results[i+1]||{properties:{}};
-      return {guid:p.guid,name:p.name,properties:d.properties||{}};
-    });
-    await dmAutoFillFromRosters();
+    await dmFetchAndApply();
     renderDataMine();
+    _dmLastSnapshot=JSON.stringify({p:dmFullPlayers,m:dmMappings});
   }catch(e){
     var msg='<div class="empty-state">Failed to load: '+esc(String(e&&e.message||e))+'</div>';
     document.getElementById('dm-unmapped-area').innerHTML=msg;
     document.getElementById('dm-property-sections').innerHTML='';
+  }
+}
+
+// Background poll while the Data Mine tab is on screen (see switchView) -- re-fetches
+// everything fetchDataMine does, but only touches the DOM (renderDataMine) if the fetched
+// data actually differs from what's already showing, and defers even that if Anthony is
+// mid-edit in one of this tab's own inputs (so a poll tick can't wipe out an in-progress
+// typed value). A skipped render doesn't advance _dmLastSnapshot, so the next tick (once
+// focus has moved on) still picks up the change.
+async function dmLivePollTick(){
+  try{
+    await dmFetchAndApply();
+    var snap=JSON.stringify({p:dmFullPlayers,m:dmMappings});
+    if(snap===_dmLastSnapshot) return;
+    var active=document.activeElement;
+    var editing=active&&(active.tagName==='INPUT'||active.tagName==='SELECT')
+      &&active.closest&&(active.closest('#dm-unmapped-area')||active.closest('#dm-property-sections'));
+    if(editing) return;
+    _dmLastSnapshot=snap;
+    renderDataMine();
+  }catch(e){
+    // Silent -- a transient poll failure shouldn't spam the user; the next tick retries.
   }
 }
 
