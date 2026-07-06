@@ -1233,7 +1233,7 @@ function switchView(name){
   // is actually on screen (stopped immediately on tab-away, not left running in the
   // background racking up needless save reads).
   if(_playerLocPollTimer){clearInterval(_playerLocPollTimer);_playerLocPollTimer=null;}
-  if(name==='effigies'){_playerLocPollTimer=setInterval(fetchPlayerLocations,15000);}
+  if(name==='effigies'){_playerLocPollTimer=setInterval(fetchPlayerLocations,5000);}
 }
 var _playerLocPollTimer=null;
 // "New content" pulse dot on a nav tab -- lit when a watch match (or other tracked
