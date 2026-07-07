@@ -394,7 +394,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # backs the dashboard chat banner. Dot-sourced so every broadcast site here records.
     . "$ServerDir\server_messages.ps1"
 
-    # Shared map-location data layer (Get-ConfirmedLocations, Merge-Confirmed*, etc.) --
+    # Shared map-location data layer (Get-ConfirmedLocations, Get-MapCategoryJson, etc.) --
     # also dot-sourced by build_public_data.ps1, so both callers share one implementation
     # instead of two hand-kept, drifting copies. See map_data_lib.ps1 for the full function
     # list; used by the /api/effigies...landmarks routes below.
@@ -1995,23 +1995,14 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     try {
                         # Recomputed every request (not cached) so edits to
                         # confirmed_locations.json show up immediately -- see
-                        # Get-ConfirmedLocations' own mtime-based cache above, which this
-                        # relies on to avoid re-reading that file from disk needlessly.
-                        # Prefer the LOCAL copy (python gen_pal_assets.py); only fall
-                        # back to GitHub if it is missing, so the tracker keeps working
-                        # offline / if the upstream repo changes.
-                        $localEffigies = "$ServerDir\effigies.json"
-                        if (Test-Path -LiteralPath $localEffigies) {
-                            $raw = [System.IO.File]::ReadAllText($localEffigies)
-                        } else {
-                            $wc = New-Object System.Net.WebClient
-                            $wc.Headers.Add('User-Agent', 'Mozilla/5.0')
-                            $raw = $wc.DownloadString(
-                                'https://raw.githubusercontent.com/oMaN-Rod/palworld-save-pal/main/data/json/effigies.json')
-                        }
-                        # Overlay Anthony's own live-play-confirmed coordinates on top of
-                        # the public/upstream data -- see Merge-ConfirmedEffigies above.
-                        $script:effigyData = Merge-ConfirmedEffigies $raw
+                        # Get-ConfirmedLocations' own mtime-based cache above. Phase 3's
+                        # importer already upserted every effigies.json row into the
+                        # canonical store, so this reads straight from there now instead
+                        # of re-merging a live copy of effigies.json on every request (the
+                        # runtime GitHub-download fallback that used to live here is gone
+                        # too -- effigies.json is now purely an importer input, refreshed
+                        # by gen_pal_assets.py / import_scraped_rosters.ps1, not read live).
+                        $script:effigyData = Get-MapCategoryJson 'effigy'
                         Send-Response $res 200 "application/json" $script:effigyData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2022,24 +2013,18 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/effigy-confirm' -and $method -eq 'POST') {
                     # Admin-only manual confirm from the dashboard's effigy popup checkbox
                     # (see EFFIGY_CONFIRM_ENABLED / toggleEffigyConfirm in dashboard.html).
-                    # Body: { key:"<GUID>", confirmed:true|false }. Stored in its own file
-                    # (not confirmed_locations.json -- that stays owned exclusively by the
-                    # Desktop dataminer script) and unioned into Merge-ConfirmedEffigies's
-                    # manualKeys. Not exposed on the public site -- see gen_public_site.ps1's
-                    # EFFIGY_CONFIRM_ENABLED flip.
+                    # Body: { key:"<GUID>", confirmed:true|false }. Flips "verified" directly
+                    # on the matching confirmed_locations.json row via Set-MapConfirmVerified
+                    # -- effigy_confirmed_keys.json is no longer read or written here (kept on
+                    # disk for now, retired once the client moves to /api/map-confirm).
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $key = [string]$body.key
                         if (-not $key) { throw "No key provided." }
-                        $keyU = $key.ToUpper()
                         $confirmFlag = [bool]$body.confirmed
-                        $set = New-Object System.Collections.Generic.HashSet[string]
-                        foreach ($k in (Get-EffigyConfirmedKeys).Keys) { [void]$set.Add($k) }
-                        if ($confirmFlag) { [void]$set.Add($keyU) } else { [void]$set.Remove($keyU) }
-                        $outArr = @($set)
-                        $f = "$ServerDir\effigy_confirmed_keys.json"
-                        [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject $outArr -Compress), [Text.Encoding]::UTF8)
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; key=$keyU; confirmed=$confirmFlag } -Compress)
+                        $ok = Set-MapConfirmVerified 'effigy' $key $null $null $confirmFlag
+                        if (-not $ok) { throw "No confirmed_locations.json row found for key $key (category effigy)." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; key=$key.ToUpper(); confirmed=$confirmFlag } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2049,21 +2034,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/journal-confirm' -and $method -eq 'POST') {
                     # Admin-only manual confirm from the dashboard's journal popup checkbox
                     # (see EFFIGY_CONFIRM_ENABLED / toggleJournalConfirm in dashboard.html) --
-                    # same shape/pattern as /api/effigy-confirm above, just a different roster
-                    # file and unioned into Merge-ConfirmedJournals instead.
+                    # same shape/pattern as /api/effigy-confirm above, category journal.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $key = [string]$body.key
                         if (-not $key) { throw "No key provided." }
-                        $keyU = $key.ToUpper()
                         $confirmFlag = [bool]$body.confirmed
-                        $set = New-Object System.Collections.Generic.HashSet[string]
-                        foreach ($k in (Get-JournalConfirmedKeys).Keys) { [void]$set.Add($k) }
-                        if ($confirmFlag) { [void]$set.Add($keyU) } else { [void]$set.Remove($keyU) }
-                        $outArr = @($set)
-                        $f = "$ServerDir\journal_confirmed_keys.json"
-                        [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject $outArr -Compress), [Text.Encoding]::UTF8)
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; key=$keyU; confirmed=$confirmFlag } -Compress)
+                        $ok = Set-MapConfirmVerified 'journal' $key $null $null $confirmFlag
+                        if (-not $ok) { throw "No confirmed_locations.json row found for key $key (category journal)." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; key=$key.ToUpper(); confirmed=$confirmFlag } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2073,21 +2052,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/bounty-confirm' -and $method -eq 'POST') {
                     # Admin-only manual confirm from the dashboard's bounty-boss popup checkbox
                     # (see EFFIGY_CONFIRM_ENABLED / toggleBountyConfirm in dashboard.html) --
-                    # same shape/pattern as /api/effigy-confirm above, keyed by species instead
-                    # of a GUID, and unioned into Merge-ConfirmedBounty instead.
+                    # same shape/pattern as /api/effigy-confirm above, keyed by species.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $species = [string]$body.species
                         if (-not $species) { throw "No species provided." }
-                        $spU = $species.ToUpper()
                         $confirmFlag = [bool]$body.confirmed
-                        $set = New-Object System.Collections.Generic.HashSet[string]
-                        foreach ($k in (Get-BountyConfirmedSpecies).Keys) { [void]$set.Add($k) }
-                        if ($confirmFlag) { [void]$set.Add($spU) } else { [void]$set.Remove($spU) }
-                        $outArr = @($set)
-                        $f = "$ServerDir\bounty_confirmed_species.json"
-                        [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject $outArr -Compress), [Text.Encoding]::UTF8)
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; species=$spU; confirmed=$confirmFlag } -Compress)
+                        $ok = Set-MapConfirmVerified 'bounty' $null $species $null $confirmFlag
+                        if (-not $ok) { throw "No confirmed_locations.json row found for species $species (category bounty)." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; species=$species.ToUpper(); confirmed=$confirmFlag } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2098,20 +2071,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     # Admin-only manual confirm from the dashboard's Tower popup checkbox
                     # (see EFFIGY_CONFIRM_ENABLED / toggleTowerConfirm in dashboard.html) --
                     # same shape/pattern as /api/effigy-confirm, keyed by name (paldb's Tower
-                    # scrape has no GUID) and unioned into Merge-ConfirmedTowers instead.
+                    # scrape has no GUID).
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $name = [string]$body.name
                         if (-not $name) { throw "No name provided." }
-                        $nameU = $name.ToUpper()
                         $confirmFlag = [bool]$body.confirmed
-                        $set = New-Object System.Collections.Generic.HashSet[string]
-                        foreach ($k in (Get-TowerConfirmedNames).Keys) { [void]$set.Add($k) }
-                        if ($confirmFlag) { [void]$set.Add($nameU) } else { [void]$set.Remove($nameU) }
-                        $outArr = @($set)
-                        $f = "$ServerDir\tower_confirmed_keys.json"
-                        [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject $outArr -Compress), [Text.Encoding]::UTF8)
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$nameU; confirmed=$confirmFlag } -Compress)
+                        $ok = Set-MapConfirmVerified 'tower' $null $null $name $confirmFlag
+                        if (-not $ok) { throw "No confirmed_locations.json row found for name $name (category tower)." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$name.ToUpper(); confirmed=$confirmFlag } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2122,20 +2090,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     # Admin-only manual confirm from the dashboard's Wanted Fugitive popup
                     # checkbox (see EFFIGY_CONFIRM_ENABLED / toggleFugitiveConfirm in
                     # dashboard.html) -- same shape/pattern as /api/effigy-confirm, keyed by
-                    # name and unioned into Merge-ConfirmedWantedFugitives instead.
+                    # name.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $name = [string]$body.name
                         if (-not $name) { throw "No name provided." }
-                        $nameU = $name.ToUpper()
                         $confirmFlag = [bool]$body.confirmed
-                        $set = New-Object System.Collections.Generic.HashSet[string]
-                        foreach ($k in (Get-FugitiveConfirmedNames).Keys) { [void]$set.Add($k) }
-                        if ($confirmFlag) { [void]$set.Add($nameU) } else { [void]$set.Remove($nameU) }
-                        $outArr = @($set)
-                        $f = "$ServerDir\fugitive_confirmed_keys.json"
-                        [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject $outArr -Compress), [Text.Encoding]::UTF8)
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$nameU; confirmed=$confirmFlag } -Compress)
+                        $ok = Set-MapConfirmVerified 'fugitive' $null $null $name $confirmFlag
+                        if (-not $ok) { throw "No confirmed_locations.json row found for name $name (category fugitive)." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$name.ToUpper(); confirmed=$confirmFlag } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2146,20 +2109,38 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     # Admin-only manual confirm from the dashboard's Eagle Statue popup
                     # checkbox (see EFFIGY_CONFIRM_ENABLED / toggleEagleConfirm in
                     # dashboard.html) -- same shape/pattern as /api/effigy-confirm, keyed by
-                    # name and unioned into Merge-ConfirmedEagleStatues instead.
+                    # name.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $name = [string]$body.name
                         if (-not $name) { throw "No name provided." }
-                        $nameU = $name.ToUpper()
                         $confirmFlag = [bool]$body.confirmed
-                        $set = New-Object System.Collections.Generic.HashSet[string]
-                        foreach ($k in (Get-EagleConfirmedNames).Keys) { [void]$set.Add($k) }
-                        if ($confirmFlag) { [void]$set.Add($nameU) } else { [void]$set.Remove($nameU) }
-                        $outArr = @($set)
-                        $f = "$ServerDir\eagle_confirmed_keys.json"
-                        [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject $outArr -Compress), [Text.Encoding]::UTF8)
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$nameU; confirmed=$confirmFlag } -Compress)
+                        $ok = Set-MapConfirmVerified 'eagle' $null $null $name $confirmFlag
+                        if (-not $ok) { throw "No confirmed_locations.json row found for name $name (category eagle)." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$name.ToUpper(); confirmed=$confirmFlag } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/map-confirm' -and $method -eq 'POST') {
+                    # Consolidated single confirm endpoint (added Phase 4) -- body:
+                    # { category, key?, species?, name?, confirmed }. Not yet called by
+                    # dashboard.html (the six routes above still are); added now, ahead of
+                    # the client-side cutover, so it can be smoke-tested independently of
+                    # any dashboard.html change.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        if (-not $category) { throw "No category provided." }
+                        $key = [string]$body.key
+                        $species = [string]$body.species
+                        $name = [string]$body.name
+                        $confirmFlag = [bool]$body.confirmed
+                        $ok = Set-MapConfirmVerified $category $key $species $name $confirmFlag
+                        if (-not $ok) { throw "No confirmed_locations.json row found (category $category)." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; category=$category; confirmed=$confirmFlag } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2167,22 +2148,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/journals' -and $method -eq 'GET') {
-                    # Static lore-journal/diary locations (game-world fixed, not per-save),
-                    # sourced from wiki-published in-game X/Y and converted to real world
-                    # coords with the same formula the effigy tooltip uses in reverse
-                    # (cx=(y-158000)/459, cy=(x+123888)/459). The public site bundles this
-                    # as a static file; here we serve it from the same JSON so both match.
-                    # Recomputed every request, not cached -- see the /api/effigies note above.
+                    # Lore-journal/diary locations (game-world fixed, not per-save). Phase 3's
+                    # importer already upserted every journal_locations.json row into the
+                    # canonical store, so this reads straight from there -- see the
+                    # /api/effigies note above for why the roster file is no longer read live.
                     try {
-                        $f = "$ServerDir\journal_locations.json"
-                        if (Test-Path -LiteralPath $f) {
-                            $raw = [System.IO.File]::ReadAllText($f)
-                        } else {
-                            $raw = '[]'
-                        }
-                        # Overlay Anthony's own live-play-confirmed coordinates/names on
-                        # top of the wiki-sourced base data -- see Merge-ConfirmedJournals.
-                        $script:journalData = Merge-ConfirmedJournals $raw
+                        $script:journalData = Get-MapCategoryJson 'journal'
                         Send-Response $res 200 "application/json" $script:journalData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2191,22 +2162,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/bounty-bosses' -and $method -eq 'GET') {
-                    # Static bounty-boss (named legendary Alpha) locations, sourced from
-                    # paldb's DT_PaldexDistributionData BOSS_<Species> entries with exactly
-                    # one fixed world location (see bounty_bosses.json). The public site
-                    # bundles this as a static file; here we serve it from the same JSON so
-                    # both dashboards match.
-                    # Recomputed every request, not cached -- see the /api/effigies note above.
+                    # Bounty-boss (named legendary Alpha) locations -- see the /api/journals
+                    # note above; served straight from the canonical store.
                     try {
-                        $f = "$ServerDir\bounty_bosses.json"
-                        if (Test-Path -LiteralPath $f) {
-                            $raw = [System.IO.File]::ReadAllText($f)
-                        } else {
-                            $raw = '[]'
-                        }
-                        # Overlay Anthony's own live-play-confirmed coordinates/names on
-                        # top of the paldb-sourced base data -- see Merge-ConfirmedBounty.
-                        $script:bountyBossData = Merge-ConfirmedBounty $raw
+                        $script:bountyBossData = Get-MapCategoryJson 'bounty'
                         Send-Response $res 200 "application/json" $script:bountyBossData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2215,19 +2174,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/wanted-fugitives' -and $method -eq 'GET') {
-                    # Named human/Syndicate "boss" locations, sourced from paldb's Bounty map
-                    # layer (see wanted_fugitives.json, added 2026-07-06). The public site
-                    # bundles this as a static file; here we serve it from the same JSON so
-                    # both dashboards match.
-                    # Recomputed every request, not cached -- see the /api/effigies note above.
+                    # Named human/Syndicate "boss" locations -- see the /api/journals note
+                    # above; served straight from the canonical store.
                     try {
-                        $f = "$ServerDir\wanted_fugitives.json"
-                        if (Test-Path -LiteralPath $f) {
-                            $raw = [System.IO.File]::ReadAllText($f)
-                        } else {
-                            $raw = '[]'
-                        }
-                        $script:wantedFugitiveData = Merge-ConfirmedWantedFugitives $raw
+                        $script:wantedFugitiveData = Get-MapCategoryJson 'fugitive'
                         Send-Response $res 200 "application/json" $script:wantedFugitiveData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2236,19 +2186,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/eagle-statues' -and $method -eq 'GET') {
-                    # Named fast-travel point locations, sourced from paldb's Fast Travel map
-                    # layer (see eagle_travel_locations.json, added 2026-07-06). The public
-                    # site bundles this as a static file; here we serve it from the same JSON
-                    # so both dashboards match.
-                    # Recomputed every request, not cached -- see the /api/effigies note above.
+                    # Named fast-travel point locations -- see the /api/journals note above;
+                    # served straight from the canonical store.
                     try {
-                        $f = "$ServerDir\eagle_travel_locations.json"
-                        if (Test-Path -LiteralPath $f) {
-                            $raw = [System.IO.File]::ReadAllText($f)
-                        } else {
-                            $raw = '[]'
-                        }
-                        $script:eagleStatueData = Merge-ConfirmedEagleStatues $raw
+                        $script:eagleStatueData = Get-MapCategoryJson 'eagle'
                         Send-Response $res 200 "application/json" $script:eagleStatueData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2257,18 +2198,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/towers' -and $method -eq 'GET') {
-                    # Named raid Tower locations, sourced from paldb's Tower map layer (see
-                    # towers.json, added 2026-07-06). Split out of Eagle Statues -- see
-                    # Get-TowerNameSet's comment.
-                    # Recomputed every request, not cached -- see the /api/effigies note above.
+                    # Named raid Tower locations -- see the /api/journals note above; served
+                    # straight from the canonical store.
                     try {
-                        $f = "$ServerDir\towers.json"
-                        if (Test-Path -LiteralPath $f) {
-                            $raw = [System.IO.File]::ReadAllText($f)
-                        } else {
-                            $raw = '[]'
-                        }
-                        $script:towerData = Merge-ConfirmedTowers $raw
+                        $script:towerData = Get-MapCategoryJson 'tower'
                         Send-Response $res 200 "application/json" $script:towerData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2277,12 +2210,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/npcs' -and $method -eq 'GET') {
-                    # Anthony's own confirmed NPC locations (see Get-ConfirmedNPCs above) --
-                    # static named pins; per-player found state comes from a separate route,
-                    # /api/player-npcs?guid=, below.
-                    # Recomputed every request, not cached -- see the /api/effigies note above.
+                    # Anthony's own confirmed NPC locations -- static named pins; per-player
+                    # found state comes from a separate route, /api/player-npcs?guid=, below.
                     try {
-                        $script:npcData = Get-ConfirmedNPCs
+                        $script:npcData = Get-MapCategoryJson 'npc'
                         Send-Response $res 200 "application/json" $script:npcData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2293,10 +2224,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/landmarks' -and $method -eq 'GET') {
                     # Anthony's own confirmed locations that aren't an effigy, journal note,
                     # bounty boss, Wanted Fugitive, Eagle Statue, or NPC -- discovered areas
-                    # etc. -- see Get-ConfirmedLandmarks above.
-                    # Recomputed every request, not cached -- see the /api/effigies note above.
+                    # etc.
                     try {
-                        $script:landmarkData = Get-ConfirmedLandmarks
+                        $script:landmarkData = Get-MapCategoryJson 'landmark'
                         Send-Response $res 200 "application/json" $script:landmarkData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2619,8 +2549,16 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $existing.gy = $gy
                                 $existing | Add-Member -MemberType NoteProperty -Name source -Value $property -Force
                                 $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
+                                # Re-derive category (source/name may have just changed) and
+                                # origin -- see Get-CategoryForEntry; "manual" here overstates
+                                # nothing new, it's the same convention the schema migration
+                                # already used for any source-tagged, verified:true row.
+                                $existing | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $existing) -Force
+                                $existing | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
                             } else {
                                 $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property; verified = $verifiedFlag }
+                                $newEntry | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $newEntry) -Force
+                                $newEntry | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
                                 $arr = $arr + $newEntry
                             }
                             # No-BOM UTF8 -- confirmed_locations.json is also read by the
@@ -2672,6 +2610,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             $existing = $arr | Where-Object { $_.key -eq $key } | Select-Object -First 1
                             if (-not $existing) { throw "No existing mapping for this key yet." }
                             $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
+                            # Same origin convention as /api/datamine-mapping above.
+                            $existing | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
                             [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
                         } else {
                             $f = "$ServerDir\datamine_labels.json"
@@ -2724,8 +2664,14 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                     $existing.gy = $gy
                                     $existing | Add-Member -MemberType NoteProperty -Name source -Value $property -Force
                                     $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
+                                    # Re-derive category/origin -- see the singular
+                                    # /api/datamine-mapping route above for why.
+                                    $existing | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $existing) -Force
+                                    $existing | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
                                 } else {
                                     $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property; verified = $verifiedFlag }
+                                    $newEntry | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $newEntry) -Force
+                                    $newEntry | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
                                     $confirmedArr = $confirmedArr + $newEntry
                                 }
                                 $confirmedDirty = $true

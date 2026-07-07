@@ -26,8 +26,6 @@ $ErrorActionPreference = 'Stop'
 
 $SaveGamesRoot = Join-Path $Root 'Pal\Saved\SaveGames\0'
 $IniPath = Join-Path $Root 'Pal\Saved\Config\WindowsServer\GameUserSettings.ini'
-$EffigiesLocal = Join-Path $Root 'effigies.json'
-$BountyBossesLocal = Join-Path $Root 'bounty_bosses.json'
 $DashBase = 'http://localhost:8213'
 
 $PubData = Join-Path $OutDir 'data'
@@ -72,8 +70,8 @@ function Get-DashJson($pathAndQuery) {
   return $null
 }
 
-# Shared map-location data layer (Get-ConfirmedLocations, Merge-Confirmed*, etc.) -- also
-# dot-sourced by PalWorldServerManager.ps1, so both callers share one implementation
+# Shared map-location data layer (Get-ConfirmedLocations, Get-MapCategoryJson, etc.) --
+# also dot-sourced by PalWorldServerManager.ps1, so both callers share one implementation
 # instead of two hand-kept, drifting copies. See map_data_lib.ps1 for the full function
 # list.
 . (Join-Path $Root 'map_data_lib.ps1')
@@ -332,102 +330,42 @@ if ($doFreq) {
 # STATIC: rarely-changing data that ships with the Pages shell (NOT R2).
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doStatic) {
-  # ── effigies.json (static location data) ─────────────────────────────────────
+  # All eight map categories now read straight from confirmed_locations.json via
+  # Get-MapCategoryJson -- Phase 3's importer already upserted every scraped roster
+  # (effigies.json, journal_locations.json, bounty_bosses.json, wanted_fugitives.json,
+  # eagle_travel_locations.json, towers.json) into the canonical store, so there is no
+  # longer a separate roster file to read/overlay at build time. Those roster files stay
+  # on disk purely as importer inputs (re-run import_scraped_rosters.ps1 after a game
+  # patch to pick up new locations).
   Write-Step "building data/effigies.json"
-  $effJson = $null
-  if (Test-Path -LiteralPath $EffigiesLocal) {
-    $effJson = [System.IO.File]::ReadAllText($EffigiesLocal)
-  } else {
-    $effJson = Get-DashJson '/api/effigies'
-  }
-  if (-not $effJson) { throw "No effigy data available (missing $EffigiesLocal and dashboard unreachable)" }
-  # Overlay Anthony's own live-play-confirmed coordinates on top of the
-  # public/upstream data -- see Merge-ConfirmedEffigies above.
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'effigies.json'), (Merge-ConfirmedEffigies $effJson), $utf8)
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'effigies.json'), (Get-MapCategoryJson 'effigy'), $utf8)
 
-  # ── journals.json (static journal/diary note locations, game-world fixed) ────
-  # Built once (converted from wiki-published in-game X/Y); bundled as a static file.
-  # The dashboard serves the same JSON at /api/journals, which the data-fetch repoint
-  # points here. Anthony's own confirmed coordinates/names (Merge-ConfirmedJournals)
-  # override the wiki-sourced base data wherever they overlap.
   Write-Step "building data/journals.json"
-  $journalsLocal = Join-Path $Root 'journal_locations.json'
-  if (Test-Path -LiteralPath $journalsLocal) {
-    $journalsJson = [System.IO.File]::ReadAllText($journalsLocal)
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'journals.json'), (Merge-ConfirmedJournals $journalsJson), $utf8)
-  } else {
-    Write-Step "WARNING: journal_locations.json missing; journal overlay will be empty"
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'journals.json'), '[]', $utf8)
-  }
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'journals.json'), (Get-MapCategoryJson 'journal'), $utf8)
 
-  # ── bounty-bosses.json (static bounty-boss / named-Alpha locations, game-world fixed) ──
-  # Curated from paldb's DT_PaldexDistributionData BOSS_<Species> entries with exactly one
-  # fixed world location; bundled as a static file. The dashboard serves the same JSON at
-  # /api/bounty-bosses, which the data-fetch repoint points here. Anthony's own confirmed
-  # coordinates/names (Merge-ConfirmedBounty) override the paldb-sourced base data wherever
-  # they overlap.
   Write-Step "building data/bounty-bosses.json"
-  if (Test-Path -LiteralPath $BountyBossesLocal) {
-    $bountyJson = [System.IO.File]::ReadAllText($BountyBossesLocal)
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), (Merge-ConfirmedBounty $bountyJson), $utf8)
-  } else {
-    Write-Step "WARNING: bounty_bosses.json missing; bounty-boss overlay will be empty"
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), '[]', $utf8)
-  }
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'bounty-bosses.json'), (Get-MapCategoryJson 'bounty'), $utf8)
 
-  # wanted-fugitives.json (paldb-scraped human/Syndicate boss locations, added
-  # 2026-07-06) -- Bundled as a static file; Anthony's own confirmed coordinates/names
-  # (Merge-ConfirmedWantedFugitives) override the paldb-sourced base data wherever they
-  # overlap. The dashboard serves the same JSON at /api/wanted-fugitives.
   Write-Step "building data/wanted-fugitives.json"
-  $fugitivesLocal = Join-Path $Root 'wanted_fugitives.json'
-  if (Test-Path -LiteralPath $fugitivesLocal) {
-    $fugitivesJson = [System.IO.File]::ReadAllText($fugitivesLocal)
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'wanted-fugitives.json'), (Merge-ConfirmedWantedFugitives $fugitivesJson), $utf8)
-  } else {
-    Write-Step "WARNING: wanted_fugitives.json missing; wanted-fugitive overlay will be empty"
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'wanted-fugitives.json'), '[]', $utf8)
-  }
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'wanted-fugitives.json'), (Get-MapCategoryJson 'fugitive'), $utf8)
 
-  # eagle-statues.json (paldb-scraped fast-travel point locations, added 2026-07-06) --
-  # Bundled as a static file; Anthony's own confirmed coordinates/names
-  # (Merge-ConfirmedEagleStatues) override the paldb-sourced base data wherever they overlap.
-  # The dashboard serves the same JSON at /api/eagle-statues.
   Write-Step "building data/eagle-statues.json"
-  $eaglesLocal = Join-Path $Root 'eagle_travel_locations.json'
-  if (Test-Path -LiteralPath $eaglesLocal) {
-    $eaglesJson = [System.IO.File]::ReadAllText($eaglesLocal)
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'eagle-statues.json'), (Merge-ConfirmedEagleStatues $eaglesJson), $utf8)
-  } else {
-    Write-Step "WARNING: eagle_travel_locations.json missing; eagle-statue overlay will be empty"
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'eagle-statues.json'), '[]', $utf8)
-  }
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'eagle-statues.json'), (Get-MapCategoryJson 'eagle'), $utf8)
 
-  # towers.json (paldb-scraped raid Tower locations, added 2026-07-06) -- Split out of
-  # Eagle Statues -- see Get-TowerNameSet's comment. Bundled as a static file; the dashboard
-  # serves the same JSON at /api/towers.
   Write-Step "building data/towers.json"
-  $towersLocal = Join-Path $Root 'towers.json'
-  if (Test-Path -LiteralPath $towersLocal) {
-    $towersJson = [System.IO.File]::ReadAllText($towersLocal)
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'towers.json'), (Merge-ConfirmedTowers $towersJson), $utf8)
-  } else {
-    Write-Step "WARNING: towers.json missing; tower overlay will be empty"
-    [System.IO.File]::WriteAllText((Join-Path $PubData 'towers.json'), '[]', $utf8)
-  }
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'towers.json'), (Get-MapCategoryJson 'tower'), $utf8)
 
   # ── npcs.json (Anthony's confirmed NPC locations, static; per-player state is separate) ──
-  # Entirely sourced from confirmed_locations.json. The dashboard serves the same JSON at
-  # /api/npcs; per-player talked-to state is player-npcs/<guid>.json (Frequent branch above).
+  # The dashboard serves the same JSON at /api/npcs; per-player talked-to state is
+  # player-npcs/<guid>.json (Frequent branch above).
   Write-Step "building data/npcs.json"
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'npcs.json'), (Get-ConfirmedNPCs), $utf8)
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'npcs.json'), (Get-MapCategoryJson 'npc'), $utf8)
 
   # ── landmarks.json (Anthony's other confirmed locations: discovered areas, etc.) ──
-  # Entirely sourced from confirmed_locations.json -- catch-all for anything not already an
-  # effigy/journal/bounty/Wanted-Fugitive/Eagle-Statue/NPC. Dashboard serves the same JSON
-  # at /api/landmarks.
+  # Catch-all for anything not already an effigy/journal/bounty/Wanted-Fugitive/
+  # Eagle-Statue/NPC. Dashboard serves the same JSON at /api/landmarks.
   Write-Step "building data/landmarks.json"
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'landmarks.json'), (Get-ConfirmedLandmarks), $utf8)
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'landmarks.json'), (Get-MapCategoryJson 'landmark'), $utf8)
 
   # ── pal-species.json (curated species data: type/work/skills/stats) ──────────
   # Built once by build_pal_species.py; bundled as a static file. The dashboard serves

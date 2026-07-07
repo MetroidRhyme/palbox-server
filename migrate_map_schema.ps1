@@ -34,60 +34,9 @@ $confirmed = @(Get-ConfirmedLocations)
 $baselineTotal = $confirmed.Count
 $baselineVerifiedTrue = @($confirmed | Where-Object { $_.verified -eq $true }).Count
 
-function Get-KeySet([string]$fileName, [string]$field) {
-    $set = New-Object System.Collections.Generic.HashSet[string]
-    $f = Join-Path $Root $fileName
-    if (Test-Path -LiteralPath $f) {
-        try {
-            foreach ($e in (Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                $v = $e.$field
-                if ($v) { [void]$set.Add($v.ToUpper()) }
-            }
-        } catch {}
-    }
-    return $set
-}
-
-$towerNameSet = Get-TowerNameSet
-$effigyKeySet = New-Object System.Collections.Generic.HashSet[string]
-$effFile = Join-Path $Root 'effigies.json'
-if (Test-Path -LiteralPath $effFile) {
-    $effObj = Get-Content -LiteralPath $effFile -Raw -Encoding UTF8 | ConvertFrom-Json
-    foreach ($p in $effObj.PSObject.Properties) { [void]$effigyKeySet.Add($p.Name.ToUpper()) }
-}
-$journalKeySet = Get-KeySet 'journal_locations.json' 'key'
-$syndicateKeySet = Get-KeySet 'syndicate_bosses.json' 'key'
-$fastTravelKeySet = Get-KeySet 'fast_travel_keys.json' 'key'
-$npcKeySet = Get-KeySet 'npc_keys.json' 'key'
-$anonymousBossKeySet = Get-KeySet 'anonymous_boss_keys.json' 'key'
-
-# Same classification precedence as today's live Merge-Confirmed*/Get-Confirmed* functions
-# (tower name match overrides everything, then source, then roster-membership fallback for
-# entries that predate the "source" field) -- reproduced here as a single decision instead
-# of scattered across 7 functions, purely to LABEL existing rows. Does not change what any
-# route currently returns; see map_data_lib.ps1's category-first fast path for the part
-# that starts consuming this field.
-function Get-CategoryForEntry($c) {
-    if ($c.name -and $towerNameSet.Contains($c.name.ToUpper())) { return 'tower' }
-    switch ($c.source) {
-        'RelicObtainForInstanceFlag' { return 'effigy' }
-        'NoteObtainForInstanceFlag'  { return 'journal' }
-        'FastTravelPointUnlockFlag'  { return 'eagle' }
-        'NPCTalkCountMap'            { return 'npc' }
-        'NormalBossDefeatFlag'       { if (Test-SyndicateKeyShape $c.key) { return 'fugitive' } else { return 'bounty' } }
-        'FindAreaFlagMap'            { return 'landmark' }
-    }
-    if ($c.key) {
-        $k = $c.key.ToUpper()
-        if ($effigyKeySet.Contains($k)) { return 'effigy' }
-        if ($journalKeySet.Contains($k)) { return 'journal' }
-        if ($syndicateKeySet.Contains($k)) { return 'fugitive' }
-        if ($fastTravelKeySet.Contains($k)) { return 'eagle' }
-        if ($npcKeySet.Contains($k)) { return 'npc' }
-        if ($anonymousBossKeySet.Contains($k)) { return 'bounty' }
-    }
-    return 'landmark'
-}
+# Get-CategoryForEntry (tower name match, then source, then roster-membership fallback)
+# now lives in map_data_lib.ps1 -- moved there (Phase 4) so PalWorldServerManager.ps1's
+# Data Mine tab write endpoints can classify a freshly-typed-in entry immediately too.
 
 # ── Step 2: backfill category ──────────────────────────────────────────────────
 $categoryBackfilled = 0
@@ -114,8 +63,24 @@ foreach ($c in $confirmed) {
 
 # ── Step 4: fold the six manual-confirm overlay files into verified:true ───────────────
 # Each overlay file uses a DIFFERENT identity than the others (matching each one's own
-# Merge-Confirmed* consumer): effigy/journal by key, bounty by species, tower/fugitive/
-# eagle by name. Overlay files are NOT deleted here -- see the file header.
+# former Merge-Confirmed* consumer, now retired -- see Phase 4): effigy/journal by key,
+# bounty by species, tower/fugitive/eagle by name. Overlay files are NOT deleted here --
+# see the file header. This reader used to be map_data_lib.ps1's own Get-ManualConfirmSet,
+# but the live Manager stopped using the overlay files in Phase 4, so it moved here --
+# this script is the only remaining reason to parse them at all.
+function Get-ManualConfirmSet([string]$fileName) {
+    $keys = @{}
+    $f = Join-Path $Root $fileName
+    if (Test-Path -LiteralPath $f) {
+        try {
+            $arr = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -eq $arr) { $arr = @() }
+            if ($arr -is [string]) { $arr = @($arr) }
+            foreach ($k in $arr) { if ($k) { $keys[$k.ToUpper()] = $true } }
+        } catch {}
+    }
+    return $keys
+}
 $overlayPromotions = @{}
 $overlayInserts = @{}
 

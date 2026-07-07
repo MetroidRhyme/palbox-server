@@ -145,108 +145,92 @@ function ConvertTo-GridXY([double]$x, [double]$y) {
     return @{ gx = [Math]::Round(($y - $mc.offsetY) / $mc.scale); gy = [Math]::Round(($x + $mc.offsetX) / $mc.scale) }
 }
 
-# Keys/species Anthony has manually clicked "Confirm" on in a dashboard marker popup (see
-# EFFIGY_CONFIRM_ENABLED / toggleEffigyConfirm+toggleJournalConfirm+toggleBountyConfirm in
-# dashboard.html and the /api/effigy-confirm, /api/journal-confirm, /api/bounty-confirm
-# routes below). Each kept in its OWN file rather than confirmed_locations.json, which
-# stays owned exclusively by the Desktop dataminer script -- picking something up/
-# defeating it in-game doesn't prove the scraped coordinate is right, so this is a
-# separate, purely UI-driven confirmation signal. Read fresh every call, same convention
-# as the other small roster files (anonymous_boss_keys.json etc.) -- no caching needed for
-# files this size.
-function Get-ManualConfirmSet([string]$fileName) {
-    $keys = @{}
-    $f = "$script:MapDataRoot\$fileName"
-    if (Test-Path -LiteralPath $f) {
-        try {
-            # No @() wrap around the ConvertFrom-Json pipe -- see the critical PS 5.1
-            # gotcha documented on Get-ConfirmedLocations/Merge-ConfirmedJournals above.
-            $arr = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($null -eq $arr) { $arr = @() }
-            if ($arr -is [string]) { $arr = @($arr) }
-            foreach ($k in $arr) { if ($k) { $keys[$k.ToUpper()] = $true } }
-        } catch {}
-    }
-    return $keys
-}
-function Get-EffigyConfirmedKeys { return Get-ManualConfirmSet 'effigy_confirmed_keys.json' }
-function Get-JournalConfirmedKeys { return Get-ManualConfirmSet 'journal_confirmed_keys.json' }
-function Get-BountyConfirmedSpecies { return Get-ManualConfirmSet 'bounty_confirmed_species.json' }
-function Get-TowerConfirmedNames { return Get-ManualConfirmSet 'tower_confirmed_keys.json' }
-function Get-FugitiveConfirmedNames { return Get-ManualConfirmSet 'fugitive_confirmed_keys.json' }
-function Get-EagleConfirmedNames { return Get-ManualConfirmSet 'eagle_confirmed_keys.json' }
-
-# Anthony wants ONLY his own confirmed locations on the map for Journals/Bounty -- those
-# Merge-Confirmed* functions FILTER the base public/wiki-sourced data down to matches only
-# (not overlay onto the full set). Effigies is the one exception (reverted 2026-07-05):
-# Anthony asked for the full scraped roster back so he can see grey/unconfirmed effigies
-# he hasn't logged yet, just tagged with whether he's manually confirmed each one -- so
-# this one function OVERLAYS instead of filtering, using the scraped x/y/z as-is (more
-# accurate than the gx/gy round-trip) and adding an `m:true` flag for an exact GUID-key
-# match against EITHER confirmed_locations.json (the Desktop script) OR
-# effigy_confirmed_keys.json (a manual dashboard click). NOTE: build with -InputObject
-# rather than piping into ConvertTo-Json -- piping a PowerShell array with exactly one
-# element unwraps it into a bare JSON object instead of a 1-item array (confirmed via
-# direct test), which would break the client's .forEach() the moment a filtered list
-# happens to have one entry.
-function Merge-ConfirmedEffigies([string]$json) {
+# Serves every map category from confirmed_locations.json directly -- Phase 3's importer
+# (import_scraped_rosters.ps1) already upserted every scraped roster row into the
+# canonical store as verified:false, so there is no separate roster file left to overlay
+# at request time the way Merge-ConfirmedEffigies/Journals/etc. used to. `m` = verified.
+# Coordinate precedence: the store's own x/y (scraped precision, or Anthony's own
+# hand-entered value once Phase 5-that-never-shipped or a future dashboard edit sets it)
+# when present, else derived from gx/gy -- gx/gy-only entries are exactly the ones Phase 3
+# never touched (npc, landmark), which predate x/y existing on any row at all.
+#
+# Effigies alone keep their historical DICT shape (GUID -> {x,y,z,m}), matched by
+# dashboard.html's effigyLocations[key] lookups -- every other category is an array of
+# {name,x,y,key,m}, plus "species" for bounty and "lv" for tower/fugitive.
+function Get-MapCategoryJson([string]$category) {
     $confirmed = Get-ConfirmedLocations
-    $manualKeys = @{}
-    # verified:false means dmAutoFillFromRosters auto-persisted this as a candidate
-    # location (see dashboard.html), not a real confirmation -- must not count as m:true.
-    foreach ($c in $confirmed) { if ($c.key -and $c.verified -ne $false) { $manualKeys[$c.key.ToUpper()] = $true } }
-    foreach ($k in (Get-EffigyConfirmedKeys).Keys) { $manualKeys[$k] = $true }
-    try { $obj = $json | ConvertFrom-Json } catch { $obj = $null }
-    $result = [ordered]@{}
-    if ($obj) {
-        foreach ($p in $obj.PSObject.Properties) {
-            $entry = @{ x = $p.Value.x; y = $p.Value.y; z = $p.Value.z }
-            if ($manualKeys.ContainsKey($p.Name.ToUpper())) { $entry.m = $true }
-            $result[$p.Name] = $entry
+    if ($category -eq 'effigy') {
+        $result = [ordered]@{}
+        foreach ($c in $confirmed) {
+            if ($c.category -ne 'effigy' -or -not $c.key) { continue }
+            $entry = @{ x = $c.x; y = $c.y; z = $c.z }
+            if ($c.verified -eq $true) { $entry.m = $true }
+            $result[$c.key] = $entry
         }
+        return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)
     }
-    return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)
-}
-
-# OVERLAYS the full wiki-sourced journal_locations.json roster (reverted 2026-07-05,
-# matching the Effigies precedent above) instead of filtering to confirmed-only --
-# Anthony wants every scraped journal visible with a red/yellow/green status (see
-# renderEffigyMap's journal block) instead of only seeing ones he's personally logged.
-# `m:true` marks an exact key match against confirmed_locations.json (Anthony's script is
-# still the source of truth for name/coordinates when a match exists -- wiki data is
-# overridden, not the scraped x/y kept as-is like effigies, since journal_locations.json
-# is less trustworthy than his own hands-on confirmation) OR a manual dashboard-popup
-# confirm (journal_confirmed_keys.json, see Get-JournalConfirmedKeys/toggleJournalConfirm)
-# -- a manual click doesn't have a gx/gy to override coordinates with, so it only flips
-# the flag, same as effigies' manual confirm.
-function Merge-ConfirmedJournals([string]$json) {
-    $confirmed = Get-ConfirmedLocations
-    # No @() wrap -- see the note on Get-ConfirmedLocations above.
-    try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
-    if ($null -eq $arr) { $arr = @() }
-    $byKey = @{}
-    # verified:false means dmAutoFillFromRosters auto-persisted this as a candidate
-    # location (see dashboard.html), not a real confirmation -- must not count as m:true.
-    foreach ($c in $confirmed) { if ($c.key -and $c.verified -ne $false) { $byKey[$c.key.ToUpper()] = $c } }
-    $manualKeys = Get-JournalConfirmedKeys
     $result = @()
-    foreach ($entry in $arr) {
-        $out = @{ name = $entry.name; x = $entry.x; y = $entry.y; gx = $entry.gx; gy = $entry.gy; key = $entry.key }
-        $c = if ($entry.key) { $byKey[$entry.key.ToUpper()] } else { $null }
-        if ($c) {
-            $xy = ConvertTo-WorldXY $c.gx $c.gy
-            $out.x = $xy.x
-            $out.y = $xy.y
-            $out.gx = $c.gx
-            $out.gy = $c.gy
-            if ($c.name) { $out.name = $c.name }
-            $out.m = $true
-        } elseif ($entry.key -and $manualKeys.ContainsKey($entry.key.ToUpper())) {
-            $out.m = $true
+    foreach ($c in $confirmed) {
+        if ($c.category -ne $category) { continue }
+        $hasXY = ($null -ne $c.x -and $null -ne $c.y)
+        $xy = if ($hasXY) { @{ x = $c.x; y = $c.y } } else { ConvertTo-WorldXY $c.gx $c.gy }
+        $name = if ($c.name) { $c.name } else { $c.key }
+        $out = @{ name = $name; x = $xy.x; y = $xy.y; m = ($c.verified -eq $true) }
+        if ($c.key) { $out.key = $c.key }
+        if ($category -eq 'bounty') { $out.species = if ($c.species) { $c.species } else { $c.key } }
+        if ($c.PSObject.Properties['lv'] -and $null -ne $c.lv) { $out.lv = $c.lv }
+        if ($category -eq 'journal') {
+            # Journal is the one category whose client tooltip (buildJournalMarker) and Data
+            # Mine tab roster-fallback (getGxGy) read gx/gy straight off the roster item
+            # instead of deriving it from x/y client-side -- keep emitting it to match.
+            if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
+            else { $grid = ConvertTo-GridXY $xy.x $xy.y; $out.gx = $grid.gx; $out.gy = $grid.gy }
         }
         $result += $out
     }
     return (ConvertTo-Json -InputObject @($result) -Depth 6)
+}
+
+# The one write path behind every POST .../*-confirm route (and the new consolidated
+# /api/map-confirm) -- resolves a confirmed_locations.json row by the category-appropriate
+# identity the client already displays for that pin (key for effigy/journal, species for
+# bounty, name for tower/fugitive/eagle -- npc/landmark have no confirm UI yet) and flips
+# its "verified" flag. Since Get-MapCategoryJson above always emits the STORE's own
+# name/species/key (never a blended roster value), whatever identity the client echoes
+# back on toggle is guaranteed to match a row here exactly -- no fuzzy matching needed on
+# the write side at all, unlike the read-side importer.
+function Set-MapConfirmVerified([string]$category, [string]$key, [string]$species, [string]$name, [bool]$verified) {
+    $confirmed = Get-ConfirmedLocations
+    $matched = $null
+    if ($key) {
+        $keyU = $key.ToUpper()
+        $matched = $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $keyU -and $_.category -eq $category } | Select-Object -First 1
+    } elseif ($species) {
+        $spU = $species.ToUpper()
+        $matched = $confirmed | Where-Object { $_.species -and $_.species.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
+        if (-not $matched) {
+            # Self-named species (BlueDragon/FairyDragon) or one resolved only via
+            # anonymous_boss_keys.json store their identity in "key", not "species" --
+            # same fallback the old Merge-ConfirmedBounty always needed.
+            $anonMap = Get-AnonymousBossKeyMap
+            $reverseAnon = @{}
+            foreach ($ak in $anonMap.Keys) { $reverseAnon[$anonMap[$ak].ToUpper()] = $ak }
+            if ($reverseAnon.ContainsKey($spU)) {
+                $rk = $reverseAnon[$spU].ToUpper()
+                $matched = $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $rk -and $_.category -eq $category } | Select-Object -First 1
+            }
+            if (-not $matched) {
+                $matched = $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
+            }
+        }
+    } elseif ($name) {
+        $nameU = $name.ToUpper()
+        $matched = $confirmed | Where-Object { $_.name -and $_.name.ToUpper() -eq $nameU -and $_.category -eq $category } | Select-Object -First 1
+    }
+    if (-not $matched) { return $false }
+    Set-EntryProp $matched 'verified' $verified
+    Save-ConfirmedLocations $confirmed
+    return $true
 }
 
 # Resolve a confirmed key to a bounty species via anonymous_boss_keys.json (the world
@@ -320,359 +304,63 @@ function Find-ConfirmedByNameOrCoord($rosterEntry, $candidates) {
     return $null
 }
 
-# OVERLAYS the 7-entry paldb-scraped towers.json roster (added 2026-07-06). See
-# Get-TowerNameSet above for why this needed splitting out of Eagle Statues. `m:true`
-# marks a name/coord match against confirmed_locations.json OR a manual dashboard-popup
-# confirm (tower_confirmed_keys.json, see Get-TowerConfirmedNames/toggleTowerConfirm). No
-# per-player "cleared" signal exists yet for raid towers, so status can only reach
-# confirmed (yellow) or unconfirmed (red) until that's built -- never found (green).
-function Merge-ConfirmedTowers([string]$json) {
-    $confirmed = Get-ConfirmedLocations
-    try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
-    if ($null -eq $arr) { $arr = @() }
-    $manualNames = Get-TowerConfirmedNames
-    # Only a verified entry counts as a match (a scraped/unverified candidate row --
-    # see Phase 3's importers -- must not show m:true just for existing); an entry with
-    # an explicit "category" (added in the schema migration) must also agree it's a
-    # tower, so a keyless scraped row Phase 3 inserts for a DIFFERENT category can never
-    # accidentally match here via a stray name/coord coincidence.
-    $candidates = @($confirmed | Where-Object { $_.verified -ne $false -and (-not $_.category -or $_.category -eq 'tower') })
-    $result = @()
-    foreach ($entry in $arr) {
-        $out = @{ name = $entry.name; x = $entry.x; y = $entry.y; lv = $entry.lv }
-        $c = Find-ConfirmedByNameOrCoord $entry $candidates
-        if ($c) {
-            $xy = ConvertTo-WorldXY $c.gx $c.gy
-            $out.x = $xy.x
-            $out.y = $xy.y
-            if ($c.name) { $out.name = $c.name }
-            $out.key = $c.key
-            $out.m = $true
-        } elseif ($entry.name -and $manualNames.ContainsKey($entry.name.ToUpper())) {
-            $out.m = $true
-        }
-        $result += $out
-    }
-    return (ConvertTo-Json -InputObject @($result) -Depth 6)
-}
-
-# OVERLAYS the full paldb-scraped bounty_bosses.json roster (reverted 2026-07-05, same
-# reasoning as Merge-ConfirmedJournals above) instead of filtering to confirmed-only --
-# every known Alpha now shows with a red/yellow/green status. `m:true` marks a species
-# match against confirmed_locations.json (via Get-AnonymousBossKeyMap); when matched, the
-# confirmed entry's own gx/gy (more trustworthy than paldb) overrides x/y and name, same
-# override precedent as before. OR a manual dashboard-popup confirm
-# (bounty_confirmed_species.json, see Get-BountyConfirmedSpecies/toggleBountyConfirm) --
-# same as journals, a manual click only flips the flag, no coordinate override.
-function Merge-ConfirmedBounty([string]$json) {
-    $confirmed = Get-ConfirmedLocations
-    # No @() wrap -- see the note on Get-ConfirmedLocations above.
-    try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
-    if ($null -eq $arr) { $arr = @() }
-    $anonMap = Get-AnonymousBossKeyMap
-    # Reverse of $anonMap (species -> raw NormalBossDefeatFlag key), so a roster entry can
-    # show the actual save-data key it's linked to even when it hasn't also been hand-
-    # confirmed via confirmed_locations.json. Species self-name-tagged in the save (e.g.
-    # BlueDragon/FairyDragon, matched by suffix rather than an anonymous-key entry -- see
-    # /palbox-bounty-tracker) have no single static key on file, so they fall through to
-    # the confirmed-match key (if any) or the missing-key note client-side.
-    $reverseAnon = @{}
-    foreach ($k in $anonMap.Keys) { $reverseAnon[$anonMap[$k].ToUpper()] = $k }
-    $bySpecies = @{}
-    foreach ($c in $confirmed) {
-        # Only a verified entry counts as a match, and (once the schema migration has run)
-        # only one whose own category agrees it's a bounty -- same reasoning as the
-        # candidate-list gating in Merge-ConfirmedTowers/WantedFugitives/EagleStatues below.
-        if ($c.verified -eq $false) { continue }
-        if ($c.category -and $c.category -ne 'bounty') { continue }
-        # A keyless entry (a scraped species-only import from a future importer phase) has
-        # no key to resolve via $anonMap, so fall back to its own "species" field directly --
-        # guards against calling .ToUpper() on a null key, which would otherwise throw.
-        $species = $null
-        if ($c.key) {
-            $species = $anonMap[$c.key.ToUpper()]
-            if (-not $species) { $species = $c.key }
-        } elseif ($c.species) {
-            $species = $c.species
-        }
-        if (-not $species) { continue }
-        $bySpecies[$species.ToUpper()] = $c
-    }
-    $manualSpecies = Get-BountyConfirmedSpecies
-    $result = @()
-    $claimedSpecies = New-Object System.Collections.Generic.HashSet[string]
-    foreach ($entry in $arr) {
-        if (-not $entry.species) { continue }
-        $sp = $entry.species.ToUpper()
-        $out = @{ species = $entry.species; name = $entry.name; x = $entry.x; y = $entry.y }
-        $c = $bySpecies[$sp]
-        if ($c) {
-            $xy = ConvertTo-WorldXY $c.gx $c.gy
-            $out.x = $xy.x
-            $out.y = $xy.y
-            if ($c.name) { $out.name = $c.name }
-            $out.key = $c.key
-            $out.m = $true
-            [void]$claimedSpecies.Add($sp)
-        } else {
-            if ($reverseAnon.ContainsKey($sp)) { $out.key = $reverseAnon[$sp] }
-            if ($manualSpecies.ContainsKey($sp)) { $out.m = $true }
-        }
-        $result += $out
-    }
-    foreach ($c in $confirmed) {
-        # Anthony's dataminer script already told us (via confirmed_locations.json's
-        # "source" field) that this key is a NormalBossDefeatFlag hit, and its shape says
-        # Field Boss, not Wanted Fugitive -- show it now from his own confirmed
-        # name/coords rather than waiting on a manual anonymous_boss_keys.json edit, if it
-        # isn't already covered by a bounty_bosses.json roster entry above.
-        if ($c.verified -eq $false) { continue }
-        if (-not $c.key) { continue }
-        if ($c.source -ne 'NormalBossDefeatFlag' -or (Test-SyndicateKeyShape $c.key)) { continue }
-        $species = $anonMap[$c.key.ToUpper()]
-        if (-not $species) { $species = $c.key }
-        if ($claimedSpecies.Contains($species.ToUpper())) { continue }
-        $xy = ConvertTo-WorldXY $c.gx $c.gy
-        $name = if ($c.name) { $c.name } else { $c.key }
-        $result += @{ species = $c.key; name = $name; x = $xy.x; y = $xy.y; key = $c.key; m = $true }
-    }
-    return (ConvertTo-Json -InputObject @($result) -Depth 6)
-}
-
-# "Wanted Fugitive" -- OVERLAYS the 33-entry paldb-scraped wanted_fugitives.json roster
-# (added 2026-07-06, replacing the old confirmed-only/no-base-roster version -- same
-# revert-to-overlay precedent as Journals/Bounty on 2026-07-06). Excludes any confirmed
-# entry whose name is a Tower (Get-TowerNameSet above) -- those route to
-# Merge-ConfirmedTowers instead. Matched by name/gx-gy via Find-ConfirmedByNameOrCoord;
-# `m:true` also from a manual dashboard-popup confirm (fugitive_confirmed_keys.json). The
-# real save-flag key still comes through on a match (from the confirmed entry itself) so
-# per-player defeat tracking (fugitiveCollected, see /api/player-fugitives) keeps working
-# for anything Anthony has actually confirmed -- an unconfirmed roster pin has no known
-# key, so it can never show "found" until he does.
-function Merge-ConfirmedWantedFugitives([string]$json) {
-    $confirmed = Get-ConfirmedLocations
-    try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
-    if ($null -eq $arr) { $arr = @() }
+# Classifies a confirmed_locations.json entry into one of the 8 map categories: tower
+# name match first (paldb's Tower scrape has no save-flag key of its own), then the
+# entry's own "source" field, then roster-membership fallback for legacy entries that
+# predate "source". Originally migrate_map_schema.ps1's own private copy (used there for
+# the one-time bulk backfill); moved here so PalWorldServerManager.ps1's Data Mine tab
+# write endpoints (/api/datamine-mapping, /api/datamine-mapping-batch) can stamp a
+# category on a freshly-typed-in entry immediately, instead of it sitting
+# uncategorized -- and therefore invisible to Get-MapCategoryJson -- until the next
+# manual re-run of the migration script.
+function Get-CategoryForEntry($c) {
     $towerNames = Get-TowerNameSet
-    # Only a verified entry counts as a match, and (once the schema migration has run) only
-    # one whose own category agrees it's a fugitive -- see Merge-ConfirmedTowers' comment.
-    $candidates = @($confirmed | Where-Object {
-        $_.verified -ne $false -and
-        (-not ($_.name -and $towerNames.Contains($_.name.ToUpper()))) -and
-        (-not $_.category -or $_.category -eq 'fugitive')
-    })
-    $manualNames = Get-FugitiveConfirmedNames
-    $result = @()
-    foreach ($entry in $arr) {
-        $out = @{ name = $entry.name; x = $entry.x; y = $entry.y; lv = $entry.lv }
-        $c = Find-ConfirmedByNameOrCoord $entry $candidates
-        if ($c) {
-            $xy = ConvertTo-WorldXY $c.gx $c.gy
-            $out.x = $xy.x
-            $out.y = $xy.y
-            if ($c.name) { $out.name = $c.name }
-            $out.key = $c.key
-            $out.m = $true
-        } elseif ($entry.name -and $manualNames.ContainsKey($entry.name.ToUpper())) {
-            $out.m = $true
-        }
-        $result += $out
+    if ($c.name -and $towerNames.Contains($c.name.ToUpper())) { return 'tower' }
+    switch ($c.source) {
+        'RelicObtainForInstanceFlag' { return 'effigy' }
+        'NoteObtainForInstanceFlag' { return 'journal' }
+        'FastTravelPointUnlockFlag' { return 'eagle' }
+        'NPCTalkCountMap' { return 'npc' }
+        'NormalBossDefeatFlag' { if ($c.key -and (Test-SyndicateKeyShape $c.key)) { return 'fugitive' } else { return 'bounty' } }
+        'FindAreaFlagMap' { return 'landmark' }
     }
-    return (ConvertTo-Json -InputObject @($result) -Depth 6)
-}
-
-# "Eagle Statues" -- OVERLAYS the 83-entry paldb-scraped eagle_travel_locations.json
-# roster (added 2026-07-06, replacing the old confirmed-only/no-base-roster version;
-# paldb's own raw 89-entry Fast Travel list had 6 broken "en Text"/blank placeholder rows
-# sitting exactly on Tower coordinates, filtered out when eagle_travel_locations.json was
-# built). Same exclusion/matching/key-passthrough pattern as
-# Merge-ConfirmedWantedFugitives above.
-function Merge-ConfirmedEagleStatues([string]$json) {
-    $confirmed = Get-ConfirmedLocations
-    try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
-    if ($null -eq $arr) { $arr = @() }
-    $towerNames = Get-TowerNameSet
-    # Only a verified entry counts as a match, and (once the schema migration has run) only
-    # one whose own category agrees it's an eagle -- see Merge-ConfirmedTowers' comment.
-    $candidates = @($confirmed | Where-Object {
-        $_.verified -ne $false -and
-        (-not ($_.name -and $towerNames.Contains($_.name.ToUpper()))) -and
-        (-not $_.category -or $_.category -eq 'eagle')
-    })
-    $manualNames = Get-EagleConfirmedNames
-    $result = @()
-    foreach ($entry in $arr) {
-        $out = @{ name = $entry.name; x = $entry.x; y = $entry.y }
-        $c = Find-ConfirmedByNameOrCoord $entry $candidates
-        if ($c) {
-            $xy = ConvertTo-WorldXY $c.gx $c.gy
-            $out.x = $xy.x
-            $out.y = $xy.y
-            if ($c.name) { $out.name = $c.name }
-            $out.key = $c.key
-            $out.m = $true
-        } elseif ($entry.name -and $manualNames.ContainsKey($entry.name.ToUpper())) {
-            $out.m = $true
-        }
-        $result += $out
-    }
-    return (ConvertTo-Json -InputObject @($result) -Depth 6)
-}
-
-# "NPC" -- NPCTalkCountMap keys. Primary classifier is the "source" field (see
-# Merge-ConfirmedBounty's comment above); npc_keys.json (a roster of confirmed NPC GUIDs,
-# grown from real save data -- see pal_save_reader.py's extract_npc_data) is kept as a
-# fallback for entries confirmed before "source" existed. Unlike Eagle Statues/Landmarks,
-# this DOES get per-player tracking: /api/player-npcs (below) marks an NPC "found" once
-# its key shows up in that player's own NPCTalkCountMap, same mechanism as
-# effigies/journals/bounty.
-function Get-ConfirmedNPCs {
-    $confirmed = Get-ConfirmedLocations
-    $roster = New-Object System.Collections.Generic.HashSet[string]
-    $npcFile = "$script:MapDataRoot\npc_keys.json"
-    if (Test-Path -LiteralPath $npcFile) {
-        try {
-            foreach ($e in (Get-Content -LiteralPath $npcFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key) { [void]$roster.Add($e.key.ToUpper()) }
-            }
-        } catch {}
-    }
-    $result = @()
-    foreach ($c in $confirmed) {
-        # Category-first (set by the schema migration) takes precedence over the
-        # source/roster fallback below, which only still matters for an entry inserted
-        # before category existed (or by the Desktop dataminer script, until it's taught
-        # to stamp category too). Guard $c.key with "-and" since a future entry from a
-        # different category could be keyless (e.g. a Phase 3 bounty import).
-        $isNpc = if ($c.category) { $c.category -eq 'npc' } else { ($c.source -eq 'NPCTalkCountMap') -or ($c.key -and $roster.Contains($c.key.ToUpper())) }
-        if ($isNpc) {
-            $xy = ConvertTo-WorldXY $c.gx $c.gy
-            $name = if ($c.name) { $c.name } else { $c.key }
-            $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
-        }
-    }
-    return (ConvertTo-Json -InputObject @($result) -Depth 6)
-}
-
-# "Landmarks" -- everything else in confirmed_locations.json that isn't already
-# plotted as an effigy, journal note, bounty boss, Wanted Fugitive, Eagle Statue, or
-# NPC: discovered-area markers and any other named spot Anthony has confirmed. A
-# catch-all so a new category of confirmed location doesn't need its own plumbing to
-# show up somewhere on the map.
-function Get-ConfirmedLandmarks {
-    $confirmed = Get-ConfirmedLocations
-    $claimed = New-Object System.Collections.Generic.HashSet[string]
-    $effFile = "$script:MapDataRoot\effigies.json"
-    if (Test-Path -LiteralPath $effFile) {
-        try {
+    if ($c.key) {
+        $k = $c.key.ToUpper()
+        $effFile = "$script:MapDataRoot\effigies.json"
+        if (Test-Path -LiteralPath $effFile) {
             $effObj = Get-Content -LiteralPath $effFile -Raw -Encoding UTF8 | ConvertFrom-Json
-            foreach ($p in $effObj.PSObject.Properties) { [void]$claimed.Add($p.Name.ToUpper()) }
-        } catch {}
-    }
-    $journalFile = "$script:MapDataRoot\journal_locations.json"
-    if (Test-Path -LiteralPath $journalFile) {
-        try {
+            foreach ($p in $effObj.PSObject.Properties) { if ($p.Name.ToUpper() -eq $k) { return 'effigy' } }
+        }
+        $journalFile = "$script:MapDataRoot\journal_locations.json"
+        if (Test-Path -LiteralPath $journalFile) {
             foreach ($e in (Get-Content -LiteralPath $journalFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+                if ($e.key -and $e.key.ToUpper() -eq $k) { return 'journal' }
             }
-        } catch {}
-    }
-    $anonMap = Get-AnonymousBossKeyMap
-    $bountyFile = "$script:MapDataRoot\bounty_bosses.json"
-    $bountySpecies = @{}
-    if (Test-Path -LiteralPath $bountyFile) {
-        try {
-            foreach ($e in (Get-Content -LiteralPath $bountyFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.species) { $bountySpecies[$e.species.ToUpper()] = $true }
-            }
-        } catch {}
-    }
-    foreach ($c in $confirmed) {
-        if (-not $c.key) { continue }
-        $species = $anonMap[$c.key.ToUpper()]
-        if (-not $species) { $species = $c.key }
-        if ($bountySpecies.ContainsKey($species.ToUpper())) { [void]$claimed.Add($c.key.ToUpper()) }
-    }
-    $synFile = "$script:MapDataRoot\syndicate_bosses.json"
-    if (Test-Path -LiteralPath $synFile) {
-        try {
+        }
+        $synFile = "$script:MapDataRoot\syndicate_bosses.json"
+        if (Test-Path -LiteralPath $synFile) {
             foreach ($e in (Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+                if ($e.key -and $e.key.ToUpper() -eq $k) { return 'fugitive' }
             }
-        } catch {}
-    }
-    $ftFile = "$script:MapDataRoot\fast_travel_keys.json"
-    if (Test-Path -LiteralPath $ftFile) {
-        try {
+        }
+        $ftFile = "$script:MapDataRoot\fast_travel_keys.json"
+        if (Test-Path -LiteralPath $ftFile) {
             foreach ($e in (Get-Content -LiteralPath $ftFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+                if ($e.key -and $e.key.ToUpper() -eq $k) { return 'eagle' }
             }
-        } catch {}
-    }
-    $npcFile = "$script:MapDataRoot\npc_keys.json"
-    if (Test-Path -LiteralPath $npcFile) {
-        try {
+        }
+        $npcFile = "$script:MapDataRoot\npc_keys.json"
+        if (Test-Path -LiteralPath $npcFile) {
             foreach ($e in (Get-Content -LiteralPath $npcFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key) { [void]$claimed.Add($e.key.ToUpper()) }
+                if ($e.key -and $e.key.ToUpper() -eq $k) { return 'npc' }
             }
-        } catch {}
-    }
-    # Tower/Wanted Fugitive/Eagle Statue (added 2026-07-06) match confirmed entries by
-    # NAME, not by a GUID-roster membership check like the blocks above -- claim by name
-    # here too so a matched entry doesn't leak into Landmarks. See
-    # Merge-ConfirmedTowers/WantedFugitives/EagleStatues.
-    $namedRosterNames = New-Object System.Collections.Generic.HashSet[string]
-    foreach ($rn in @('towers.json', 'wanted_fugitives.json', 'eagle_travel_locations.json')) {
-        $rf = "$script:MapDataRoot\$rn"
-        if (Test-Path -LiteralPath $rf) {
-            try {
-                foreach ($e in (Get-Content -LiteralPath $rf -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                    if ($e.name) { [void]$namedRosterNames.Add($e.name.ToUpper()) }
-                }
-            } catch {}
         }
-    }
-    foreach ($c in $confirmed) {
-        if ($c.key -and $c.name -and $namedRosterNames.Contains($c.name.ToUpper())) { [void]$claimed.Add($c.key.ToUpper()) }
-    }
-    # Anthony's dataminer script stamps a "source" (raw save-flag name) on every newly
-    # confirmed entry now -- trust it directly instead of waiting on a roster-file edit.
-    # FastTravelPointUnlockFlag/NPCTalkCountMap always resolve into Eagle Statues/NPCs
-    # above; NormalBossDefeatFlag always resolves into either Wanted Fugitive or Field
-    # Boss above (species-matched or not -- Merge-ConfirmedBounty's fallback branch shows
-    # it either way), so any of these three sources means it's claimed even before the
-    # roster files above catch up. Only FindAreaFlagMap (genuine discovered-zone
-    # landmarks) and entries with no "source" at all (pre-dating this field) fall through
-    # to Landmarks below.
-    foreach ($c in $confirmed) {
-        if ($c.key -and ($c.source -eq 'FastTravelPointUnlockFlag' -or $c.source -eq 'NPCTalkCountMap' -or
-            $c.source -eq 'NormalBossDefeatFlag')) {
-            [void]$claimed.Add($c.key.ToUpper())
-        }
-    }
-    $result = @()
-    foreach ($c in $confirmed) {
-        # Category-first (set by the schema migration): an entry with an explicit category
-        # is claimed the instant that category isn't 'landmark', with NO dependency on
-        # having a key at all -- this is the only way a keyless entry (e.g. a Phase 3
-        # scraped-species bounty import) can ever avoid leaking in here, since it has no
-        # key for the roster-membership checks above to claim. An entry without a category
-        # yet (pre-migration legacy shape, or inserted by the Desktop dataminer script
-        # before it's taught to stamp category too) falls through to the roster-based
-        # $claimed check exactly as before.
-        if ($c.category) {
-            if ($c.category -eq 'landmark') {
-                $xy = ConvertTo-WorldXY $c.gx $c.gy
-                $name = if ($c.name) { $c.name } else { $c.key }
-                $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+        $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
+        if (Test-Path -LiteralPath $anonFile) {
+            foreach ($e in (Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+                if ($e.key -and $e.key.ToUpper() -eq $k) { return 'bounty' }
             }
-            continue
-        }
-        if ($c.key -and -not $claimed.Contains($c.key.ToUpper())) {
-            $xy = ConvertTo-WorldXY $c.gx $c.gy
-            $name = if ($c.name) { $c.name } else { $c.key }
-            $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
         }
     }
-    return (ConvertTo-Json -InputObject @($result) -Depth 6)
+    return 'landmark'
 }
