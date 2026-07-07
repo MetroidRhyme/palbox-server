@@ -2484,6 +2484,24 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             $f = "$ServerDir\confirmed_locations.json"
                             $arr = @(Get-ConfirmedLocations)
                             $existing = $arr | Where-Object { $_.key -eq $key } | Select-Object -First 1
+                            if (-not $existing -and $name) {
+                                # No row carries this exact key yet -- before creating a brand-new
+                                # pin, check for an already-scraped KEYLESS row with the same
+                                # display name (e.g. a paldb-sourced Field Boss/Wanted Fugitive/
+                                # Eagle pin that has no save key attached yet, see
+                                # import_scraped_rosters.ps1). Typing in the key for a species
+                                # that's already on the map should attach it to that existing pin
+                                # instead of creating a visually-duplicate second one at (usually)
+                                # the exact same location -- this is exactly the bug that produced
+                                # a duplicate, never-green Fenglope pin (2026-07-07).
+                                $nameU = $name.ToUpper()
+                                $existing = $arr | Where-Object { -not $_.key -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1
+                            }
+                            # Species carried by a matched scraped row (bounty pins only) --
+                            # captured BEFORE the update below so we still have it for the
+                            # anonymous_boss_keys.json backfill after saving, whether this was a
+                            # key-match or the name-fallback match above.
+                            $matchedSpecies = if ($existing) { $existing.species } else { $null }
                             if ($existing) {
                                 $existing.name = $name
                                 $existing.gx = $gx
@@ -2496,17 +2514,35 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 # already used for any source-tagged, verified:true row.
                                 $existing | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $existing) -Force
                                 $existing | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
+                                $existing.key = $key
                             } else {
                                 $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property; verified = $verifiedFlag }
                                 $newEntry | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $newEntry) -Force
                                 $newEntry | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
                                 $arr = $arr + $newEntry
                             }
-                            # No-BOM UTF8 -- confirmed_locations.json is also read by the
-                            # Desktop dataminer script via plain Python json.load(encoding="utf-8"),
-                            # which chokes on a BOM. [Text.Encoding]::UTF8 (used by the other
-                            # manual-confirm routes above) writes one; this doesn't.
-                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
+                            # No-BOM UTF8, atomic temp-file + Move-Item swap -- confirmed_locations.json
+                            # is also read by the Desktop dataminer script via plain Python
+                            # json.load(encoding="utf-8") (chokes on a BOM) and is re-read by this
+                            # Manager's own request handlers on every poll (Get-ConfirmedLocations'
+                            # mtime check), so a direct in-place WriteAllText risks a concurrent
+                            # reader seeing a truncated file mid-write -- confirmed to have crashed
+                            # the listener once already (2026-07-07).
+                            $json = ConvertTo-Json -InputObject @($arr) -Depth 6
+                            $tmp = "$f.tmp"
+                            [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
+                            Move-Item -LiteralPath $tmp -Destination $f -Force
+                            # Bounty (Field Boss) keys resolve to a species via
+                            # anonymous_boss_keys.json, NOT confirmed_locations.json -- that's what
+                            # pal_save_reader.py's extract_bounty_data/extract_datamine_data (and
+                            # therefore /api/player-bounties' "defeated" state on the map) actually
+                            # reads. Without this, a manually-confirmed key never shows green even
+                            # though the pin itself is now correct. Only fires when we matched an
+                            # existing scraped row with a real species already on it (a brand-new
+                            # pin typed from scratch has no species to backfill).
+                            if ($property -eq 'NormalBossDefeatFlag' -and -not (Test-SyndicateKeyShape $key) -and $matchedSpecies) {
+                                Add-AnonymousBossKey $key $matchedSpecies
+                            }
                         } else {
                             $f = "$ServerDir\datamine_labels.json"
                             $arr = @(Get-DatamineLabels)

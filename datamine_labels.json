@@ -2590,5 +2590,37 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "BADCATGIRL",
+        "name":  "Nyafia",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "GRASSPANDA_ELECTRIC",
+        "name":  "Mossanda Lux",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "BadCatgirl",
+        "name":  "Nyafia",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "GrassPanda_Electric",
+        "name":  "Mossanda Lux",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

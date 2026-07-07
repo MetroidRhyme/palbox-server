@@ -291,6 +291,46 @@ function Get-AnonymousBossKeyMap {
     return $anonMap
 }
 
+# Upsert one key/species pair into anonymous_boss_keys.json -- called from the Data Mine
+# tab's manual-mapping route (/api/datamine-mapping) whenever it attaches a
+# NormalBossDefeatFlag key to an already-scraped Field Boss pin whose species is already
+# known, so pal_save_reader.py's bounty/datamine resolution (which reads this file, not
+# confirmed_locations.json) picks up the mapping immediately -- without this, a manually
+# confirmed key never shows as "defeated" on the map since /api/player-bounties has no way
+# to resolve it to a species. No-ops if the exact pair is already present; overwrites the
+# species if the key exists with a different one (Anthony correcting a prior mapping).
+# Written with a temp-file + Move-Item swap, matching the atomic-write convention used
+# elsewhere for confirmed_locations.json, since this file is also read by the live server's
+# own request handlers on every /api/player-bounties and /api/player-datamine call.
+function Add-AnonymousBossKey([string]$key, [string]$species) {
+    if (-not $key -or -not $species) { return }
+    $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
+    $arr = @()
+    if (Test-Path -LiteralPath $anonFile) {
+        # Do NOT wrap the pipeline in @() here -- same PS 5.1 ConvertFrom-Json gotcha
+        # documented on Get-ConfirmedLocations above: it emits an already-parsed JSON array
+        # as a SINGLE pipeline object rather than enumerating it, so @() re-wraps that one
+        # object into a bogus 1-element array whose sole element is the real array. Confirmed
+        # the hard way (2026-07-07): wrapping it here silently nested the whole 28-entry
+        # roster under a {value:[...],Count:28} wrapper as element 0 of a 2-element array,
+        # which every reader (Python's load_anonymous_boss_keys, Get-AnonymousBossKeyMap)
+        # then silently failed to recognize as valid entries.
+        try { $arr = Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $arr = @() }
+    }
+    $arr = @($arr)
+    $existing = $arr | Where-Object { $_.key -and $_.key.ToUpper() -eq $key.ToUpper() } | Select-Object -First 1
+    if ($existing) {
+        if ($existing.species -eq $species) { return }
+        $existing.species = $species
+    } else {
+        $arr = @($arr) + [pscustomobject]@{ key = $key; species = $species }
+    }
+    $json = ConvertTo-Json -InputObject @($arr) -Depth 6
+    $tmp = "$anonFile.tmp"
+    [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
+    Move-Item -LiteralPath $tmp -Destination $anonFile -Force
+}
+
 # Human/Syndicate boss keys (syndicate_bosses.json, e.g. BOSS_MALE_SOLDIER02) never
 # carry a zone-number prefix, unlike Field Boss species keys (e.g.
 # "81_2_DESSERT_FBOSS_3") -- used below to tell the two apart from key shape alone
