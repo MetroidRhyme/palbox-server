@@ -61,6 +61,58 @@ function Save-ConfirmedLocations($arr) {
     $script:confirmedLocationsMtime = (Get-Item -LiteralPath $f).LastWriteTimeUtc
 }
 
+# Shared upsert used by import_scraped_rosters.ps1's six importers. $confirmedRef is a
+# [ref] to the caller's array (PowerShell arrays can't grow in place, so an insert has to
+# reassign through the ref). $matched is the existing entry found by the caller's own
+# identity rule (key for effigy/journal, species for bounty, name/coord for
+# tower/fugitive/eagle), or $null if this is a brand-new roster row. $fields is a
+# hashtable of the roster's own data for this row.
+#
+# Upsert rule (never touches name/gx/gy/key on an EXISTING row, regardless of verified --
+# those are Anthony's own domain, either hand-typed or resolved by the Desktop dataminer
+# script; a scrape only ever supplies x/y/z/lv/species):
+#   - matched, verified:true  -> fill x/y/z/lv/species ONLY where currently null
+#   - matched, verified:false -> refresh x/y/z/lv always; refresh name only if the row has
+#     no name yet or its origin is already "scraped" (never overwrite a live/manual name)
+#   - no match -> insert a new row: category stamped, origin "scraped", verified false
+# Add-Member -Force works whether $name is already a property (overwrites its value) or
+# not (creates it) -- unlike plain dot-notation assignment, which THROWS if the property
+# doesn't exist yet (confirmed_locations.json rows created before this schema had x/y/z/
+# species/lv literally don't have those properties at all until something adds them).
+function Set-EntryProp($obj, [string]$name, $value) {
+    $obj | Add-Member -NotePropertyName $name -NotePropertyValue $value -Force
+}
+
+function Update-CanonicalEntry([ref]$confirmedRef, $matched, [string]$category, [hashtable]$fields) {
+    if ($matched) {
+        if ($matched.verified -eq $true) {
+            foreach ($k in $fields.Keys) {
+                if ($k -in @('name', 'gx', 'gy', 'key')) { continue }
+                $cur = if ($matched.PSObject.Properties[$k]) { $matched.$k } else { $null }
+                if ($null -eq $cur -or $cur -eq '') { Set-EntryProp $matched $k $fields[$k] }
+            }
+            return 'matched-verified'
+        } else {
+            foreach ($k in @('x', 'y', 'z', 'lv')) {
+                if ($fields.ContainsKey($k)) { Set-EntryProp $matched $k $fields[$k] }
+            }
+            if ($fields.ContainsKey('name') -and (-not $matched.name -or $matched.origin -eq 'scraped')) {
+                Set-EntryProp $matched 'name' $fields['name']
+            }
+            return 'matched-unverified'
+        }
+    } else {
+        $newEntry = [pscustomobject]@{
+            key = $null; category = $category; name = $null; gx = $null; gy = $null
+            x = $null; y = $null; z = $null; species = $null; lv = $null; source = $null
+            origin = 'scraped'; verified = $false
+        }
+        foreach ($k in $fields.Keys) { Set-EntryProp $newEntry $k $fields[$k] }
+        $confirmedRef.Value += $newEntry
+        return 'inserted'
+    }
+}
+
 # gx/gy (in-game grid coords) <-> real world x/y transform constants -- single source
 # of truth in map_constants.json (also read by build_public_data.ps1's own copy of
 # ConvertTo-WorldXY) so the two can't drift apart the way individual map categories
@@ -80,6 +132,17 @@ function Get-MapConstants {
 function ConvertTo-WorldXY([int]$gx, [int]$gy) {
     $mc = Get-MapConstants
     return @{ x = ($gy * $mc.scale) - $mc.offsetX; y = ($gx * $mc.scale) + $mc.offsetY }
+}
+
+# Real world x/y -> gx/gy (in-game grid coords). Inverse of ConvertTo-WorldXY above -- used
+# by the scraped-roster importers (import_scraped_rosters.ps1) to derive gx/gy for a
+# roster that only ships raw world x/y (e.g. effigies.json), so a brand-new inserted row
+# still has grid coords for anything that displays them. Rounds to the nearest integer
+# rather than truncating, since a scrape's x/y is rarely an exact multiple of the 459
+# scale constant.
+function ConvertTo-GridXY([double]$x, [double]$y) {
+    $mc = Get-MapConstants
+    return @{ gx = [Math]::Round(($y - $mc.offsetY) / $mc.scale); gy = [Math]::Round(($x + $mc.offsetX) / $mc.scale) }
 }
 
 # Keys/species Anthony has manually clicked "Confirm" on in a dashboard marker popup (see
