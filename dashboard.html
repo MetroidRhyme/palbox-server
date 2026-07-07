@@ -12,6 +12,10 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;}
+/* Applied to html+body only while the Map tab is active (see switchView) -- that view
+   already sizes itself to exactly fill the viewport below the header, so locking scroll
+   here guarantees it can never be nudged around by rounding or mobile overscroll bounce. */
+html.map-locked,body.map-locked{overflow:hidden;overscroll-behavior:none;height:100%;}
 /* Visible keyboard-focus outline for interactive elements -- previously only inputs had
    any :focus styling at all, so tabbing through buttons/tabs/nav gave no visual feedback.
    :focus-visible (not :focus) so a mouse click doesn't draw it, only keyboard navigation. */
@@ -49,6 +53,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
    dim like effigies never dim -- the ring color itself is the status signal. */
 .status-ring{width:100%;height:100%;border-radius:50%;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.85);background:#1a1a1a;box-sizing:border-box;}
 .status-ring img{border-radius:50%;object-fit:cover;}
+/* Map fullscreen (toggleEffigyFullscreen) -- the Fullscreen API makes #eff-map-wrap fill
+   the physical screen outside normal page layout, so it needs its own explicit size/bg
+   rather than relying on the flex:1 it gets from its normal parent. */
+#eff-map-wrap:fullscreen,#eff-map-wrap:-webkit-full-screen{width:100vw;height:100vh;background:var(--surface2);}
 
 /* Header */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
@@ -533,7 +541,8 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       </div>
       <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
     </div>
-    <div style="position:relative;flex:1;min-height:0;">
+    <div id="eff-map-wrap" style="position:relative;flex:1;min-height:0;">
+      <button id="eff-fullscreen-btn" class="btn-icon" onclick="toggleEffigyFullscreen()" title="Fullscreen map" style="position:absolute;top:8px;right:8px;z-index:1000;">&#9974; Fullscreen</button>
       <div id="eff-filter-panel" style="position:absolute;top:8px;left:8px;z-index:1000;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;flex-direction:column;gap:5px;box-shadow:0 4px 16px rgba(0,0,0,.35);">
         <div id="eff-filter-hdr" onclick="toggleFilterPanel()" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-weight:600;">
           <span id="eff-filter-arrow" style="display:inline-block;font-size:10px;color:var(--muted);transition:transform .15s;">&#9660;</span> Layers
@@ -1203,6 +1212,12 @@ function switchView(name){
   document.querySelectorAll('.nav-tab').forEach(function(t){
     t.classList.toggle('active',t.dataset.tab===name);
   });
+  // The Map view sizes itself to exactly fill the viewport below the header
+  // (see syncEffigyViewHeight) -- locking html/body scroll here is belt-and-braces
+  // on top of that so a stray fractional-pixel mismatch or a mobile browser's
+  // rubber-band overscroll bounce can never nudge the header out of view.
+  document.documentElement.classList.toggle('map-locked',name==='effigies');
+  document.body.classList.toggle('map-locked',name==='effigies');
   clearTabNew(name);
   if(name==='effigies') initEffigyView();
   if(name==='pals' && !palsData) fetchPals();
@@ -3709,13 +3724,17 @@ function renderPlayerMarkers(){
       if(existing){
         existing.m.setLatLng(ll);
         existing.m.setIcon(playerMarkerIcon(pl.yawDeg,isFollowed));
-        existing.m.setZIndexOffset(isFollowed?1600:900);
+        existing.m.setZIndexOffset(isFollowed?-800:-1000);
         existing.m.setTooltipContent(tip);
       }else{
-        var pm=L.marker(ll,{icon:playerMarkerIcon(pl.yawDeg,isFollowed),interactive:true,zIndexOffset:isFollowed?1600:900});
+        // Negative offset keeps player markers UNDER every other icon type (which default to
+        // offset 0) when they overlap on screen, so a static icon behind the player is still
+        // clickable without having to hide the player layer first. Hover still bumps it to the
+        // front (positive offset) so the player marker itself remains clickable when isolated.
+        var pm=L.marker(ll,{icon:playerMarkerIcon(pl.yawDeg,isFollowed),interactive:true,zIndexOffset:isFollowed?-800:-1000});
         pm.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
         pm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1500);});
-        pm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+        pm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');this.setZIndexOffset(followedPlayerGuid===pl.guid?-800:-1000);});
         // Click toggles follow mode for this player (see centerOnFollowedPlayer / the map's
         // own click handler in initEffigyView for how following ends). Reads followedPlayerGuid
         // fresh at click time (not a captured isFollowed) since this marker is reused across polls.
@@ -5520,6 +5539,33 @@ function syncEffigyViewHeight(){
 syncEffigyViewHeight();
 var _rszT2;
 window.addEventListener('resize',function(){clearTimeout(_rszT2);_rszT2=setTimeout(syncEffigyViewHeight,200);});
+
+// Fullscreen toggle for the Map tab -- requests fullscreen on #eff-map-wrap specifically
+// (not the whole page) so the filter panel / loading overlay / Leaflet map all come along
+// as its children, and the tab's own header/nav stay out of the fullscreen view.
+function toggleEffigyFullscreen(){
+  var el=document.getElementById('eff-map-wrap');
+  if(!el) return;
+  var fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+  if(!fsEl){
+    var req=el.requestFullscreen||el.webkitRequestFullscreen;
+    if(req) req.call(el);
+  } else {
+    var exit=document.exitFullscreen||document.webkitExitFullscreen;
+    if(exit) exit.call(document);
+  }
+}
+function onEffigyFullscreenChange(){
+  var btn=document.getElementById('eff-fullscreen-btn');
+  var active=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  if(btn) btn.innerHTML=active?'&#9974; Exit Fullscreen':'&#9974; Fullscreen';
+  // Leaflet sizes its canvas/tiles from the container's box at init time -- the container
+  // just jumped from the panel's flex size to the full screen (or back), so it needs to
+  // recompute or tiles render at the stale size / leave gaps at the edges.
+  if(effigyLeaflet) setTimeout(function(){effigyLeaflet.invalidateSize();},60);
+}
+document.addEventListener('fullscreenchange',onEffigyFullscreenChange);
+document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
 </script>
 <style>
 /* Server-message chat banner (shared admin + public) */
