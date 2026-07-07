@@ -2654,5 +2654,21 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "SKYDRAGON",
+        "name":  "Quivern",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "SkyDragon",
+        "name":  "Quivern",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

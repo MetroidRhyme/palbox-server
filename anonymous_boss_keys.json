@@ -114,5 +114,9 @@
     {
         "key":  "81_1_GRASS_FBOSS_6",
         "species":  "LazyDragon_Electric"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_10",
+        "species":  "SkyDragon"
     }
 ]

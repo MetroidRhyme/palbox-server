@@ -5027,7 +5027,13 @@ function renderEffigyMapNow(){
       var jGot=trackable&&journalCollectedSet.has(j.key.toUpperCase());
       // The "found" toggle also hides already-found diary pickups, same as effigies.
       if(jGot&&!effigyShowFound) return;
-      var jStatus=(confirmed&&jGot)?'found':(confirmed||jGot)?'confirmed':'unconfirmed';
+      // trackable (a real save key is attached) also promotes to at least 'confirmed' --
+      // even before Anthony ticks "verified" or the player finds it, a mapped key means the
+      // system CAN reliably auto-detect it, which is itself meaningful and shouldn't look
+      // identical to a raw, un-keyed scrape guess. Confirmed live (2026-07-08): Day38 showed
+      // red (should mean "no key, unverified") right up until picked up, even though it
+      // already had a real key mapped -- see the palbox-journal-overlay skill.
+      var jStatus=(confirmed&&jGot)?'found':(confirmed||jGot||trackable)?'confirmed':'unconfirmed';
       effDesire('j:'+(j.key||idx),jStatus+'|'+confirmed,function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(j.x,j.y),'journal',jStatus,'<b style="color:#1673d1">'+j.name+'</b><br>'+journalTipBody(j,confirmed,jGot,jStatus,trackable))
@@ -5051,11 +5057,14 @@ function renderEffigyMapNow(){
     bossLocations.forEach(function(b,idx){
       var sp=(b.species||'').toUpperCase();
       var confirmed=!!b.m;
+      var trackable=!!b.key;
       var bAuto=bossCollectedSet.has(sp);
       var bManual=manualSet.has(sp);
       var bGot=bAuto||bManual;
       if(bGot&&!effigyShowFound) return;
-      var bStatus=(confirmed&&bGot)?'found':(confirmed||bGot)?'confirmed':'unconfirmed';
+      // trackable also promotes to at least 'confirmed' -- see the journal block above for
+      // the reasoning (a mapped key means auto-detection works even before verified/found).
+      var bStatus=(confirmed&&bGot)?'found':(confirmed||bGot||trackable)?'confirmed':'unconfirmed';
       var clickable=PREFS_ENABLED&&!bAuto&&!!bpGuid;
       effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable,function(){
         return _effDotMode
@@ -5074,9 +5083,11 @@ function renderEffigyMapNow(){
     var fugitiveCollectedSet=new Set(fugitiveCollected.map(function(s){return s.toUpperCase();}));
     wantedFugitiveLocations.forEach(function(h,idx){
       var confirmed=!!h.m;
+      var trackable=!!h.key;
       var hGot=!!(h.key&&fugitiveCollectedSet.has(h.key.toUpperCase()));
       if(hGot&&!effigyShowFound) return;
-      var hStatus=(confirmed&&hGot)?'found':(confirmed||hGot)?'confirmed':'unconfirmed';
+      // trackable also promotes to at least 'confirmed' -- see the journal block above.
+      var hStatus=(confirmed&&hGot)?'found':(confirmed||hGot||trackable)?'confirmed':'unconfirmed';
       effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed,function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b><br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
@@ -5091,9 +5102,11 @@ function renderEffigyMapNow(){
     var eagleCollectedSet=new Set(eagleCollected.map(function(s){return s.toUpperCase();}));
     eagleStatueLocations.forEach(function(es,idx){
       var confirmed=!!es.m;
+      var trackable=!!es.key;
       var esGot=!!(es.key&&eagleCollectedSet.has(es.key.toUpperCase()));
       if(esGot&&!effigyShowFound) return;
-      var esStatus=(confirmed&&esGot)?'found':(confirmed||esGot)?'confirmed':'unconfirmed';
+      // trackable also promotes to at least 'confirmed' -- see the journal block above.
+      var esStatus=(confirmed&&esGot)?'found':(confirmed||esGot||trackable)?'confirmed':'unconfirmed';
       effDesire('es:'+(es.key||es.name||idx),esStatus+'|'+confirmed,function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(es.x,es.y),'eagle',esStatus,'<b style="color:#111;">'+es.name+'</b><br>'+eagleTipBody(es,confirmed,esGot,esStatus))

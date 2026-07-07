@@ -10061,19 +10061,19 @@
         "name":  "Prunelia"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_1_GRASS_FBOSS_10",
+        "gx":  -256,
+        "gy":  -131,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "SkyDragon",
         "x":  -184017,
         "y":  40496,
         "z":  0,
-        "name":  "Quivern"
+        "name":  "Quivern",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_6",
