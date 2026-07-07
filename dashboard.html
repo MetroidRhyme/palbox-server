@@ -1248,16 +1248,17 @@ function switchView(name){
 var _mapLivePollTimer=null;
 var _mapRosterPollTimer=null;
 // Forces a fresh reload of every static map-icon roster, bypassing each fetchX's own
-// "already loaded, do nothing" cache guard by nulling the backing global first -- same
-// trick DM_ICON_CATEGORIES' refetch() already uses for the Data Mine tab's own icon rows.
+// "already loaded, do nothing" cache guard via a `force` param instead of nulling the
+// backing globals first (the old approach): nulling made every marker in that category
+// vanish for the duration of the in-flight refetch if any render happened to run in that
+// window (the 5s player poll, another roster's fetch resolving first) -- a real source of
+// map flicker. Old data now stays on screen until new data actually arrives, and each
+// fetchX only re-parses/re-renders when its raw JSON text actually changed.
 async function refetchEffigyMapRosters(){
-  effigyLocations=null; journalLocations=null; bossLocations=null; wantedFugitiveLocations=null;
-  eagleStatueLocations=null; towerLocations=null;
   await Promise.all([
-    fetchEffigyLocations(),fetchJournalLocations(),fetchBossLocations(),fetchWantedFugitives(),
-    fetchEagleStatues(),fetchTowerLocations()
+    fetchEffigyLocations(true),fetchJournalLocations(true),fetchBossLocations(true),fetchWantedFugitives(true),
+    fetchEagleStatues(true),fetchTowerLocations(true)
   ]);
-  if(effigyLeaflet) renderEffigyMap();
 }
 // "New content" pulse dot on a nav tab -- lit when a watch match (or other tracked
 // event) surfaces while the user isn't already looking at that tab, cleared the moment
@@ -2875,6 +2876,20 @@ var palMapLeaflet=null,palMapMarkers=[],palMapTime='dayTimeLocations',palMapCurr
 // the boss markers), and the clustering tightness (lower = more, smaller zones).
 var palSpawnLocs=[], palZoneLayers=[], palZoneTight=0.01;
 
+// /api/palspawn responses memoized per pal name ('BOSS_'+internal for alphas): the payload
+// is static reference data (server caches paldb.cc with a 24h TTL) and already contains
+// BOTH day and night sets, so reopening a pal or toggling day/night should never refetch.
+// null = confirmed 404 (no spawn data); a transient non-404 error is NOT memoized so the
+// next open retries.
+var _palSpawnMemo={};
+async function palSpawnFetch(name,sig){
+  if(Object.prototype.hasOwnProperty.call(_palSpawnMemo,name)) return _palSpawnMemo[name];
+  var r=await fetch('/api/palspawn?pal='+encodeURIComponent(name),{signal:sig});
+  if(r.ok){ var d=await r.json(); _palSpawnMemo[name]=d; return d; }
+  if(r.status===404){ _palSpawnMemo[name]=null; return null; }
+  throw new Error('HTTP '+r.status);
+}
+
 function loadLeaflet(cb){
   if(window.L){cb();return;}
   var css=document.createElement('link');
@@ -3047,12 +3062,8 @@ async function showPalMapData(internal,displayName){
   var _ee=document.getElementById('pal-map-empty'); if(_ee)_ee.style.display='none';
   var statusParts=[];
   try{
-    var r=await fetch('/api/palspawn?pal='+encodeURIComponent(internal),{signal:sig});
-    var locs=[];
-    if(r.ok){
-      var data=await r.json();
-      locs=(data[palMapTime]&&data[palMapTime].locations)||[];
-    } else if(r.status!==404){ throw new Error('HTTP '+r.status); }
+    var data=await palSpawnFetch(internal,sig);
+    var locs=(data&&data[palMapTime]&&data[palMapTime].locations)||[];
     // Cache the points and draw the spawn zones (see drawSpawnZones); cached so a redraw can
     // re-cluster without re-fetching.
     palSpawnLocs=locs;
@@ -3062,9 +3073,8 @@ async function showPalMapData(internal,displayName){
     var blocsCount=0;
     var palImg='/api/palicon?name='+encodeURIComponent(displayName||internal);
     try{
-      var br=await fetch('/api/palspawn?pal=BOSS_'+encodeURIComponent(internal),{signal:sig});
-      if(br.ok){
-        var bdata=await br.json();
+      var bdata=await palSpawnFetch('BOSS_'+internal,sig);
+      if(bdata){
         var blocs=(bdata.dayTimeLocations&&bdata.dayTimeLocations.locations)||[];
         blocsCount=blocs.length;
         var bicon=makeBossIcon(palImg);
@@ -3211,26 +3221,40 @@ function bountyBossIcon(name,status){
 // (raid bosses) now OVERLAY real paldb-scraped rosters (added 2026-07-06, see
 // Merge-ConfirmedWantedFugitives/EagleStatues/Towers) with the same red/yellow/green
 // status-ring convention as Journals/Field Boss, using paldb's own compass icons instead of
-// a flat dot. Tower has no per-player "cleared" signal yet, so its status can only reach
-// confirmed (yellow) or unconfirmed (red) in practice -- never found (green) -- until that's
-// built.
+// a flat dot.
 function wantedFugitiveIcon(status){
   var k='wf:'+status;
   if(_iconMemo[k]) return _iconMemo[k];
-  var img='<img src="https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_Bounty.webp" alt="">';
+  var img='<img src="icons/compass_bounty.webp" alt="">';
   return _iconMemo[k]=statusRingIcon(img,status,EFF_ACORN_SZ);
 }
+var EAGLE_STATUE_IMG='<img src="icons/compass_eagle.webp" alt="">';
 function eagleStatueIcon(status){
   var k='es:'+status;
   if(_iconMemo[k]) return _iconMemo[k];
-  var img='<img src="https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_FTtower.webp" alt="">';
-  return _iconMemo[k]=statusRingIcon(img,status,EFF_ACORN_SZ);
+  return _iconMemo[k]=statusRingIcon(EAGLE_STATUE_IMG,status,EFF_ACORN_SZ);
 }
-function towerIcon(status){
-  var k='tw:'+status;
+// Tower marker (added 2026-07-07): composite icon, NOT a single statusRingIcon, since a
+// Tower now carries two independent per-player signals -- TowerBossDefeatFlag (raid-boss
+// cleared) and FastTravelPointUnlockFlag (Eagle Statue unlocked, same flag/icon as the
+// standalone Eagle Statue category above). Anthony's own request: main ring = boss status,
+// small badge overlapping the top-right edge = eagle status. The badge sits in its own
+// status-ring div positioned OUTSIDE the main ring's div (a sibling, not a child) because
+// .status-ring has overflow:hidden -- nesting the badge inside it would clip the
+// "slightly overlapping the edge" look this is going for.
+var TOWER_BADGE_SZ=Math.round(EFF_ACORN_SZ*0.58);
+var TOWER_BADGE_OFFSET=Math.round(TOWER_BADGE_SZ*0.3);
+function towerIcon(bossStatus,eagleStatus){
+  var k='tw:'+bossStatus+'|'+eagleStatus;
   if(_iconMemo[k]) return _iconMemo[k];
-  var img='<img src="https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_tower.webp" alt="">';
-  return _iconMemo[k]=statusRingIcon(img,status,EFF_ACORN_SZ);
+  var bossColor=STATUS_RING_COLOR[bossStatus]||STATUS_RING_COLOR.unconfirmed;
+  var eagleColor=STATUS_RING_COLOR[eagleStatus]||STATUS_RING_COLOR.unconfirmed;
+  var bossImg='<img src="icons/compass_tower.webp" alt="">';
+  var html='<div style="position:relative;width:'+EFF_ACORN_SZ+'px;height:'+EFF_ACORN_SZ+'px;">'
+    +'<div class="status-ring" style="border:2px solid '+bossColor+';">'+bossImg+'</div>'
+    +'<div class="status-ring" style="position:absolute;top:-'+TOWER_BADGE_OFFSET+'px;right:-'+TOWER_BADGE_OFFSET+'px;width:'+TOWER_BADGE_SZ+'px;height:'+TOWER_BADGE_SZ+'px;border:2px solid '+eagleColor+';">'+EAGLE_STATUE_IMG+'</div>'
+    +'</div>';
+  return _iconMemo[k]=L.divIcon({className:'eff-map-marker',html:html,iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]});
 }
 // Live player position marker: a colored dot, plus (if the save has a current Rotation --
 // it's briefly absent right after a teleport/spawn, see /palworld-dataminer) a small
@@ -3274,9 +3298,11 @@ var journalLocations=null;
 var journalCollected=[], journalCollectedCount=null;
 var JOURNAL_MAX=49;
 // Per-player Wanted Fugitive defeat state (raw NormalBossDefeatFlag keys, matched exactly --
-// see extract_fugitive_data) and Eagle Statue unlock state (FastTravelPointUnlockFlag keys --
-// see extract_fast_travel_data).
-var fugitiveCollected=[], eagleCollected=[];
+// see extract_fugitive_data), Eagle Statue unlock state (FastTravelPointUnlockFlag keys --
+// see extract_fast_travel_data), and Tower raid-boss defeat state (TowerBossDefeatFlag keys,
+// added 2026-07-07 -- see extract_tower_boss_data). Eagle/tower are independent per-player
+// signals for the SAME Tower marker -- see the Tower render block in renderEffigyMap.
+var fugitiveCollected=[], eagleCollected=[], towerBossCollected=[];
 
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
 // loaded once from the bounty-bosses route (see bounty_bosses.json). Each entry has {species,
@@ -3352,6 +3378,22 @@ function toggleMapConfirm(category,ident,checked){
     .catch(function(){ toast('Failed to update confirm status.','error'); });
 }
 
+// Tower's two independent per-key verification checkboxes (added 2026-07-07) -- separate
+// from toggleMapConfirm's location "verified" above. field is 'eagleVerified' or
+// 'bossVerified'; see Set-TowerKeyVerified's server-side whitelist.
+function toggleTowerKeyVerified(towerName,field,checked){
+  if(!EFFIGY_CONFIRM_ENABLED)return;
+  fetch('/api/tower-key-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:towerName,field:field,verified:checked})})
+    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
+    .then(function(){
+      var te=towerLocations&&towerLocations.find(function(t){return t.name&&t.name.toUpperCase()===towerName.toUpperCase();});
+      if(te) te[field]=checked;
+      renderEffigyMap();
+      toast(checked?'Key marked verified.':'Key marked unverified.','success');
+    })
+    .catch(function(){ toast('Failed to update verification status.','error'); });
+}
+
 // Global visibility filter for the effigy map. effigyShowFound is the cross-category "hide
 // already-found items" toggle (same as for journals/bounty/etc.); effigyShowNew is the
 // Lifmunk Effigies category on/off, same pattern as effigyShowJournal/effigyShowBounty --
@@ -3418,6 +3460,43 @@ var EFF_CULLING_ENABLED=true;
 var EFF_CULL_MIN_ZOOM=3;
 var EFF_CULL_PAD=0.5;
 
+// -- Low-zoom dot LOD (2026-07-07) -----------------------------------------
+// Below EFF_CULL_MIN_ZOOM culling is off, so the whole ~850-marker roster used
+// to sit in the DOM as divIcons -- the main pan/zoom lag at the default view.
+// In "dot mode" (zoom < EFF_CULL_MIN_ZOOM) every static marker renders instead
+// as a canvas circleMarker: fill = category color, stroke = the same
+// red/yellow/green STATUS_RING_COLOR the icon rings use. Same tooltips; NO
+// popups (admin confirm needs icon zoom -- dots are view-only by design).
+var _effDotMode=false;      // set by renderEffigyMapNow from current zoom
+var _effLastDotMode=null;   // last mode seen by the moveend/zoomend handler
+var _effCanvas=null;        // one shared canvas renderer for every dot
+function effCanvasRenderer(){
+  if(!_effCanvas) _effCanvas=L.canvas({padding:0.5});
+  return _effCanvas;
+}
+// Slightly larger tap targets on touch devices.
+var EFF_LOD_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?5:3.5;
+// Fill = category identity; radius bumps make bosses/towers read at a glance.
+var EFF_DOT_CAT={
+  effigy:  {fill:'#8b5a2b', r:EFF_LOD_R},      // acorn brown
+  journal: {fill:'#1673d1', r:EFF_LOD_R},      // journal blue (matches tooltips)
+  eagle:   {fill:'#39c5cf', r:EFF_LOD_R},      // teal
+  fugitive:{fill:'#f778ba', r:EFF_LOD_R+1},    // pink
+  bounty:  {fill:'#a371f7', r:EFF_LOD_R+2},    // purple, stands out
+  tower:   {fill:'#e6edf3', r:EFF_LOD_R+3}     // near-white, biggest
+};
+function buildDotMarker(ll,cat,status,tip){
+  var c=EFF_DOT_CAT[cat]||EFF_DOT_CAT.effigy;
+  var m=L.circleMarker(ll,{
+    renderer:effCanvasRenderer(),radius:c.r,
+    fillColor:c.fill,fillOpacity:0.9,
+    color:STATUS_RING_COLOR[status]||STATUS_RING_COLOR.unconfirmed,
+    weight:1.5,opacity:1,interactive:true
+  });
+  if(tip) m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+  return m;
+}
+
 // Shared hover handlers (used via `this`), replacing the ~1500 identical per-marker
 // closures the old renderEffigyMap allocated fresh on every single render.
 function _effMarkerOver(){ var el=this.getElement(); if(el) el.classList.add('eff-map-hover'); this.setZIndexOffset(1000); }
@@ -3427,13 +3506,17 @@ function _effMarkerOut(){ var el=this.getElement(); if(el) el.classList.remove('
 // relevant state) differs from what's cached, so an unrelated filter toggle or poll
 // tick leaves the existing marker (and its live tooltip/popup) untouched.
 function effDesire(key,sig,build){
-  var e=_effCache.get(key);
+  // Mode is part of the CACHE KEY, not the sig: both the icon and the dot
+  // variant of a marker stay cached, so crossing the LOD zoom threshold is a
+  // pure layer add/remove delta with no marker rebuilds after first render.
+  var mkey=(_effDotMode?'d|':'i|')+key;
+  var e=_effCache.get(mkey);
   if(!e||e.sig!==sig){
     var m=build();
     e={m:m,sig:sig,ll:m.getLatLng()};
-    _effCache.set(key,e);
+    _effCache.set(mkey,e);
   }
-  _effDesired.set(key,e);
+  _effDesired.set(mkey,e);
   return e;
 }
 
@@ -3448,13 +3531,18 @@ function saveKeyRow(key){
     : '<br><span style="color:#8a8f98;font-size:11px;font-style:italic;">No save data key linked</span>';
 }
 
-function buildEffigyMarker(id,pos,got,confirmed,status){
+// Body-only tooltip text (no name header -- effigies have none), shared by the
+// divIcon builder and the low-zoom dot marker so both render identical text.
+function effigyTipBody(pos,got,confirmed,status){
   var _g=worldToGrid(pos.x,pos.y), cx=_g.cx, cy=_g.cy;
   var tipLabel=status==='found' ? '<span style="color:#3fb950">&#10003; Found & confirmed</span>'
     : got ? '<b style="color:#e3b341">Found (not yet logged)</b>'
     : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  var tip=tipLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  return tipLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+}
+function buildEffigyMarker(id,pos,got,confirmed,status){
+  var tip=effigyTipBody(pos,got,confirmed,status);
   var m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(status),interactive:true});
   m.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
@@ -3472,14 +3560,19 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
   return m;
 }
 
-function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
-  var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jStatus),interactive:true});
+// Body-only tooltip text; name header composed at each call site so both the
+// divIcon builder and the low-zoom dot marker render identical text.
+function journalTipBody(j,confirmed,jGot,jStatus,trackable){
   var jStatusLabel=jStatus==='found' ? '<span style="color:#3fb950">&#10003; Found & confirmed</span>'
     : jGot ? '<b style="color:#e3b341">Found (not yet logged)</b>'
     : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
     : trackable ? '<b style="color:#f85149">Unconfirmed</b>'
     : '<span style="color:#8a8f98">Found status unknown</span>';
-  var jTip=jStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>';
+  return jStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>';
+}
+function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
+  var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jStatus),interactive:true});
+  var jTip=journalTipBody(j,confirmed,jGot,jStatus,trackable);
   jm.bindTooltip('<b style="color:#1673d1">'+j.name+'</b><br>'+jTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   jm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
@@ -3502,13 +3595,18 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
   return jm;
 }
 
-function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
-  var sp=(b.species||'').toUpperCase();
-  var bm=L.marker(effigyRposToLatLng(b.x,b.y),{icon:bountyBossIcon(b.name,bStatus),interactive:true});
-  var bStatusLabel=bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
+// Body-only tooltip text (no coords for bounty bosses), shared by the divIcon
+// builder and the low-zoom dot marker.
+function bountyTipBody(b,confirmed,bAuto,bManual){
+  return bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
     :bManual?'<span style="color:#5a6573">&#10003; Marked defeated by you</span>'
     :confirmed?'<b style="color:#e3b341">Confirmed location (not yet defeated)</b>'
     :'<b style="color:#f85149">Alpha Boss (unconfirmed)</b>';
+}
+function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
+  var sp=(b.species||'').toUpperCase();
+  var bm=L.marker(effigyRposToLatLng(b.x,b.y),{icon:bountyBossIcon(b.name,bStatus),interactive:true});
+  var bStatusLabel=bountyTipBody(b,confirmed,bAuto,bManual);
   bm.bindTooltip('<b style="color:#111;">'+b.name+'</b><br>'+bStatusLabel,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   bm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
@@ -3547,14 +3645,18 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
   return bm;
 }
 
-function buildFugitiveMarker(h,confirmed,hGot,hStatus){
-  var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hStatus),interactive:true});
+// Body-only tooltip text, shared by the divIcon builder and the low-zoom dot marker.
+function fugitiveTipBody(h,confirmed,hGot,hStatus){
   var _g=worldToGrid(h.x,h.y), cx=_g.cx, cy=_g.cy;
   var hStatusLabel=hStatus==='found' ? '<span style="color:#3fb950">&#10003; Defeated & confirmed</span>'
     : hGot ? '<b style="color:#e3b341">Defeated (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet defeated)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  var hTip=hStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  return hStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+}
+function buildFugitiveMarker(h,confirmed,hGot,hStatus){
+  var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hStatus),interactive:true});
+  var hTip=fugitiveTipBody(h,confirmed,hGot,hStatus);
   hm.bindTooltip('<b style="color:#111;">'+h.name+'</b><br>'+hTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   hm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
@@ -3573,14 +3675,18 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
   return hm;
 }
 
-function buildEagleMarker(es,confirmed,esGot,esStatus){
-  var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esStatus),interactive:true});
+// Body-only tooltip text, shared by the divIcon builder and the low-zoom dot marker.
+function eagleTipBody(es,confirmed,esGot,esStatus){
   var _g=worldToGrid(es.x,es.y), cx=_g.cx, cy=_g.cy;
   var esStatusLabel=esStatus==='found' ? '<span style="color:#3fb950">&#10003; Unlocked & confirmed</span>'
     : esGot ? '<b style="color:#e3b341">Unlocked (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet unlocked)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  var esTip=esStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  return esStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+}
+function buildEagleMarker(es,confirmed,esGot,esStatus){
+  var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esStatus),interactive:true});
+  var esTip=eagleTipBody(es,confirmed,esGot,esStatus);
   esm.bindTooltip('<b style="color:#111;">'+es.name+'</b><br>'+esTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   esm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
@@ -3599,26 +3705,52 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
   return esm;
 }
 
-function buildTowerMarker(t,confirmed){
-  var tStatus=confirmed?'confirmed':'unconfirmed';
-  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(tStatus),interactive:true});
+// Body + level-suffix tooltip pieces, shared by the divIcon builder and the
+// low-zoom dot marker. Returns both since the level suffix sits between the
+// name header and the body in the composed tooltip string.
+function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus){
   var _g=worldToGrid(t.x,t.y), cx=_g.cx, cy=_g.cy;
-  var tStatusLabel=confirmed?'<b style="color:#e3b341">Confirmed</b>':'<b style="color:#f85149">Unconfirmed</b>';
+  var bLabel=bStatus==='found' ? '<span style="color:#3fb950">&#10003; Boss cleared & key verified</span>'
+    : bGot ? '<b style="color:#e3b341">Boss cleared (key not yet verified)</b>'
+    : bossVerified ? '<b style="color:#e3b341">Key verified (boss not yet cleared)</b>'
+    : '<b style="color:#f85149">Boss key unverified</b>';
+  var esLabel=esStatus==='found' ? '<span style="color:#3fb950">&#10003; Eagle Statue unlocked & key verified</span>'
+    : esGot ? '<b style="color:#e3b341">Eagle Statue unlocked (key not yet verified)</b>'
+    : esVerified ? '<span style="color:#8a8f98;">Key verified (not yet unlocked)</span>'
+    : '<b style="color:#f85149">Eagle key unverified</b>';
   var tLvl=t.lv?(' <span style="color:var(--muted)">(Lv '+t.lv+')</span>'):'';
-  var tTip=tStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  var tBoss=(t.boss||t.bossPal)?('<br><span style="color:#111;">'+esc(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+esc(t.bossPal||'')+'</span>'):'';
+  var tTip=bLabel+'<br>'+esLabel+tBoss+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  return {lvl:tLvl,body:tTip};
+}
+function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus){
+  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(bStatus,esStatus),interactive:true});
+  var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus);
+  var tLvl=_tt.lvl, tTip=_tt.body;
   tm.bindTooltip('<b style="color:#111;">'+t.name+'</b>'+tLvl+'<br>'+tTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   tm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   if(EFFIGY_CONFIRM_ENABLED){
     var tChkId='tower-confirm-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
-    tm.bindPopup('<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+saveKeyRow(t.key)
+    var esChkId='tower-eagle-verify-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var bChkId='tower-boss-verify-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var tKeys='<br><span style="color:#5a6573;font-size:11px;">Eagle key: <code>'+(t.key?esc(t.key):'none')+'</code></span>'
+      +'<br><span style="color:#5a6573;font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
+    tm.bindPopup('<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+tKeys
       +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+tChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
+      +'<input type="checkbox" id="'+tChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>'
+      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
+      +'<input type="checkbox" id="'+esChkId+'"'+(esVerified?' checked':'')+'> Verify Eagle Statue key</label>'
+      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
+      +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>',
       {className:'eff-tip'});
     tm.on('popupopen',function(e){
       var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+tChkId);
-      if(!box) return;
-      box.onchange=function(){ toggleMapConfirm('tower',t.name,box.checked); };
+      if(box) box.onchange=function(){ toggleMapConfirm('tower',t.name,box.checked); };
+      var esBox=e.popup.getElement()&&e.popup.getElement().querySelector('#'+esChkId);
+      if(esBox) esBox.onchange=function(){ toggleTowerKeyVerified(t.name,'eagleVerified',esBox.checked); };
+      var bBox=e.popup.getElement()&&e.popup.getElement().querySelector('#'+bChkId);
+      if(bBox) bBox.onchange=function(){ toggleTowerKeyVerified(t.name,'bossVerified',bBox.checked); };
     });
   }
   return tm;
@@ -3666,9 +3798,24 @@ function renderPlayerMarkers(){
       var existing=_playerShown.get(pl.guid);
       if(existing){
         existing.m.setLatLng(ll);
-        existing.m.setIcon(playerMarkerIcon(pl.yawDeg,isFollowed));
-        existing.m.setZIndexOffset(isFollowed?-800:-1000);
-        existing.m.setTooltipContent(tip);
+        if(existing.followSig!==isFollowed){
+          // Follow toggle changes the icon className -- only then rebuild the divIcon.
+          existing.m.setIcon(playerMarkerIcon(pl.yawDeg,isFollowed));
+          existing.m.setZIndexOffset(isFollowed?-800:-1000);
+          existing.followSig=isFollowed;
+        }else{
+          // Patch rotation/opacity on the live element instead of setIcon -- setIcon tears
+          // down and recreates the divIcon DOM every 5s poll, which was the visible
+          // player-marker flicker (see playerMarkerIcon for the wrapper div this mirrors).
+          var el=existing.m.getElement();
+          var w=el&&el.firstChild;
+          if(w){
+            var hasYaw=(typeof pl.yawDeg==='number'&&!isNaN(pl.yawDeg));
+            w.style.opacity=hasYaw?'1':'0.45';
+            w.style.transform='rotate('+(hasYaw?pl.yawDeg:0)+'deg)';
+          }
+        }
+        if(existing.tip!==tip){ existing.m.setTooltipContent(tip); existing.tip=tip; }
       }else{
         // Negative offset keeps player markers UNDER every other icon type (which default to
         // offset 0) when they overlap on screen, so a static icon behind the player is still
@@ -3686,7 +3833,7 @@ function renderPlayerMarkers(){
           renderPlayerMarkers();
         });
         effigyPlayerLayer.addLayer(pm);
-        _playerShown.set(pl.guid,{m:pm});
+        _playerShown.set(pl.guid,{m:pm,followSig:isFollowed,tip:tip});
       }
     });
   }
@@ -3696,6 +3843,13 @@ function renderPlayerMarkers(){
       _playerShown.delete(guid);
     }
   });
+  if(!_effInitialCentered&&playerLocations&&playerLocations.length===1&&typeof playerLocations[0].x==='number'&&typeof playerLocations[0].y==='number'){
+    // Start the map zoomed in on the logged-in player's own position instead of the default
+    // whole-map view (see initEffigyView's setView(...,1)) -- only once per page load, and
+    // only for the single-player scoped case, so it never fights a manual pan/zoom afterward.
+    _effInitialCentered=true;
+    effigyLeaflet.setView(effigyRposToLatLng(playerLocations[0].x,playerLocations[0].y),5);
+  }
   centerOnFollowedPlayer();
 }
 
@@ -3867,7 +4021,21 @@ function initEffigyView(){
         });
         // Viewport culling (see syncEffigyLayer/EFF_CULL_MIN_ZOOM): only the delta of
         // markers entering/leaving the padded viewport needs to touch the DOM per pan/zoom.
-        effigyLeaflet.on('moveend zoomend',syncEffigyLayer);
+        // Crossing the LOD threshold needs a full desired-set rebuild (dots vs icons are
+        // different cached markers); a plain pan/zoom within one mode only needs the
+        // culling delta. _effLastDotMode is ONLY ever written by renderEffigyMapNow (never
+        // here) -- both 'zoomend' and 'moveend' fire for one zoom gesture, and if this
+        // handler updated it speculatively, the second event would wrongly see "already
+        // handled" and fall through to syncEffigyLayer() with the PRE-flip _effDesired
+        // (the render is only queued for next frame, not run yet), corrupting _effShown
+        // with the wrong-mode marker set. Comparing against the last COMPLETED render's
+        // mode instead means every event before that render lands keeps re-queuing (safely
+        // deduped by _effRenderQueued) instead of taking the stale sync path.
+        effigyLeaflet.on('moveend zoomend',function(){
+          var dm=effigyLeaflet.getZoom()<EFF_CULL_MIN_ZOOM;
+          if(dm!==_effLastDotMode) renderEffigyMap();
+          else syncEffigyLayer();
+        });
       } else {
         effigyLeaflet.invalidateSize();
       }
@@ -3899,39 +4067,60 @@ function effigyRposToLatLng(x,y){
   return effigyLeaflet.unproject([sy*cfg.blockSize,(1-sx)*cfg.blockSize],8);
 }
 
-async function fetchEffigyLocations(){
-  if(effigyLocations){populateEffigyPlayerDropdown();return;}
-  document.getElementById('effigy-summary').textContent='Loading locations...';
+// Last raw JSON text per roster, keyed by short name -- lets the 15s roster poll
+// (refetchEffigyMapRosters) detect a byte-identical payload and skip the JSON.parse +
+// renderEffigyMap() entirely, which is the common case and was a source of flicker
+// (see refetchEffigyMapRosters).
+var _effRosterText={};
+async function fetchEffigyLocations(force){
+  if(effigyLocations&&!force){populateEffigyPlayerDropdown();return;}
+  if(!effigyLocations) document.getElementById('effigy-summary').textContent='Loading locations...';
   try{
-    effigyLocations=await api('/api/effigies');
+    var r=await fetch('/api/effigies');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.effigies){ populateEffigyPlayerDropdown(); return; }
+    _effRosterText.effigies=txt;
+    effigyLocations=JSON.parse(txt);
     populateEffigyPlayerDropdown();
+    if(effigyLeaflet) renderEffigyMap();
   }catch(e){
-    document.getElementById('effigy-summary').textContent='Error loading effigy data: '+e.message;
+    if(!effigyLocations) document.getElementById('effigy-summary').textContent='Error loading effigy data: '+e.message;
   }
 }
 
 // Static, game-world-fixed journal/diary note locations. Loaded once and left in place for
 // the session; failures are silent (no journal dots) rather than blocking the effigy map.
-async function fetchJournalLocations(){
-  if(journalLocations)return;
+async function fetchJournalLocations(force){
+  if(journalLocations&&!force)return;
   try{
-    journalLocations=await api('/api/journals');
+    var r=await fetch('/api/journals');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.journals) return;
+    _effRosterText.journals=txt;
+    journalLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
-    journalLocations=[];
+    if(!journalLocations) journalLocations=[];
   }
 }
 
 // Static, game-world-fixed bounty-boss (named legendary Alpha) locations. Same loading
 // convention as journals above: loaded once, failures are silent (no boss markers) rather
 // than blocking the rest of the effigy map.
-async function fetchBossLocations(){
-  if(bossLocations)return;
+async function fetchBossLocations(force){
+  if(bossLocations&&!force)return;
   try{
-    bossLocations=await api('/api/bounty-bosses');
+    var r=await fetch('/api/bounty-bosses');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.bounty) return;
+    _effRosterText.bounty=txt;
+    bossLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
-    bossLocations=[];
+    if(!bossLocations) bossLocations=[];
   }
 }
 
@@ -3940,13 +4129,18 @@ async function fetchBossLocations(){
 // loading convention as journals/bounty bosses: loaded once, failures are silent rather
 // than blocking the rest of the effigy map.
 var wantedFugitiveLocations=null;
-async function fetchWantedFugitives(){
-  if(wantedFugitiveLocations)return;
+async function fetchWantedFugitives(force){
+  if(wantedFugitiveLocations&&!force)return;
   try{
-    wantedFugitiveLocations=await api('/api/wanted-fugitives');
+    var r=await fetch('/api/wanted-fugitives');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.fugitive) return;
+    _effRosterText.fugitive=txt;
+    wantedFugitiveLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
-    wantedFugitiveLocations=[];
+    if(!wantedFugitiveLocations) wantedFugitiveLocations=[];
   }
 }
 
@@ -3969,6 +4163,11 @@ var followedPlayerGuid=null;
 // summary-text flash on the 5s poll tick when the selected player hasn't actually
 // changed (only a real player switch should show that transient state).
 var _effLastPlayerGuid=null;
+// True once the map has done its one-time initial zoom-to-player on this page load. Only
+// fires when playerLocations resolves to exactly one entry -- the public site's own-player
+// scoped route (see gen_public_site.ps1's fetchPlayerLocations override) -- so the admin
+// dashboard's unscoped "every player" route never triggers an unwanted auto-zoom.
+var _effInitialCentered=false;
 function centerOnFollowedPlayer(){
   if(!followedPlayerGuid||!playerLocations||!effigyLeaflet)return;
   var pl=playerLocations.find(function(p){return p.guid===followedPlayerGuid;});
@@ -3999,25 +4198,35 @@ async function fetchPlayerLocations(){
 }
 // "Eagle Statues" (fast-travel points) -- static, same loading convention as above.
 var eagleStatueLocations=null;
-async function fetchEagleStatues(){
-  if(eagleStatueLocations)return;
+async function fetchEagleStatues(force){
+  if(eagleStatueLocations&&!force)return;
   try{
-    eagleStatueLocations=await api('/api/eagle-statues');
+    var r=await fetch('/api/eagle-statues');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.eagle) return;
+    _effRosterText.eagle=txt;
+    eagleStatueLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
-    eagleStatueLocations=[];
+    if(!eagleStatueLocations) eagleStatueLocations=[];
   }
 }
 // "Towers" (raid bosses) -- static, same loading convention as above. Split out of Eagle
 // Statues (see Merge-ConfirmedTowers).
 var towerLocations=null;
-async function fetchTowerLocations(){
-  if(towerLocations)return;
+async function fetchTowerLocations(force){
+  if(towerLocations&&!force)return;
   try{
-    towerLocations=await api('/api/towers');
+    var r=await fetch('/api/towers');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.tower) return;
+    _effRosterText.tower=txt;
+    towerLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
-    towerLocations=[];
+    if(!towerLocations) towerLocations=[];
   }
 }
 function populateEffigyPlayerDropdown(){
@@ -4079,7 +4288,7 @@ function populateEffigyPlayerDropdown(){
 async function fetchEffigyPlayer(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
-  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);return;}
+  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);return;}
   if(guid!==_effLastPlayerGuid) document.getElementById('effigy-summary').textContent='Loading...';
   _effLastPlayerGuid=guid;
   try{
@@ -4094,6 +4303,7 @@ async function fetchEffigyPlayer(){
   fetchBossPlayer(guid);
   fetchFugitivePlayer(guid);
   fetchEaglePlayer(guid);
+  fetchTowerBossPlayer(guid);
 }
 
 // Wanted Fugitive defeat state for the selected player (see fugitiveCollected comment above).
@@ -4116,6 +4326,18 @@ async function fetchEaglePlayer(guid){
     eagleCollected=data.collected||[];
   }catch(e){
     eagleCollected=[];
+  }
+  if(effigyLeaflet) renderEffigyMap();
+}
+
+// Tower raid-boss defeat state for the selected player (see towerBossCollected comment above).
+async function fetchTowerBossPlayer(guid){
+  if(!guid){towerBossCollected=[];if(effigyLeaflet)renderEffigyMap();return;}
+  try{
+    var data=await api('/api/player-tower-bosses?guid='+encodeURIComponent(guid));
+    towerBossCollected=data.collected||[];
+  }catch(e){
+    towerBossCollected=[];
   }
   if(effigyLeaflet) renderEffigyMap();
 }
@@ -4176,6 +4398,7 @@ var DATAMINE_PROPERTIES=[
     desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab). Includes the full 605-entry effigies.json roster, not just keys a player has actually picked up.'},
   {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Journal'],desc:'Journal / diary note pickups.'},
   {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,iconCategories:['Eagle Statue'],desc:'Eagle Statue (fast travel) unlocks.'},
+  {name:'TowerBossDefeatFlag',kind:'bool_map',spatial:false,iconCategories:['Tower'],desc:'Tower raid-boss defeats (normal difficulty; hard-mode key not yet re-identified). Keys are matched against towers.json\'s own "bossKey" field, not written here -- shown read-only for visibility into any newly-discovered key (e.g. Feybreak Tower\'s, not yet known).'},
   {name:'PaldeckUnlockFlag',kind:'bool_map',spatial:false,desc:'Paldeck species unlocks.'},
   {name:'PalCaptureBonusCount',kind:'int_map',spatial:false,desc:'Lifetime per-species bonus-capture counts.'}
 ];
@@ -4412,9 +4635,10 @@ function dmTableHtml(prop,rows,players){
 async function dmFetchAndApply(){
   if(!paldeckData) await fetchPaldeck();
   // effigyLocations feeds RelicObtainForInstanceFlag's fullRosterKeys(); journalLocations/
-  // eagleStatueLocations/wantedFugitiveLocations/bossLocations feed dmPropertyRows'
-  // unmatched-icon rows (prop.iconCategories) -- all no-op if already loaded elsewhere.
-  await Promise.all([fetchEffigyLocations(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations()]);
+  // eagleStatueLocations/wantedFugitiveLocations/bossLocations/towerLocations feed
+  // dmPropertyRows' unmatched-icon rows (prop.iconCategories) -- all no-op if already
+  // loaded elsewhere.
+  await Promise.all([fetchEffigyLocations(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations(),fetchTowerLocations()]);
   var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
   var mappingsPromise=api('/api/datamine-mappings');
   var playerPromises=roster.map(function(p){
@@ -4470,15 +4694,26 @@ async function dmLivePollTick(){
 // Map-icon categories whose scraped roster (name+coords already known, per the Map tab)
 // carries no matching save-flag key yet -- the roster data itself is already loaded
 // client-side for the Map tab (eagleStatueLocations/wantedFugitiveLocations/bossLocations/
-// journalLocations), just never surfaced here before. Towers is deliberately excluded: it
-// has no per-player tracking and doesn't map cleanly onto a single DATAMINE_PROPERTIES entry
-// (see feedback discussion). getGxGy converts world x/y -> grid coords for categories that
-// don't already carry gx/gy (journals do, from journal_locations.json directly).
+// journalLocations/towerLocations), just never surfaced here before. getGxGy converts
+// world x/y -> grid coords for categories that don't already carry gx/gy (journals do,
+// from journal_locations.json directly).
+//
+// Tower (added 2026-07-08): unlike the other three, Tower's roster items carry TWO
+// distinct key concepts (t.key for Eagle Statue, t.bossKey for the raid-boss
+// TowerBossDefeatFlag key this category is actually for) -- getRoster remaps bossKey onto
+// the generic "key" field dmPropertyRows/dmRowHtml expect, so only towers with no bossKey
+// yet (currently just Feybreak) show up as an icon row here. Name includes the boss/Pal so
+// Feybreak's placeholder is self-explanatory before its real key is ever seen.
 var DM_ICON_CATEGORIES=[
   {label:'Eagle Statue',property:'FastTravelPointUnlockFlag',getRoster:function(){return eagleStatueLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){eagleStatueLocations=null;return fetchEagleStatues();}},
   {label:'Wanted Fugitive',property:'NormalBossDefeatFlag',getRoster:function(){return wantedFugitiveLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){wantedFugitiveLocations=null;return fetchWantedFugitives();}},
   {label:'Field Boss',property:'NormalBossDefeatFlag',getRoster:function(){return bossLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){bossLocations=null;return fetchBossLocations();}},
-  {label:'Journal',property:'NoteObtainForInstanceFlag',getRoster:function(){return journalLocations||[];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){journalLocations=null;return fetchJournalLocations();}}
+  {label:'Journal',property:'NoteObtainForInstanceFlag',getRoster:function(){return journalLocations||[];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){journalLocations=null;return fetchJournalLocations();}},
+  {label:'Tower',property:'TowerBossDefeatFlag',getRoster:function(){
+    return (towerLocations||[]).map(function(t){
+      return {name:t.name+((t.boss||t.bossPal)?(' -- '+(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+(t.bossPal||'')):''),x:t.x,y:t.y,key:t.bossKey};
+    });
+  },getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){towerLocations=null;return fetchTowerLocations();}}
 ];
 
 function dmIconCatByLabel(label){
@@ -4500,8 +4735,19 @@ async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
     // verified:true -- Anthony typed this key in himself, so it's his own confirmation, not
     // an auto-filled scrape suggestion.
     await api('/api/datamine-mapping','POST',{property:cat.property,key:key,name:name,gx:gx,gy:gy,verified:true});
-    dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key!==key;});
-    dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:cat.property,verified:true});
+    // Optimistic client-side update must land in the SAME store the server just wrote to --
+    // spatial properties go to confirmed_locations.json, everything else (e.g.
+    // TowerBossDefeatFlag, added 2026-07-08) to datamine_labels.json. Getting this branch
+    // wrong doesn't lose data (the server write already succeeded), it just shows stale
+    // info until the next dmFetchAndApply poll corrects it from the server's own truth.
+    var prop=dmPropByName(cat.property);
+    if(prop&&prop.spatial){
+      dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key!==key;});
+      dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:cat.property,verified:true});
+    }else{
+      dmMappings.labels=(dmMappings.labels||[]).filter(function(l){return !(l.property===cat.property&&l.key===key);});
+      dmMappings.labels.push({property:cat.property,key:key,name:name,gx:gx,gy:gy,verified:true});
+    }
     // Refetch this category's roster so the just-matched entry's own "key" field updates and
     // it drops out of the unmatched list immediately, instead of lingering until a full reload.
     await cat.refetch();
@@ -4717,6 +4963,9 @@ function renderEffigyMap(){
 
 function renderEffigyMapNow(){
   if(!effigyLeaflet||!effigyLocations||!effigyMarkerLayer) return;
+  // Dot LOD: below the cull threshold render canvas dots instead of divIcons.
+  _effDotMode=effigyLeaflet.getZoom()<EFF_CULL_MIN_ZOOM;
+  _effLastDotMode=_effDotMode;
   _effDesired.clear();
 
   var collectedSet=new Set(effigyCollected.map(function(s){return s.toUpperCase();}));
@@ -4740,7 +4989,9 @@ function renderEffigyMapNow(){
     // yet-found are deliberately the same color (yellow) -- see Anthony's 2026-07-05 correction.
     var status=(confirmed&&got)?'found':(confirmed||got)?'confirmed':'unconfirmed';
     effDesire('e:'+id,status+'|'+confirmed,function(){
-      return buildEffigyMarker(id,pos,got,confirmed,status);
+      return _effDotMode
+        ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(pos,got,confirmed,status))
+        : buildEffigyMarker(id,pos,got,confirmed,status);
     });
   });
 
@@ -4761,7 +5012,9 @@ function renderEffigyMapNow(){
       if(jGot&&!effigyShowFound) return;
       var jStatus=(confirmed&&jGot)?'found':(confirmed||jGot)?'confirmed':'unconfirmed';
       effDesire('j:'+(j.key||idx),jStatus+'|'+confirmed,function(){
-        return buildJournalMarker(j,confirmed,jGot,jStatus,trackable);
+        return _effDotMode
+          ? buildDotMarker(effigyRposToLatLng(j.x,j.y),'journal',jStatus,'<b style="color:#1673d1">'+j.name+'</b><br>'+journalTipBody(j,confirmed,jGot,jStatus,trackable))
+          : buildJournalMarker(j,confirmed,jGot,jStatus,trackable);
       });
     });
   }
@@ -4788,7 +5041,9 @@ function renderEffigyMapNow(){
       var bStatus=(confirmed&&bGot)?'found':(confirmed||bGot)?'confirmed':'unconfirmed';
       var clickable=PREFS_ENABLED&&!bAuto&&!!bpGuid;
       effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable,function(){
-        return buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable);
+        return _effDotMode
+          ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual))
+          : buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable);
       });
     });
   }
@@ -4806,7 +5061,9 @@ function renderEffigyMapNow(){
       if(hGot&&!effigyShowFound) return;
       var hStatus=(confirmed&&hGot)?'found':(confirmed||hGot)?'confirmed':'unconfirmed';
       effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed,function(){
-        return buildFugitiveMarker(h,confirmed,hGot,hStatus);
+        return _effDotMode
+          ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b><br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
+          : buildFugitiveMarker(h,confirmed,hGot,hStatus);
       });
     });
   }
@@ -4821,20 +5078,44 @@ function renderEffigyMapNow(){
       if(esGot&&!effigyShowFound) return;
       var esStatus=(confirmed&&esGot)?'found':(confirmed||esGot)?'confirmed':'unconfirmed';
       effDesire('es:'+(es.key||es.name||idx),esStatus+'|'+confirmed,function(){
-        return buildEagleMarker(es,confirmed,esGot,esStatus);
+        return _effDotMode
+          ? buildDotMarker(effigyRposToLatLng(es.x,es.y),'eagle',esStatus,'<b style="color:#111;">'+es.name+'</b><br>'+eagleTipBody(es,confirmed,esGot,esStatus))
+          : buildEagleMarker(es,confirmed,esGot,esStatus);
       });
     });
   }
   // Tower (raid bosses) -- OVERLAYS the 7-entry paldb-scraped towers.json roster (added
   // 2026-07-06, see Merge-ConfirmedTowers). Split out of Eagle Statues -- Anthony had been
   // confirming these under that bucket since walking up to one behaves like a fast-travel
-  // point. No per-player "cleared" signal exists yet, so status only reaches
-  // confirmed/unconfirmed for now.
+  // point. Tracks TWO fully independent per-player signals (added 2026-07-07, refined
+  // 2026-07-08 into independent verification -- Anthony went off memory for the bossKey
+  // mapping and wants each ring colored on its OWN verified+got, not shared "confirmed"):
+  // "key"/"eagleVerified" is a real FastTravelPointUnlockFlag key (Eagle Statue unlock,
+  // reuses eagleCollected -- same data the Eagle Statue block above already fetches) and
+  // "bossKey"/"bossVerified" is a TowerBossDefeatFlag key (raid-boss cleared,
+  // towerBossCollected -- see fetchTowerBossPlayer). The main tower icon reflects
+  // boss-clear status; the small overlapping badge (see towerIcon) reflects eagle-unlock
+  // status -- so bStatus, not esStatus, is what gates the effigyShowFound hide-when-done
+  // toggle below. "confirmed" (t.m, the pin's own location) is unrelated to either ring
+  // now -- it only drives the separate "Confirm location" checkbox in the popup.
   if(effigyShowTower&&towerLocations&&towerLocations.length){
+    var towerEagleSet=new Set((eagleCollected||[]).map(function(s){return s.toUpperCase();}));
+    var towerBossSet=new Set((towerBossCollected||[]).map(function(s){return s.toUpperCase();}));
     towerLocations.forEach(function(t,idx){
       var confirmed=!!t.m;
-      effDesire('tw:'+(t.name||idx),confirmed?'1':'0',function(){
-        return buildTowerMarker(t,confirmed);
+      var esVerified=t.eagleVerified!==false;
+      var bossVerified=!!t.bossVerified;
+      var esGot=!!(t.key&&towerEagleSet.has(t.key.toUpperCase()));
+      var bGot=!!(t.bossKey&&towerBossSet.has(t.bossKey.toUpperCase()));
+      var esStatus=(esVerified&&esGot)?'found':(esVerified||esGot)?'confirmed':'unconfirmed';
+      var bStatus=(bossVerified&&bGot)?'found':(bossVerified||bGot)?'confirmed':'unconfirmed';
+      if(bStatus==='found'&&!effigyShowFound) return;
+      effDesire('tw:'+(t.name||idx),bStatus+'|'+esStatus+'|'+confirmed,function(){
+        if(_effDotMode){
+          var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus);
+          return buildDotMarker(effigyRposToLatLng(t.x,t.y),'tower',bStatus,'<b style="color:#111;">'+t.name+'</b>'+_tt.lvl+'<br>'+_tt.body);
+        }
+        return buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus);
       });
     });
   }
