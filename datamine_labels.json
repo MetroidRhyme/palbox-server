@@ -2430,5 +2430,165 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "TowerBossDefeatFlag",
+        "key":  "BOSS_BATTLE_NAME_GRASSBOSS",
+        "name":  "Zoe \u0026 Grizzbolt",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "TowerBossDefeatFlag",
+        "key":  "BOSS_BATTLE_NAME_FORESTBOSS",
+        "name":  "Lily \u0026 Lyleen",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "TowerBossDefeatFlag",
+        "key":  "BOSS_BATTLE_NAME_ELECTRICBOSS",
+        "name":  "Axel \u0026 Orserk",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "TowerBossDefeatFlag",
+        "key":  "BOSS_BATTLE_NAME_DESERTBOSS",
+        "name":  "Marcus \u0026 Faleris",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "TowerBossDefeatFlag",
+        "key":  "BOSS_BATTLE_NAME_SNOWBOSS",
+        "name":  "Victor \u0026 Shadowbeak",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "TowerBossDefeatFlag",
+        "key":  "BOSS_BATTLE_NAME_SAKURAJIMABOSS",
+        "name":  "Saya \u0026 Selyne",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "MUTANT",
+        "name":  "Lunaris",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Mutant",
+        "name":  "Lunaris",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "BOAR",
+        "name":  "Rushoar",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "RONIN",
+        "name":  "Bushi",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "SAKURASAURUS_WATER",
+        "name":  "Broncherry Aqua",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "SERPENT",
+        "name":  "Surfent",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "SWEETSSHEEP",
+        "name":  "Woolipop",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Boar",
+        "name":  "Rushoar",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Ronin",
+        "name":  "Bushi",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "SakuraSaurus_Water",
+        "name":  "Broncherry Aqua",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Serpent",
+        "name":  "Surfent",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "SweetsSheep",
+        "name":  "Woolipop",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FENGYUNDEEPER",
+        "name":  "Fenglope",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FengyunDeeper",
+        "name":  "Fenglope",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

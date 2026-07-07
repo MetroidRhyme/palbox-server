@@ -159,6 +159,25 @@ def extract_fast_travel_data(sav_path):
     return parse_name_bool_map(raw, p)
 
 
+def extract_tower_boss_data(sav_path):
+    """Return list of uppercase "BOSS_BATTLE_NAME_<ZONE>" keys for defeated Tower raid
+    bosses. TowerBossDefeatFlag is a Name->Bool map, same layout as
+    FastTravelPointUnlockFlag/RelicObtainForInstanceFlag -- confirmed against a real
+    decoded save snippet Anthony supplied 2026-07-07 (6 keys: DESERTBOSS/ELECTRICBOSS/
+    FORESTBOSS/GRASSBOSS/SAKURAJIMABOSS/SNOWBOSS -- Feybreak Tower's key, if one exists,
+    hasn't been seen yet). This appears to track normal-difficulty clears only; a
+    separate hard-mode flag existed before the map-data consolidation but was lost and
+    has not been re-identified yet -- see towers.json's bossKey field and the
+    palbox-confirmed-locations skill."""
+    raw = decompress_save(sav_path)
+    pos = find_property(raw, "TowerBossDefeatFlag")
+    if pos == -1:
+        return []
+    _, p = read_fstring(raw, pos)
+    _, p = read_fstring(raw, p)
+    return parse_name_bool_map(raw, p)
+
+
 def extract_fugitive_data(sav_path):
     """Return the raw list of ALL true NormalBossDefeatFlag keys (uppercased), unfiltered --
     used to check whether a specific confirmed Wanted Fugitive key (syndicate_bosses.json /
@@ -347,6 +366,7 @@ DATAMINE_PROPERTIES = [
     ("RelicObtainForInstanceFlag", "bool_map"),
     ("NoteObtainForInstanceFlag", "bool_map"),
     ("FastTravelPointUnlockFlag", "bool_map"),
+    ("TowerBossDefeatFlag", "bool_map"),
     ("PaldeckUnlockFlag", "bool_map"),
     ("PalCaptureBonusCount", "int_map"),
 ]
@@ -530,10 +550,11 @@ def main():
                 "bounties": _bounty_from_flags(boss_flags),
                 "fugitives": boss_flags,
                 "eagles": flags_for("FastTravelPointUnlockFlag"),
+                "towerBosses": flags_for("TowerBossDefeatFlag"),
             }, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "effigies": [], "notes": [], "bounties": [],
-                               "fugitives": [], "eagles": [], "error": str(e)}))
+                               "fugitives": [], "eagles": [], "towerBosses": [], "error": str(e)}))
         return
 
     # effigies mode: python pal_save_reader.py <save_dir> effigies <guid>
@@ -623,6 +644,20 @@ def main():
             return
         try:
             collected = extract_fast_travel_data(sav_path)
+            print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
+        return
+
+    # towerbosses mode: python pal_save_reader.py <save_dir> towerbosses <guid>
+    if len(sys.argv) > 2 and sys.argv[2] == "towerbosses":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            collected = extract_tower_boss_data(sav_path)
             print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))

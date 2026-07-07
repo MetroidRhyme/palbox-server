@@ -155,6 +155,9 @@ function Import-KeylessRoster([string]$fileName, [string]$category) {
         }
         $fields = @{ name = $entry.name; x = $entry.x; y = $entry.y }
         if ($entry.PSObject.Properties['lv']) { $fields['lv'] = $entry.lv }
+        if ($entry.PSObject.Properties['boss']) { $fields['boss'] = $entry.boss }
+        if ($entry.PSObject.Properties['bossPal']) { $fields['bossPal'] = $entry.bossPal }
+        if ($entry.PSObject.Properties['bossKey']) { $fields['bossKey'] = $entry.bossKey }
         $grid = ConvertTo-GridXY $entry.x $entry.y
         $fields['gx'] = $grid.gx
         $fields['gy'] = $grid.gy

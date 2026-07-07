@@ -328,6 +328,9 @@ $html = $html.Replace(
 $html = $html.Replace(
   "'/api/player-eagles?guid='+encodeURIComponent(guid)",
   "'data/player-eagles/'+encodeURIComponent(guid)+'.json'")
+$html = $html.Replace(
+  "'/api/player-tower-bosses?guid='+encodeURIComponent(guid)",
+  "'data/player-tower-bosses/'+encodeURIComponent(guid)+'.json'")
 
 # (5b) Player locations (PUBLIC ONLY). The admin build's fetchPlayerLocations() calls one
 # unscoped route returning EVERY player's live position, for the "all players on the map"
@@ -367,8 +370,8 @@ if ($html -eq $before) { throw "player-locations: fetchPlayerLocations override 
 # of the effigy-player dropdown actually being populated/selected on first load.
 $before = $html
 $html = $html.Replace(
-  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);return;}",
-  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchPlayerLocations();return;}")
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);return;}",
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);fetchPlayerLocations();return;}")
 if ($html -eq $before) { throw "player-locations: fetchEffigyPlayer empty-guid hook not found" }
 $before = $html
 $html = $html.Replace(
@@ -639,7 +642,8 @@ $expectedDataRefs = @(
   'data/pal-species.json', 'data/pal-skills.json',
   'data/pal-passives.json', 'data/settings.json', 'data/meta.json',
   'data/player-location/', 'data/player-effigies/', 'data/player-notes/',
-  'data/player-bounties/', 'data/player-fugitives/', 'data/player-eagles/'
+  'data/player-bounties/', 'data/player-fugitives/', 'data/player-eagles/',
+  'data/player-tower-bosses/'
 )
 foreach ($ref in $expectedDataRefs) {
   if (-not $html.Contains($ref)) { throw "expected data reference missing from output: $ref" }

@@ -629,8 +629,18 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # route that mutates its own $data in place (name enrichment, Add-Member, ...) never
     # corrupts what's cached for the next request.
     $script:readerCache = @{}
-    function Get-CachedReaderOutput([string]$CacheKey, [string]$StampPath, [scriptblock]$Producer) {
-        $stamp = if (Test-Path -LiteralPath $StampPath) { [string]([System.IO.File]::GetLastWriteTimeUtc($StampPath).Ticks) } else { '' }
+    # $StampPaths accepts either a single path (existing callers) or an array -- for readers
+    # whose output depends on more than just the save file (bounty/datamine species matching
+    # also reads anonymous_boss_keys.json/excluded_boss_keys.json/bounty_bosses.json), pass all
+    # of them so editing a roster file invalidates the cache even though the .sav is unchanged.
+    # Missed this originally: a species mapping added to anonymous_boss_keys.json after a
+    # player's datamine result was already cached stayed invisible (stuck in the "anonymous"
+    # bucket) until that player's save changed again, even though the Map tab (which reads
+    # confirmed_locations.json directly, uncached) showed the new pin immediately.
+    function Get-CachedReaderOutput([string]$CacheKey, [string[]]$StampPaths, [scriptblock]$Producer) {
+        $stamp = ($StampPaths | ForEach-Object {
+            if (Test-Path -LiteralPath $_) { [string]([System.IO.File]::GetLastWriteTimeUtc($_).Ticks) } else { '' }
+        }) -join '|'
         $entry = $script:readerCache[$CacheKey]
         if ($entry -and $entry.stamp -eq $stamp) { return $entry.json }
         $json = & $Producer
@@ -2071,6 +2081,26 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/tower-key-confirm' -and $method -eq 'POST') {
+                    # Tower's two independent per-key verification checkboxes (added
+                    # 2026-07-07, separate from /api/map-confirm's location "verified"
+                    # above). Body: { name, field, verified } -- field is "eagleVerified" or
+                    # "bossVerified" (see Set-TowerKeyVerified's whitelist).
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $towerName = [string]$body.name
+                        if (-not $towerName) { throw "No name provided." }
+                        $field = [string]$body.field
+                        $verifiedFlag = [bool]$body.verified
+                        $ok = Set-TowerKeyVerified $towerName $field $verifiedFlag
+                        if (-not $ok) { throw "No confirmed_locations.json tower row found, or unknown field." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$towerName; field=$field; verified=$verifiedFlag } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/journals' -and $method -eq 'GET') {
                     # Lore-journal/diary locations (game-world fixed, not per-save). Phase 3's
                     # importer already upserted every journal_locations.json row into the
@@ -2276,7 +2306,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = Get-CachedReaderOutput "bounties:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                        $rawJson = Get-CachedReaderOutput "bounties:$guid" @(
+                            (Join-Path $saveDir "Players\$guid.sav"),
+                            "$ServerDir\anonymous_boss_keys.json",
+                            "$ServerDir\excluded_boss_keys.json",
+                            "$ServerDir\bounty_bosses.json"
+                        ) {
                             $j = & python "$ServerDir\pal_save_reader.py" $saveDir bounties $guid 2>$null
                             if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                             ($j -join '')
@@ -2333,6 +2368,30 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/player-tower-bosses' -and $method -eq 'GET') {
+                    # Tower raid-boss defeat state, read from TowerBossDefeatFlag in the
+                    # player's save (see extract_tower_boss_data in pal_save_reader.py).
+                    # Added 2026-07-07 -- keys are matched against towers.json's bossKey
+                    # field (Tower category, not Eagle Statue's separate FastTravelPoint-
+                    # UnlockFlag key) to drive the Tower marker's main-icon status.
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = Get-CachedReaderOutput "towerbosses:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir towerbosses $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/player-datamine' -and $method -eq 'GET') {
                     # All NormalBossDefeatFlag data for one player, bucketed into
                     # bounty/syndicate/anonymous (see extract_datamine_data in
@@ -2346,7 +2405,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = Get-CachedReaderOutput "datamine:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                        $rawJson = Get-CachedReaderOutput "datamine:$guid" @(
+                            (Join-Path $saveDir "Players\$guid.sav"),
+                            "$ServerDir\anonymous_boss_keys.json",
+                            "$ServerDir\excluded_boss_keys.json",
+                            "$ServerDir\bounty_bosses.json"
+                        ) {
                             $j = & python "$ServerDir\pal_save_reader.py" $saveDir datamine $guid 2>$null
                             if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                             ($j -join '')

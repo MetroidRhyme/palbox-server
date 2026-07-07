@@ -382,6 +382,16 @@ export default {
       return noStore(json({ collected: [] }, 200));
     }
 
+    // Per-player Tower raid-boss defeat state: same scoping as player-effigies above.
+    if (path.startsWith('/data/player-tower-bosses/')) {
+      const g = path.slice('/data/player-tower-bosses/'.length).replace(/\.json$/i, '');
+      if (scope === 'all' || (scope && g.toLowerCase() === scope.toLowerCase())) {
+        const keyGuid = (scope === 'all') ? g.toUpperCase() : scope;
+        return noStore(await r2Serve(env, 'player-tower-bosses/' + keyGuid + '.json', json({ collected: [] }, 200)));
+      }
+      return noStore(json({ collected: [] }, 200));
+    }
+
     // Per-player live world position (Translation/Rotation): same scoping as
     // player-effigies above. A scoped (non-admin) user can only ever request their own
     // guid anyway (the public page never shows anyone else's), but the Worker enforces

@@ -53,9 +53,12 @@ Pal list, so their order is flexible.)
 
 ## Icons (fully scripted)
 
-`gen_pal_icons.py` fetches the work icons (`work_00`..`work_12`) and element icons
-(`elem_00`..`elem_08`) from paldb.cc into `pal_icons\` (server-side, with the required
-`Referer` header -- the CDN blocks hotlinking). The 9 passive-pill PNGs
+`gen_pal_icons.py` fetches the work icons (`work_00`..`work_12`), element icons
+(`elem_00`..`elem_08`), and map-marker compass icons (`compass_bounty`/`compass_eagle`/
+`compass_tower`, used by the Bounty/Eagle Statue/Tower map markers) from paldb.cc into
+`pal_icons\` (server-side, with the required `Referer` header -- the CDN blocks hotlinking;
+those three compass icons were briefly hotlinked directly from dashboard.html, which 403'd
+wherever a client's Referer header got stripped, most visibly on phones). The 9 passive-pill PNGs
 (`passive_frame` / `passive_triangle` / `passive_pos_1-4` / `passive_neg_1-3`) are **drawn
 procedurally** by the same script (`build_passives()`, needs Pillow) -- a beveled 9-slice frame,
 a gray triangle-tessellation strip, and stacked chevron rank-arrows that the passive-pill CSS

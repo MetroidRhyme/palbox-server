@@ -37,6 +37,7 @@ $PubBounty = Join-Path $PubData 'player-bounties'
 $PubLocation = Join-Path $PubData 'player-location'
 $PubFugitives = Join-Path $PubData 'player-fugitives'
 $PubEagles = Join-Path $PubData 'player-eagles'
+$PubTowerBosses = Join-Path $PubData 'player-tower-bosses'
 
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 
@@ -109,7 +110,7 @@ New-Item -ItemType Directory -Force -Path $PubData | Out-Null
 # player never lingers in the output set.
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doFreq) {
-  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubLocation, $PubFugitives, $PubEagles)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubLocation, $PubFugitives, $PubEagles, $PubTowerBosses)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   Get-ChildItem -LiteralPath $PubAll -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEffig -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNotes -File -ErrorAction SilentlyContinue | Remove-Item -Force
@@ -117,6 +118,7 @@ if ($doFreq) {
   Get-ChildItem -LiteralPath $PubLocation -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubFugitives -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEagles -File -ErrorAction SilentlyContinue | Remove-Item -Force
+  Get-ChildItem -LiteralPath $PubTowerBosses -File -ErrorAction SilentlyContinue | Remove-Item -Force
   if (Test-Path -LiteralPath $PubByPlayer) { Remove-Item -LiteralPath $PubByPlayer -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $PubByPlayer | Out-Null
 
@@ -228,15 +230,15 @@ if ($doFreq) {
     [System.IO.File]::WriteAllText((Join-Path $PubAll 'eggs.json'), '{"eggs":[],"summary":{}}', $utf8)
   }
 
-  # -- player-effigies/player-notes/player-bounties/player-fugitives/
-  #    player-eagles/<guid>.json (one call per player instead of five) ------------
+  # -- player-effigies/player-notes/player-bounties/player-fugitives/player-eagles/
+  #    player-tower-bosses/<guid>.json (one call per player instead of six) --------
   # pal_save_reader.py's playerall mode decompresses each player's small .sav ONCE and
-  # returns all five sections in one JSON, instead of five separate process spawns each
+  # returns all six sections in one JSON, instead of six separate process spawns each
   # re-decompressing the same file (which is what this loop used to do, calling
-  # effigies/notes/bounties/fugitives/eagles modes one at a time). Each section's
-  # shape is unchanged ({"guid":...,"collected":[...]}), so the split below just wraps
-  # each field into the same per-player file this always wrote.
-  Write-Step "building data/player-effigies, -notes, -bounties, -fugitives, -eagles/*.json"
+  # effigies/notes/bounties/fugitives/eagles/towerbosses modes one at a time). Each
+  # section's shape is unchanged ({"guid":...,"collected":[...]}), so the split below
+  # just wraps each field into the same per-player file this always wrote.
+  Write-Step "building data/player-effigies, -notes, -bounties, -fugitives, -eagles, -tower-bosses/*.json"
   foreach ($p in @($paldeckObj.players)) {
     $guid = [string]$p.guid
     if (-not $guid) { continue }
@@ -247,11 +249,12 @@ if ($doFreq) {
       continue
     }
     $sections = @{
-      $PubEffig     = $pa.effigies
-      $PubNotes     = $pa.notes
-      $PubBounty    = $pa.bounties
-      $PubFugitives = $pa.fugitives
-      $PubEagles    = $pa.eagles
+      $PubEffig       = $pa.effigies
+      $PubNotes       = $pa.notes
+      $PubBounty      = $pa.bounties
+      $PubFugitives   = $pa.fugitives
+      $PubEagles      = $pa.eagles
+      $PubTowerBosses = $pa.towerBosses
     }
     foreach ($dir in $sections.Keys) {
       $body = [ordered]@{ guid = $guid; collected = $sections[$dir] } | ConvertTo-Json -Compress

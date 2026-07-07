@@ -31,6 +31,18 @@ for n in range(9):
     JOBS.append(("elem_%02d.webp" % n,
                  "https://cdn.paldb.cc/image/Pal/Texture/UI/Main_Menu/T_prt_palstatus_element_%02d.webp" % n))
 
+# Map-marker compass icons (Bounty/Field Boss, Eagle Statue, Tower). These were briefly
+# hotlinked straight from cdn.paldb.cc in dashboard.html's marker builders -- works from some
+# desktop browsers but 403s wherever the Referer header gets stripped or rewritten (notably
+# common on mobile browsers), so the icons silently failed to load on phones. Bundling them
+# here like every other paldb asset fixes that for good.
+JOBS.append(("compass_bounty.webp",
+             "https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_Bounty.webp"))
+JOBS.append(("compass_eagle.webp",
+             "https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_FTtower.webp"))
+JOBS.append(("compass_tower.webp",
+             "https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_tower.webp"))
+
 PASSIVE_PNGS = ["passive_frame.png", "passive_triangle.png",
                 "passive_pos_1.png", "passive_pos_2.png", "passive_pos_3.png", "passive_pos_4.png",
                 "passive_neg_1.png", "passive_neg_2.png", "passive_neg_3.png"]

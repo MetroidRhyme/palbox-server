@@ -93,7 +93,7 @@ function Update-CanonicalEntry([ref]$confirmedRef, $matched, [string]$category, 
             }
             return 'matched-verified'
         } else {
-            foreach ($k in @('x', 'y', 'z', 'lv')) {
+            foreach ($k in @('x', 'y', 'z', 'lv', 'boss', 'bossPal', 'bossKey')) {
                 if ($fields.ContainsKey($k)) { Set-EntryProp $matched $k $fields[$k] }
             }
             if ($fields.ContainsKey('name') -and (-not $matched.name -or $matched.origin -eq 'scraped')) {
@@ -156,7 +156,16 @@ function ConvertTo-GridXY([double]$x, [double]$y) {
 #
 # Effigies alone keep their historical DICT shape (GUID -> {x,y,z,m}), matched by
 # dashboard.html's effigyLocations[key] lookups -- every other category is an array of
-# {name,x,y,key,m}, plus "species" for bounty and "lv" for tower/fugitive.
+# {name,x,y,key,m}, plus "species" for bounty, "lv" for tower/fugitive, "boss"/"bossPal"
+# for tower (the human raid-boss's name + their partner Pal's name, scraped from
+# paldb.cc -- static display data only), and "bossKey" for tower (added 2026-07-07:
+# the TowerBossDefeatFlag key for that tower's raid-boss fight, supplied by Anthony
+# from a decoded save snippet -- normal difficulty only, hard-mode's key was lost in
+# an earlier consolidation and hasn't been re-identified; null for Feybreak Tower,
+# whose key hasn't been seen yet either). Tower now tracks TWO independent per-player
+# signals: "key" (Eagle Statue / FastTravelPointUnlockFlag, drives the small badge
+# icon) and "bossKey" (TowerBossDefeatFlag, drives the main tower icon) -- see
+# dashboard.html's Tower render block and the palbox-confirmed-locations skill.
 function Get-MapCategoryJson([string]$category) {
     $confirmed = Get-ConfirmedLocations
     if ($category -eq 'effigy') {
@@ -179,6 +188,21 @@ function Get-MapCategoryJson([string]$category) {
         if ($c.key) { $out.key = $c.key }
         if ($category -eq 'bounty') { $out.species = if ($c.species) { $c.species } else { $c.key } }
         if ($c.PSObject.Properties['lv'] -and $null -ne $c.lv) { $out.lv = $c.lv }
+        if ($c.PSObject.Properties['boss'] -and $c.boss) { $out.boss = $c.boss }
+        if ($c.PSObject.Properties['bossPal'] -and $c.bossPal) { $out.bossPal = $c.bossPal }
+        if ($c.PSObject.Properties['bossKey'] -and $c.bossKey) { $out.bossKey = $c.bossKey }
+        if ($category -eq 'tower') {
+            # Tower's two save keys (Eagle Statue "key", raid-boss "bossKey") are verified
+            # independently of each other and of the pin's own "m"/verified (added
+            # 2026-07-07 -- Anthony wanted separate map checkboxes since he supplied the
+            # bossKey mapping from memory and isn't sure all 7 are right yet). Default true
+            # for eagleVerified (that linkage was already working/trusted before this
+            # session) and false for bossVerified (explicitly unconfirmed) wherever the
+            # field doesn't exist on the row yet, rather than reading absence as false for
+            # both -- see the migration note in import_scraped_rosters.ps1/towers.json.
+            $out.eagleVerified = if ($c.PSObject.Properties['eagleVerified']) { $c.eagleVerified -eq $true } else { $true }
+            $out.bossVerified = if ($c.PSObject.Properties['bossVerified']) { $c.bossVerified -eq $true } else { $false }
+        }
         if ($category -eq 'journal') {
             # Journal is the one category whose client tooltip (buildJournalMarker) and Data
             # Mine tab roster-fallback (getGxGy) read gx/gy straight off the roster item
@@ -229,6 +253,22 @@ function Set-MapConfirmVerified([string]$category, [string]$key, [string]$specie
     }
     if (-not $matched) { return $false }
     Set-EntryProp $matched 'verified' $verified
+    Save-ConfirmedLocations $confirmed
+    return $true
+}
+
+# Flips Tower's per-key verification flags (added 2026-07-07) -- independent of
+# Set-MapConfirmVerified's "verified" (the pin's own location) above. $field is
+# whitelisted, not passed straight through to Set-EntryProp, since it arrives from a
+# client POST body and Set-EntryProp will happily create ANY named property on the
+# matched row otherwise.
+function Set-TowerKeyVerified([string]$towerName, [string]$field, [bool]$verified) {
+    if ($field -notin @('eagleVerified', 'bossVerified')) { return $false }
+    $confirmed = Get-ConfirmedLocations
+    $nameU = $towerName.ToUpper()
+    $matched = $confirmed | Where-Object { $_.category -eq 'tower' -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1
+    if (-not $matched) { return $false }
+    Set-EntryProp $matched $field $verified
     Save-ConfirmedLocations $confirmed
     return $true
 }

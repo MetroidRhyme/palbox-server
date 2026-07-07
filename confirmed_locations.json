@@ -21,7 +21,11 @@
         "y":  90068,
         "x":  81285,
         "lv":  50,
-        "verified":  true
+        "verified":  true,
+        "boss":  "Victor",
+        "bossPal":  "Shadowbeak",
+        "bossKey":  "BOSS_BATTLE_NAME_SNOWBOSS",
+        "bossVerified":  true
     },
     {
         "key":  "0B9C64E849BA38D328DD28AA02FE30BB",
@@ -34,7 +38,10 @@
         "origin":  "live",
         "y":  -435946,
         "x":  -889959,
-        "lv":  60
+        "lv":  60,
+        "boss":  "Bjorn",
+        "bossPal":  "Bastigor",
+        "bossKey":  null
     },
     {
         "key":  "11BA233D4DF76C83A529DF83EAFDF23A",
@@ -369,9 +376,9 @@
         "verified":  true,
         "category":  "effigy",
         "origin":  "manual",
-        "y":  251325.0,
+        "y":  251325,
         "z":  3385.9,
-        "x":  -331910.0
+        "x":  -331910
     },
     {
         "key":  "81_1_FOREST_FBOSS_2",
@@ -384,7 +391,7 @@
         "x":  -227163,
         "y":  231440,
         "species":  "HerculesBeetle",
-        "z":  0.0
+        "z":  0
     },
     {
         "key":  "81_1_FOREST_FBOSS_3",
@@ -397,7 +404,7 @@
         "x":  -119298,
         "y":  288815,
         "species":  "GrassRabbitMan",
-        "z":  0.0
+        "z":  0
     },
     {
         "key":  "81_1_FOREST_FBOSS_4",
@@ -410,7 +417,7 @@
         "x":  -147297,
         "y":  217211,
         "species":  "VioletFairy",
-        "z":  0.0
+        "z":  0
     },
     {
         "key":  "81_1_GRASS_FBOSS_1",
@@ -420,9 +427,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "manual",
-        "x":  -343155.0,
-        "z":  -95.0,
-        "y":  244585.0,
+        "x":  -343155,
+        "z":  -95,
+        "y":  244585,
         "species":  "GrassMammoth"
     },
     {
@@ -436,7 +443,7 @@
         "x":  -349257,
         "y":  104756,
         "species":  "Ronin",
-        "z":  0.0
+        "z":  0
     },
     {
         "key":  "81_1_GRASS_FBOSS_13",
@@ -449,7 +456,7 @@
         "x":  -245982,
         "y":  77216,
         "species":  "Umihebi",
-        "z":  0.0
+        "z":  0
     },
     {
         "key":  "81_1_GRASS_FBOSS_18",
@@ -472,9 +479,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "manual",
-        "x":  -335225.0,
-        "z":  475.0,
-        "y":  180735.0,
+        "x":  -335225,
+        "z":  475,
+        "y":  180735,
         "species":  "KingAlpaca"
     },
     {
@@ -488,7 +495,7 @@
         "x":  -276276,
         "y":  269078,
         "species":  "CatMage",
-        "z":  0.0
+        "z":  0
     },
     {
         "key":  "81_1_GRASS_FBOSS_21",
@@ -511,9 +518,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "manual",
-        "x":  -372950.0,
-        "z":  -770.0,
-        "y":  104400.0,
+        "x":  -372950,
+        "z":  -770,
+        "y":  104400,
         "species":  "Kirin"
     },
     {
@@ -537,9 +544,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "manual",
-        "x":  -147370.0,
-        "z":  -1940.0,
-        "y":  364010.0,
+        "x":  -147370,
+        "z":  -1940,
+        "y":  364010,
         "species":  "Yeti_Grass"
     },
     {
@@ -553,7 +560,7 @@
         "x":  -285915,
         "y":  209867,
         "species":  "CaptainPenguin",
-        "z":  0.0
+        "z":  0
     },
     {
         "key":  "81_2_DESSERT_FBOSS_3",
@@ -576,9 +583,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "manual",
-        "x":  -271220.0,
-        "z":  3760.0,
-        "y":  -204190.0,
+        "x":  -271220,
+        "z":  3760,
+        "y":  -204190,
         "species":  "JetDragon"
     },
     {
@@ -589,9 +596,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "manual",
-        "x":  -381240.0,
-        "z":  8530.0,
-        "y":  -44760.0,
+        "x":  -381240,
+        "z":  8530,
+        "y":  -44760,
         "species":  "KingBahamut"
     },
     {
@@ -603,9 +610,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "live",
-        "x":  -779670.0,
-        "z":  6080.0,
-        "y":  -457500.0,
+        "x":  -779670,
+        "z":  6080,
+        "y":  -457500,
         "species":  "PurpleSpider"
     },
     {
@@ -617,9 +624,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "live",
-        "x":  -788310.0,
-        "z":  9090.0,
-        "y":  -310830.0,
+        "x":  -788310,
+        "z":  9090,
+        "y":  -310830,
         "species":  "HerculesBeetle_Ground"
     },
     {
@@ -631,9 +638,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "live",
-        "x":  -848870.0,
-        "z":  370.0,
-        "y":  -458610.0,
+        "x":  -848870,
+        "z":  370,
+        "y":  -458610,
         "species":  "RaijinDaughter_Water"
     },
     {
@@ -667,7 +674,7 @@
         "category":  "effigy",
         "origin":  "manual",
         "y":  -215061.27,
-        "z":  4250.0,
+        "z":  4250,
         "x":  -321353.06
     },
     {
@@ -813,9 +820,9 @@
         "verified":  true,
         "category":  "effigy",
         "origin":  "manual",
-        "y":  229740.0,
+        "y":  229740,
         "z":  -1856.3,
-        "x":  -337495.0
+        "x":  -337495
     },
     {
         "key":  "A472FE0E4AC819A740B43F9DE27AEDAB",
@@ -851,7 +858,11 @@
         "origin":  "manual",
         "y":  -116023,
         "x":  -29334,
-        "lv":  55
+        "lv":  55,
+        "boss":  "Saya",
+        "bossPal":  "Selyne",
+        "bossKey":  "BOSS_BATTLE_NAME_SAKURAJIMABOSS",
+        "bossVerified":  true
     },
     {
         "key":  "ACAE5FB04D48DE4197443E9C0993086B",
@@ -896,7 +907,7 @@
         "category":  "effigy",
         "origin":  "manual",
         "y":  104877.41,
-        "z":  8440.0,
+        "z":  8440,
         "x":  -61251.86
     },
     {
@@ -909,7 +920,11 @@
         "origin":  "manual",
         "y":  -111892,
         "x":  -361650,
-        "lv":  45
+        "lv":  45,
+        "boss":  "Axel",
+        "bossPal":  "Orserk",
+        "bossKey":  "BOSS_BATTLE_NAME_ELECTRICBOSS",
+        "bossVerified":  true
     },
     {
         "key":  "B93B28214BED86A7C1E2FA8375853BF2",
@@ -941,7 +956,7 @@
         "category":  "effigy",
         "origin":  "manual",
         "y":  -110911.12,
-        "z":  -1100.0,
+        "z":  -1100,
         "x":  -232164.45
     },
     {
@@ -1098,7 +1113,7 @@
         "origin":  "manual",
         "y":  -126544.02,
         "z":  -2085.94,
-        "x":  -608504.0
+        "x":  -608504
     },
     {
         "key":  "D1917BED4C918F31E082C4872AC226FA",
@@ -1122,7 +1137,11 @@
         "origin":  "manual",
         "y":  208949,
         "x":  -321717,
-        "lv":  10
+        "lv":  10,
+        "boss":  "Zoe",
+        "bossPal":  "Grizzbolt",
+        "bossKey":  "BOSS_BATTLE_NAME_GRASSBOSS",
+        "bossVerified":  true
     },
     {
         "key":  "D84FBE7D4670D6DE3B559992E1BC30B0",
@@ -1269,7 +1288,7 @@
         "category":  "effigy",
         "origin":  "manual",
         "y":  56814.63,
-        "z":  -1580.0,
+        "z":  -1580,
         "x":  -396484.72
     },
     {
@@ -1294,7 +1313,11 @@
         "origin":  "manual",
         "y":  241079,
         "x":  -110118,
-        "lv":  25
+        "lv":  25,
+        "boss":  "Lily",
+        "bossPal":  "Lyleen",
+        "bossKey":  "BOSS_BATTLE_NAME_FORESTBOSS",
+        "bossVerified":  true
     },
     {
         "key":  "EC20140543804F88E0943F9A5C1765EB",
@@ -1372,7 +1395,11 @@
         "origin":  "manual",
         "y":  413204,
         "x":  29877,
-        "lv":  40
+        "lv":  40,
+        "boss":  "Marcus",
+        "bossPal":  "Faleris",
+        "bossKey":  "BOSS_BATTLE_NAME_DESERTBOSS",
+        "bossVerified":  true
     },
     {
         "key":  "GRASSBOSS3",
@@ -1454,7 +1481,7 @@
         "verified":  true,
         "category":  "effigy",
         "origin":  "scraped",
-        "y":  -391617.0,
+        "y":  -391617,
         "z":  -165.56,
         "x":  -794187.94
     },
@@ -1767,7 +1794,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "y":  273023.88,
-        "z":  15330.0,
+        "z":  15330,
         "x":  -363806.78
     },
     {
@@ -1779,9 +1806,9 @@
         "verified":  true,
         "category":  "effigy",
         "origin":  "scraped",
-        "y":  200225.0,
-        "z":  -2040.0,
-        "x":  -362570.0
+        "y":  200225,
+        "z":  -2040,
+        "x":  -362570
     },
     {
         "key":  "C1AFE622464C5BF0D698D38F9D69FE3F",
@@ -2389,9 +2416,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  161910.0,
-        "y":  380520.0,
-        "z":  2380.0
+        "x":  161910,
+        "y":  380520,
+        "z":  2380
     },
     {
         "key":  "060FBB9E4FC0123B03A22D91807C6909",
@@ -2482,7 +2509,7 @@
         "origin":  "scraped",
         "x":  -169753.28,
         "y":  10453.7,
-        "z":  508.0
+        "z":  508
     },
     {
         "key":  "08601EE54E7FBA3902737DAEF2F84016",
@@ -2490,12 +2517,12 @@
         "gx":  -141,
         "gy":  -540,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -371823.2,
         "y":  93335.98,
-        "z":  413.51
+        "z":  413.51,
+        "verified":  true
     },
     {
         "key":  "099F24204E412F1BA1B8EEB0EE4CC406",
@@ -2676,7 +2703,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -886292.44,
-        "y":  -446163.0,
+        "y":  -446163,
         "z":  25272.35
     },
     {
@@ -2937,7 +2964,7 @@
         "origin":  "scraped",
         "x":  -90992.34,
         "y":  126424.19,
-        "z":  10270.0
+        "z":  10270
     },
     {
         "key":  "1DAB346C48FDCC4DEAF501883039703F",
@@ -3000,9 +3027,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  83190.0,
-        "y":  347960.0,
-        "z":  4620.0
+        "x":  83190,
+        "y":  347960,
+        "z":  4620
     },
     {
         "key":  "1E8721014205D8076E69709A4C8CBB45",
@@ -3091,8 +3118,8 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -417526.0,
-        "y":  -37255.0,
+        "x":  -417526,
+        "y":  -37255,
         "z":  12633.49
     },
     {
@@ -3364,9 +3391,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -53290.0,
-        "y":  463370.0,
-        "z":  770.0
+        "x":  -53290,
+        "y":  463370,
+        "z":  770
     },
     {
         "key":  "2903BB444EBADBD8A26BCA8A200686C7",
@@ -3387,12 +3414,12 @@
         "gx":  -246,
         "gy":  -696,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -443548.5,
         "y":  45114.09,
-        "z":  -2191.21
+        "z":  -2191.21,
+        "verified":  true
     },
     {
         "key":  "29DAD20343BE7B007019B89E540EF133",
@@ -3400,12 +3427,12 @@
         "gx":  -85,
         "gy":  -626,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -411229.8,
         "y":  118757.01,
-        "z":  -1965.76
+        "z":  -1965.76,
+        "verified":  true
     },
     {
         "key":  "29DBA5AD46570E684D53959AF8C45CBD",
@@ -3587,7 +3614,7 @@
         "origin":  "scraped",
         "x":  -133290.77,
         "y":  243704.3,
-        "z":  9967.0
+        "z":  9967
     },
     {
         "key":  "30D13DA94C0C9C097AC31A8AD1432F3B",
@@ -3621,12 +3648,12 @@
         "gx":  194,
         "gy":  -246,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -236731.14,
         "y":  247048.77,
-        "z":  729.15
+        "z":  729.15,
+        "verified":  true
     },
     {
         "key":  "317455ED4F135F883941518C4EE733B8",
@@ -3923,7 +3950,7 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -809640.0,
+        "x":  -809640,
         "y":  -280936.66,
         "z":  -473.4
     },
@@ -3949,7 +3976,7 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -640294.0,
+        "x":  -640294,
         "y":  -307065.97,
         "z":  33431.98
     },
@@ -4210,7 +4237,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -16681.17,
-        "y":  -132065.0,
+        "y":  -132065,
         "z":  5774.23
     },
     {
@@ -4287,7 +4314,7 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -439127.0,
+        "x":  -439127,
         "y":  105429.21,
         "z":  -2020.97
     },
@@ -4378,9 +4405,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -22650.0,
-        "y":  281440.0,
-        "z":  4850.0
+        "x":  -22650,
+        "y":  281440,
+        "z":  4850
     },
     {
         "key":  "4C7961DE42CF1C6D9BE54EB86997313C",
@@ -4456,9 +4483,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  16620.0,
-        "y":  253570.0,
-        "z":  640.0
+        "x":  16620,
+        "y":  253570,
+        "z":  640
     },
     {
         "key":  "4DBA14414EE6FBE734A02BABC5C4F32B",
@@ -4508,8 +4535,8 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -114878.0,
-        "y":  167986.0,
+        "x":  -114878,
+        "y":  167986,
         "z":  -1499.01
     },
     {
@@ -4547,9 +4574,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -36620.0,
-        "y":  143980.0,
-        "z":  15250.0
+        "x":  -36620,
+        "y":  143980,
+        "z":  15250
     },
     {
         "key":  "53CE7F4D48051FA609B0A892FD40FC8A",
@@ -4848,7 +4875,7 @@
         "origin":  "scraped",
         "x":  -105870.73,
         "y":  276711.9,
-        "z":  6887.0
+        "z":  6887
     },
     {
         "key":  "5E9C7CB3484B5ED33551AE99337DC182",
@@ -4882,12 +4909,12 @@
         "gx":  -253,
         "gy":  -489,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -348441.84,
         "y":  41828.55,
-        "z":  5099.66
+        "z":  5099.66,
+        "verified":  true
     },
     {
         "key":  "5F441A54475FE2EE55BA4FB80D8D465B",
@@ -5275,9 +5302,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -247440.0,
-        "y":  -123430.0,
-        "z":  8450.0
+        "x":  -247440,
+        "y":  -123430,
+        "z":  8450
     },
     {
         "key":  "6B216B174D257553C2F18094567B7992",
@@ -5285,12 +5312,12 @@
         "gx":  -65,
         "gy":  -628,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -412143.25,
         "y":  128384.64,
-        "z":  -471.78
+        "z":  -471.78,
+        "verified":  true
     },
     {
         "key":  "6B57BFD24497B78680557A806420F1C0",
@@ -5316,7 +5343,7 @@
         "origin":  "scraped",
         "x":  -158606.89,
         "y":  201350.62,
-        "z":  7822.0
+        "z":  7822
     },
     {
         "key":  "6C8680F3416FEFDAA9D0DFA5DAC408B1",
@@ -5419,7 +5446,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -227995.34,
-        "y":  281439.0,
+        "y":  281439,
         "z":  7826.43
     },
     {
@@ -5952,7 +5979,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -882605.75,
-        "y":  -436353.0,
+        "y":  -436353,
         "z":  8967.87
     },
     {
@@ -5978,7 +6005,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -102606.35,
-        "y":  319711.0,
+        "y":  319711,
         "z":  -2121.75
     },
     {
@@ -6094,9 +6121,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  203800.0,
-        "y":  336560.0,
-        "z":  -140.0
+        "x":  203800,
+        "y":  336560,
+        "z":  -140
     },
     {
         "key":  "8DF47C344AD92E08CA1309A73C67119A",
@@ -6133,9 +6160,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  102470.0,
-        "y":  328420.0,
-        "z":  10780.0
+        "x":  102470,
+        "y":  328420,
+        "z":  10780
     },
     {
         "key":  "8ECF58564560CF995B2D63BD1E32EDD8",
@@ -6182,12 +6209,12 @@
         "gx":  225,
         "gy":  -276,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -250592.44,
         "y":  261292.66,
-        "z":  -1609.97
+        "z":  -1609.97,
+        "verified":  true
     },
     {
         "key":  "94BBD21847A4C080D6B48CA66F3A4914",
@@ -6419,9 +6446,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  111820.0,
-        "y":  359500.0,
-        "z":  7980.0
+        "x":  111820,
+        "y":  359500,
+        "z":  7980
     },
     {
         "key":  "9F3A78AE444B817FF3939EA1A5491234",
@@ -6523,7 +6550,7 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -153243.0,
+        "x":  -153243,
         "y":  175441.73,
         "z":  463.26
     },
@@ -6546,12 +6573,12 @@
         "gx":  -116,
         "gy":  -499,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -353034.44,
         "y":  104726.86,
-        "z":  -286.83
+        "z":  -286.83,
+        "verified":  true
     },
     {
         "key":  "A3626D264B90759B454FCD825E55738E",
@@ -6589,7 +6616,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -195641.12,
-        "y":  169184.0,
+        "y":  169184,
         "z":  -2054.78
     },
     {
@@ -6614,7 +6641,7 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -172524.0,
+        "x":  -172524,
         "y":  -16495.61,
         "z":  -1504.9
     },
@@ -6637,12 +6664,12 @@
         "gx":  -183,
         "gy":  -556,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -379197.34,
         "y":  74188.54,
-        "z":  -2065.41
+        "z":  -2065.41,
+        "verified":  true
     },
     {
         "key":  "A48EDF9248901537AF02AEA417B6C7E2",
@@ -7032,7 +7059,7 @@
         "origin":  "scraped",
         "x":  -219642.16,
         "y":  -96691.44,
-        "z":  1820.0
+        "z":  1820
     },
     {
         "key":  "B077AFD44059109C629881BE83C2F39B",
@@ -7044,7 +7071,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -262553.38,
-        "y":  137205.0,
+        "y":  137205,
         "z":  -673.81
     },
     {
@@ -7082,9 +7109,9 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  22110.0,
-        "y":  267720.0,
-        "z":  7690.0
+        "x":  22110,
+        "y":  267720,
+        "z":  7690
     },
     {
         "key":  "B217F6C544874E373C00CD9DA55D3A0F",
@@ -7160,7 +7187,7 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -400751.0,
+        "x":  -400751,
         "y":  -95702.69,
         "z":  23112.36
     },
@@ -7173,7 +7200,7 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -609602.0,
+        "x":  -609602,
         "y":  -260415.8,
         "z":  779.29
     },
@@ -7396,7 +7423,7 @@
         "origin":  "scraped",
         "x":  -405231.84,
         "y":  7049.4,
-        "z":  -1680.0
+        "z":  -1680
     },
     {
         "key":  "C0C560924697E63DB90958803D0F7114",
@@ -8214,7 +8241,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -617201.1,
-        "y":  -307830.0,
+        "y":  -307830,
         "z":  30572.78
     },
     {
@@ -8254,7 +8281,7 @@
         "origin":  "scraped",
         "x":  -126908.55,
         "y":  250456.52,
-        "z":  2760.0
+        "z":  2760
     },
     {
         "key":  "E7C337DE4BD8DC7E54280F859828D335",
@@ -8266,7 +8293,7 @@
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -281615.66,
-        "y":  40164.0,
+        "y":  40164,
         "z":  7722.89
     },
     {
@@ -8395,7 +8422,7 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -635155.0,
+        "x":  -635155,
         "y":  -218554.42,
         "z":  21236.68
     },
@@ -8733,8 +8760,8 @@
         "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
-        "x":  -302270.0,
-        "y":  178795.0,
+        "x":  -302270,
+        "y":  178795,
         "z":  12047.5
     },
     {
@@ -8862,9 +8889,9 @@
         "verified":  true,
         "category":  "bounty",
         "origin":  "live",
-        "x":  -254060.0,
-        "z":  4000.0,
-        "y":  178050.0,
+        "x":  -254060,
+        "z":  4000,
+        "y":  178050,
         "species":  "FairyDragon"
     },
     {
@@ -8879,7 +8906,7 @@
         "x":  -245064,
         "y":  149279,
         "species":  "FlowerDoll",
-        "z":  0.0
+        "z":  0
     },
     {
         "key":  "16C7164C43E2B96BEDCC6696E2E592F7",
@@ -8903,10 +8930,10 @@
         "gy":  -292,
         "key":  "Day0",
         "gx":  -447,
+        "verified":  false,
         "x":  -257916,
         "y":  -47173,
-        "name":  "Castaway\u0027s Journal - Day 0",
-        "verified":  false
+        "name":  "Castaway\u0027s Journal - Day 0"
     },
     {
         "category":  "journal",
@@ -9155,13 +9182,13 @@
         "lv":  null,
         "source":  null,
         "origin":  "scraped",
-        "verified":  false,
         "gy":  -554,
         "key":  "GRASSBOSS2",
         "gx":  168,
         "x":  -378174,
         "y":  235112,
-        "name":  "Zoe Rayne\u0027s Diary - 2"
+        "name":  "Zoe Rayne\u0027s Diary - 2",
+        "verified":  true
     },
     {
         "key":  null,
@@ -9502,11 +9529,11 @@
         "source":  null,
         "origin":  "scraped",
         "species":  "Anubis",
-        "x":  -167230.0,
-        "y":  96430.0,
-        "z":  -1720.0,
-        "name":  "Anubis",
-        "verified":  false
+        "verified":  false,
+        "x":  -167230,
+        "y":  96430,
+        "z":  -1720,
+        "name":  "Anubis"
     },
     {
         "key":  null,
@@ -9518,9 +9545,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "BlackMetalDragon",
-        "x":  -320870.0,
-        "y":  -124090.0,
-        "z":  18490.0,
+        "x":  -320870,
+        "y":  -124090,
+        "z":  18490,
         "name":  "Astegon"
     },
     {
@@ -9550,7 +9577,7 @@
         "species":  "BlueDragon",
         "x":  -301521,
         "y":  133673,
-        "z":  0.0,
+        "z":  0,
         "name":  "Azurobe"
     },
     {
@@ -9563,9 +9590,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "ThunderBird",
-        "x":  -239970.0,
-        "y":  -450.0,
-        "z":  7260.0,
+        "x":  -239970,
+        "y":  -450,
+        "z":  7260,
         "name":  "Beakon"
     },
     {
@@ -9593,9 +9620,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "BerryGoat_Dark",
-        "x":  -882660.0,
-        "y":  -376490.0,
-        "z":  -1910.0,
+        "x":  -882660,
+        "y":  -376490,
+        "z":  -1910,
         "name":  "Caprity Noct"
     },
     {
@@ -9623,9 +9650,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "WhiteTiger_Ground",
-        "x":  -838350.0,
-        "y":  -376940.0,
-        "z":  4220.0,
+        "x":  -838350,
+        "y":  -376940,
+        "z":  4220,
         "name":  "Cryolinx Terra"
     },
     {
@@ -9638,9 +9665,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "FlowerDinosaur_Electric",
-        "x":  122760.0,
-        "y":  318710.0,
-        "z":  320.0,
+        "x":  122760,
+        "y":  318710,
+        "z":  320,
         "name":  "Dinossom Lux"
     },
     {
@@ -9655,7 +9682,7 @@
         "species":  "LazyCatfish",
         "x":  -122052,
         "y":  15710,
-        "z":  0.0,
+        "z":  0,
         "name":  "Dumud"
     },
     {
@@ -9668,9 +9695,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "QueenBee",
-        "x":  -196380.0,
-        "y":  166870.0,
-        "z":  -2050.0,
+        "x":  -196380,
+        "y":  166870,
+        "z":  -2050,
         "name":  "Elizabee"
     },
     {
@@ -9685,7 +9712,7 @@
         "species":  "CatVampire",
         "x":  -149133,
         "y":  -30649,
-        "z":  0.0,
+        "z":  0,
         "name":  "Felbat"
     },
     {
@@ -9698,9 +9725,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "FengyunDeeper",
-        "x":  -333940.0,
-        "y":  39610.0,
-        "z":  1600.0,
+        "x":  -333940,
+        "y":  39610,
+        "z":  1600,
         "name":  "Fenglope"
     },
     {
@@ -9728,8 +9755,8 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "Kitsunebi_Ice",
-        "x":  -722610.0,
-        "y":  -431080.0,
+        "x":  -722610,
+        "y":  -431080,
         "z":  10186.04,
         "name":  "Foxparks Cryst"
     },
@@ -9743,9 +9770,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "IceHorse",
-        "x":  109790.0,
-        "y":  -5880.0,
-        "z":  22180.0,
+        "x":  109790,
+        "y":  -5880,
+        "z":  22180,
         "name":  "Frostallion"
     },
     {
@@ -9760,7 +9787,7 @@
         "species":  "IceHorse_Dark",
         "x":  -729768,
         "y":  -338638,
-        "z":  0.0,
+        "z":  0,
         "name":  "Frostallion Noct"
     },
     {
@@ -9773,9 +9800,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "GoldenHorse",
-        "x":  -685460.0,
-        "y":  -191380.0,
-        "z":  4870.0,
+        "x":  -685460,
+        "y":  -191380,
+        "z":  4870,
         "name":  "Gildane"
     },
     {
@@ -9786,12 +9813,12 @@
         "lv":  null,
         "source":  null,
         "origin":  "scraped",
-        "verified":  false,
         "species":  "PlantSlime",
         "x":  -412259.28,
         "y":  106237.67,
         "z":  -2035.61,
-        "name":  "Gumoss"
+        "name":  "Gumoss",
+        "verified":  true
     },
     {
         "key":  null,
@@ -9833,9 +9860,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "WingGolem",
-        "x":  -44230.0,
-        "y":  -152230.0,
-        "z":  -2100.0,
+        "x":  -44230,
+        "y":  -152230,
+        "z":  -2100,
         "name":  "Knocklem"
     },
     {
@@ -9848,9 +9875,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "Werewolf_Ice",
-        "x":  -502070.0,
-        "y":  -276210.0,
-        "z":  -440.0,
+        "x":  -502070,
+        "y":  -276210,
+        "z":  -440,
         "name":  "Loupmoon Cryst"
     },
     {
@@ -9861,12 +9888,12 @@
         "lv":  null,
         "source":  null,
         "origin":  "scraped",
-        "verified":  false,
         "species":  "Mutant",
         "x":  -426369,
         "y":  90527,
-        "z":  0.0,
-        "name":  "Lunaris"
+        "z":  0,
+        "name":  "Lunaris",
+        "verified":  true
     },
     {
         "key":  null,
@@ -9878,9 +9905,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "LilyQueen_Dark",
-        "x":  33500.0,
-        "y":  84430.0,
-        "z":  5360.0,
+        "x":  33500,
+        "y":  84430,
+        "z":  5360,
         "name":  "Lyleen Noct"
     },
     {
@@ -9893,9 +9920,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "DarkScorpion_Ground",
-        "x":  28540.0,
-        "y":  -105820.0,
-        "z":  -1590.0,
+        "x":  28540,
+        "y":  -105820,
+        "z":  -1590,
         "name":  "Menasting Terra"
     },
     {
@@ -9908,9 +9935,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "GrassPanda_Electric",
-        "x":  -206970.0,
-        "y":  363810.0,
-        "z":  1140.0,
+        "x":  -206970,
+        "y":  363810,
+        "z":  1140,
         "name":  "Mossanda Lux"
     },
     {
@@ -9923,9 +9950,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "BlackCentaur",
-        "x":  187860.0,
-        "y":  363020.0,
-        "z":  2650.0,
+        "x":  187860,
+        "y":  363020,
+        "z":  2650,
         "name":  "Necromus"
     },
     {
@@ -9940,7 +9967,7 @@
         "species":  "PoseidonOrca",
         "x":  174921,
         "y":  221801,
-        "z":  0.0,
+        "z":  0,
         "name":  "Neptilius"
     },
     {
@@ -9955,7 +9982,7 @@
         "species":  "GhostRabbit",
         "x":  -589314,
         "y":  -265657,
-        "z":  0.0,
+        "z":  0,
         "name":  "Nitemary"
     },
     {
@@ -9968,9 +9995,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "HawkBird",
-        "x":  -155950.0,
-        "y":  31260.0,
-        "z":  -1960.0,
+        "x":  -155950,
+        "y":  31260,
+        "z":  -1960,
         "name":  "Nitewing"
     },
     {
@@ -9998,9 +10025,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "MysteryMask",
-        "x":  -807770.0,
-        "y":  -385160.0,
-        "z":  5590.0,
+        "x":  -807770,
+        "y":  -385160,
+        "z":  5590,
         "name":  "Omascul"
     },
     {
@@ -10013,9 +10040,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "SaintCentaur",
-        "x":  187860.0,
-        "y":  363020.0,
-        "z":  2650.0,
+        "x":  187860,
+        "y":  363020,
+        "z":  2650,
         "name":  "Paladius"
     },
     {
@@ -10030,7 +10057,7 @@
         "species":  "BlueberryFairy",
         "x":  -568200,
         "y":  -463945,
-        "z":  0.0,
+        "z":  0,
         "name":  "Prunelia"
     },
     {
@@ -10045,7 +10072,7 @@
         "species":  "SkyDragon",
         "x":  -184017,
         "y":  40496,
-        "z":  0.0,
+        "z":  0,
         "name":  "Quivern"
     },
     {
@@ -10060,7 +10087,7 @@
         "species":  "LazyDragon_Electric",
         "x":  -282702,
         "y":  64823,
-        "z":  0.0,
+        "z":  0,
         "name":  "Relaxaurus Lux"
     },
     {
@@ -10073,9 +10100,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "PinkRabbit_Grass",
-        "x":  -745180.0,
-        "y":  -398020.0,
-        "z":  36400.0,
+        "x":  -745180,
+        "y":  -398020,
+        "z":  36400,
         "name":  "Ribbuny Botan"
     },
     {
@@ -10090,7 +10117,7 @@
         "species":  "WhiteMoth",
         "x":  -92217,
         "y":  273668,
-        "z":  0.0,
+        "z":  0,
         "name":  "Sibelyx"
     },
     {
@@ -10120,7 +10147,7 @@
         "species":  "BlackPuppy",
         "x":  -797241,
         "y":  -245461,
-        "z":  0.0,
+        "z":  0,
         "name":  "Smokie"
     },
     {
@@ -10148,8 +10175,8 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "NightBlueHorse",
-        "x":  -555190.0,
-        "y":  -188780.0,
+        "x":  -555190,
+        "y":  -188780,
         "z":  -426.55,
         "name":  "Starryon"
     },
@@ -10163,9 +10190,9 @@
         "origin":  "scraped",
         "verified":  false,
         "species":  "Suzaku",
-        "x":  -6430.0,
-        "y":  343440.0,
-        "z":  110.0,
+        "x":  -6430,
+        "y":  343440,
+        "z":  110,
         "name":  "Suzaku"
     },
     {
@@ -10180,7 +10207,7 @@
         "species":  "IceNarwhal",
         "x":  262590,
         "y":  75839,
-        "z":  0.0,
+        "z":  0,
         "name":  "Whalaska"
     },
     {
@@ -10195,7 +10222,7 @@
         "species":  "IceNarwhal_Fire",
         "x":  -370830,
         "y":  -287230,
-        "z":  0.0,
+        "z":  0,
         "name":  "Whalaska Ignis"
     },
     {
@@ -10207,11 +10234,11 @@
         "origin":  "scraped",
         "gy":  -1707,
         "gx":  -1193,
+        "verified":  false,
         "x":  -907401,
         "y":  -389587,
         "lv":  57,
-        "name":  "Counterfeiter Mimic",
-        "verified":  false
+        "name":  "Counterfeiter Mimic"
     },
     {
         "key":  null,
@@ -10553,10 +10580,10 @@
         "origin":  "scraped",
         "gy":  -633,
         "gx":  -398,
+        "verified":  false,
         "x":  -414435,
         "y":  -24682,
-        "name":  "Ancient Civilization Ruins",
-        "verified":  false
+        "name":  "Ancient Civilization Ruins"
     },
     {
         "key":  null,
@@ -11166,12 +11193,12 @@
         "lv":  null,
         "source":  null,
         "origin":  "scraped",
-        "verified":  false,
         "gy":  -441,
         "gx":  -224,
         "x":  -326307,
         "y":  55184,
-        "name":  "Ascetic Falls"
+        "name":  "Ascetic Falls",
+        "verified":  true
     },
     {
         "key":  null,
@@ -11262,5 +11289,75 @@
         "x":  -103233,
         "y":  234653,
         "name":  "Free Pal Alliance Tower Entrance"
+    },
+    {
+        "key":  "FORESTBOSS3",
+        "name":  "Lily Everhart\u0027s Diary - 3",
+        "gx":  -2,
+        "gy":  -266,
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
+    },
+    {
+        "key":  "7170881D44249E90902F728E240493AF",
+        "name":  "Islandhopper Coast",
+        "gx":  241,
+        "gy":  -310,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
+    },
+    {
+        "key":  "FORESTBOSS2",
+        "name":  "Lily Everhart\u0027s Diary - 2",
+        "gx":  217,
+        "gy":  -258,
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
+    },
+    {
+        "key":  "BOSS_MALE_SOLDIER",
+        "name":  "Insurance Fraud Crash",
+        "gx":  -290,
+        "gy":  -622,
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
+    },
+    {
+        "key":  "3E8E504B4A3975FD3862E1BC85A5D4F6",
+        "name":  "Sea Breeze Archipelago Church",
+        "gx":  -73,
+        "gy":  -551,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
+    },
+    {
+        "key":  "DAY12-1",
+        "name":  "Castaway\u0027s Journal - Day 12-1",
+        "gx":  -170,
+        "gy":  -466,
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
+    },
+    {
+        "key":  "23B9E99C4A454B99220AF7B4A58FD8DE",
+        "name":  "Ascetic Falls",
+        "gx":  -224,
+        "gy":  -441,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     }
 ]
