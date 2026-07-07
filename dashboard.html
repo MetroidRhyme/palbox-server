@@ -4295,24 +4295,17 @@ function dmPropByName(name){
 // "verified" is Anthony's own signal (he typed/saved it himself, or it predates this field and
 // is treated as his own prior confirmation -- see the backfill note in /palworld-server skill)
 // vs. false for anything system-auto-filled from a public scrape (dmAutoFillFromRosters).
-// fallback:true means neither store has this key at all yet (shouldn't normally be visible
-// post-auto-fill, kept as a defensive display-only path).
+// fallback:true means dmRosterFallback found a name (Pal-species properties only, via
+// PAL_LIST -- see that function) with neither store having this key yet; every SPATIAL
+// property always has a real confirmed_locations.json row now (import_scraped_rosters.ps1
+// upserts every roster entry unconditionally), so fallback can only ever be true for the
+// non-spatial branch below.
 function dmMappingFor(propName,key){
   if(!dmMappings) return {name:null,gx:null,gy:null,fallback:false,verified:null};
   var prop=dmPropByName(propName);
   if(prop&&prop.spatial){
     var m=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key===key;})[0];
-    // "has data" means name OR coordinates set -- not just name, since noName properties
-    // (RelicObtainForInstanceFlag) only ever carry coordinates.
-    if(m&&(m.name||m.gx!=null||m.gy!=null)) return {name:m.name,gx:m.gx,gy:m.gy,fallback:false,verified:m.verified!==false};
-    // Not yet in confirmed_locations.json -- fall back to whichever existing scraped/curated
-    // roster already has this key (effigies.json, journal_locations.json, PAL_LIST), so a key
-    // Anthony already has real data for elsewhere doesn't render blank just because he never
-    // separately typed it into THIS UI. Normally auto-persisted (as unverified) by
-    // dmAutoFillFromRosters before this path is ever reached in a real render.
-    var fb=dmRosterFallback(propName,key);
-    if(fb) return {name:fb.name,gx:(m&&m.gx!=null?m.gx:fb.gx),gy:(m&&m.gy!=null?m.gy:fb.gy),fallback:true,verified:false};
-    return {name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false,verified:m?m.verified!==false:null};
+    return {name:m?m.name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false,verified:m?m.verified!==false:null};
   }
   var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key===key;})[0];
   if(m2&&m2.name) return {name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false,verified:m2.verified!==false};
@@ -4336,27 +4329,17 @@ function dmPalSpeciesName(key){
   return _dmPalSpeciesName[key.toUpperCase()]||null;
 }
 
-// Read-only fallback name/location lookup against the existing curated roster/reference data
-// for properties that already have real-world names from prior scraping/curation work
-// (effigies.json's 605-entry public roster; journal_locations.json's wiki-sourced pins;
-// PAL_LIST's species roster) -- most already loaded client-side for other tabs, just never
-// consulted by this tab before. Returns null (not just no-match) if the roster itself hasn't
-// finished loading yet, same as an unmatched key.
+// Read-only fallback name lookup for Pal-species-keyed properties (PaldeckUnlockFlag/
+// PalCaptureCount/PalCaptureBonusCount), via PAL_LIST -- unrelated to the map-data
+// consolidation. Used to also cover RelicObtainForInstanceFlag (effigy)/
+// NoteObtainForInstanceFlag (journal) via effigies.json/journal_locations.json, but
+// import_scraped_rosters.ps1 (Phase 3) now upserts every row of both full rosters into
+// confirmed_locations.json unconditionally, so dmMappingFor's own confirmedLocations
+// lookup always finds a real entry for these two properties -- this fallback path is
+// permanently unreachable for them now, so those two branches were removed. Returns null
+// (not just no-match) if PAL_LIST itself hasn't finished loading yet, same as an
+// unmatched key.
 function dmRosterFallback(propName,key){
-  if(propName==='RelicObtainForInstanceFlag'&&effigyLocations){
-    // effigies.json has no name field at all (see dashboard's noName flag on this property) --
-    // only coordinates, which it DOES have for all 605 keys. Don't gate on e.name like the
-    // other branches below; a present entry is enough.
-    var e=effigyLocations[key]||effigyLocations[key.toUpperCase()];
-    if(e){
-      var g=worldToGrid(e.x,e.y);
-      return {name:e.name||null,gx:g.cx,gy:g.cy};
-    }
-  }
-  if(propName==='NoteObtainForInstanceFlag'&&journalLocations){
-    var j=journalLocations.filter(function(r){return r.key&&r.key.toUpperCase()===key.toUpperCase();})[0];
-    if(j&&j.name) return {name:j.name,gx:j.gx,gy:j.gy};
-  }
   if(propName==='PaldeckUnlockFlag'||propName==='PalCaptureCount'||propName==='PalCaptureBonusCount'){
     var n=dmPalSpeciesName(key);
     if(n) return {name:n,gx:null,gy:null};
@@ -4515,8 +4498,8 @@ function dmTableHtml(prop,rows,players){
 // NOT touch the DOM before it knows whether anything actually changed).
 async function dmFetchAndApply(){
   if(!paldeckData) await fetchPaldeck();
-  // effigyLocations/journalLocations feed dmRosterFallback's name lookups; journalLocations/
-  // eagleStatueLocations/wantedFugitiveLocations/bossLocations also feed dmPropertyRows'
+  // effigyLocations feeds RelicObtainForInstanceFlag's fullRosterKeys(); journalLocations/
+  // eagleStatueLocations/wantedFugitiveLocations/bossLocations feed dmPropertyRows'
   // unmatched-icon rows (prop.iconCategories) -- all no-op if already loaded elsewhere.
   await Promise.all([fetchEffigyLocations(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations()]);
   var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
@@ -4770,10 +4753,13 @@ async function toggleDatamineVerified(propName,key,checked){
 }
 
 // One-time-per-load auto-fill: any raw key currently only resolved via dmRosterFallback (not
-// yet a real confirmed_locations.json/datamine_labels.json entry) gets persisted for real,
-// marked verified:false -- Anthony asked for public-scrape data to be "fully filled in" but
-// never silently counted as something HE verified. Batched into one request (can touch 100+
-// keys the first time this runs) rather than one POST per key.
+// yet a real datamine_labels.json entry) gets persisted for real, marked verified:false --
+// Anthony asked for public-scrape data to be "fully filled in" but never silently counted as
+// something HE verified. Since dmRosterFallback only resolves Pal-species properties now
+// (every spatial property already has a real confirmed_locations.json row via
+// import_scraped_rosters.ps1 -- see dmMappingFor/dmRosterFallback), this only ever does real
+// work for PaldeckUnlockFlag/PalCaptureCount/PalCaptureBonusCount going forward. Batched into
+// one request (can touch 100+ keys the first time this runs) rather than one POST per key.
 async function dmAutoFillFromRosters(){
   var batch=[];
   DATAMINE_PROPERTIES.forEach(function(prop){
