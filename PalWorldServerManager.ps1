@@ -2010,126 +2010,17 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
-                ($path -eq '/api/effigy-confirm' -and $method -eq 'POST') {
-                    # Admin-only manual confirm from the dashboard's effigy popup checkbox
-                    # (see EFFIGY_CONFIRM_ENABLED / toggleEffigyConfirm in dashboard.html).
-                    # Body: { key:"<GUID>", confirmed:true|false }. Flips "verified" directly
-                    # on the matching confirmed_locations.json row via Set-MapConfirmVerified
-                    # -- effigy_confirmed_keys.json is no longer read or written here (kept on
-                    # disk for now, retired once the client moves to /api/map-confirm).
-                    try {
-                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
-                        $key = [string]$body.key
-                        if (-not $key) { throw "No key provided." }
-                        $confirmFlag = [bool]$body.confirmed
-                        $ok = Set-MapConfirmVerified 'effigy' $key $null $null $confirmFlag
-                        if (-not $ok) { throw "No confirmed_locations.json row found for key $key (category effigy)." }
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; key=$key.ToUpper(); confirmed=$confirmFlag } -Compress)
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
-                ($path -eq '/api/journal-confirm' -and $method -eq 'POST') {
-                    # Admin-only manual confirm from the dashboard's journal popup checkbox
-                    # (see EFFIGY_CONFIRM_ENABLED / toggleJournalConfirm in dashboard.html) --
-                    # same shape/pattern as /api/effigy-confirm above, category journal.
-                    try {
-                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
-                        $key = [string]$body.key
-                        if (-not $key) { throw "No key provided." }
-                        $confirmFlag = [bool]$body.confirmed
-                        $ok = Set-MapConfirmVerified 'journal' $key $null $null $confirmFlag
-                        if (-not $ok) { throw "No confirmed_locations.json row found for key $key (category journal)." }
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; key=$key.ToUpper(); confirmed=$confirmFlag } -Compress)
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
-                ($path -eq '/api/bounty-confirm' -and $method -eq 'POST') {
-                    # Admin-only manual confirm from the dashboard's bounty-boss popup checkbox
-                    # (see EFFIGY_CONFIRM_ENABLED / toggleBountyConfirm in dashboard.html) --
-                    # same shape/pattern as /api/effigy-confirm above, keyed by species.
-                    try {
-                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
-                        $species = [string]$body.species
-                        if (-not $species) { throw "No species provided." }
-                        $confirmFlag = [bool]$body.confirmed
-                        $ok = Set-MapConfirmVerified 'bounty' $null $species $null $confirmFlag
-                        if (-not $ok) { throw "No confirmed_locations.json row found for species $species (category bounty)." }
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; species=$species.ToUpper(); confirmed=$confirmFlag } -Compress)
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
-                ($path -eq '/api/tower-confirm' -and $method -eq 'POST') {
-                    # Admin-only manual confirm from the dashboard's Tower popup checkbox
-                    # (see EFFIGY_CONFIRM_ENABLED / toggleTowerConfirm in dashboard.html) --
-                    # same shape/pattern as /api/effigy-confirm, keyed by name (paldb's Tower
-                    # scrape has no GUID).
-                    try {
-                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
-                        $name = [string]$body.name
-                        if (-not $name) { throw "No name provided." }
-                        $confirmFlag = [bool]$body.confirmed
-                        $ok = Set-MapConfirmVerified 'tower' $null $null $name $confirmFlag
-                        if (-not $ok) { throw "No confirmed_locations.json row found for name $name (category tower)." }
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$name.ToUpper(); confirmed=$confirmFlag } -Compress)
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
-                ($path -eq '/api/fugitive-confirm' -and $method -eq 'POST') {
-                    # Admin-only manual confirm from the dashboard's Wanted Fugitive popup
-                    # checkbox (see EFFIGY_CONFIRM_ENABLED / toggleFugitiveConfirm in
-                    # dashboard.html) -- same shape/pattern as /api/effigy-confirm, keyed by
-                    # name.
-                    try {
-                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
-                        $name = [string]$body.name
-                        if (-not $name) { throw "No name provided." }
-                        $confirmFlag = [bool]$body.confirmed
-                        $ok = Set-MapConfirmVerified 'fugitive' $null $null $name $confirmFlag
-                        if (-not $ok) { throw "No confirmed_locations.json row found for name $name (category fugitive)." }
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$name.ToUpper(); confirmed=$confirmFlag } -Compress)
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
-                ($path -eq '/api/eagle-confirm' -and $method -eq 'POST') {
-                    # Admin-only manual confirm from the dashboard's Eagle Statue popup
-                    # checkbox (see EFFIGY_CONFIRM_ENABLED / toggleEagleConfirm in
-                    # dashboard.html) -- same shape/pattern as /api/effigy-confirm, keyed by
-                    # name.
-                    try {
-                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
-                        $name = [string]$body.name
-                        if (-not $name) { throw "No name provided." }
-                        $confirmFlag = [bool]$body.confirmed
-                        $ok = Set-MapConfirmVerified 'eagle' $null $null $name $confirmFlag
-                        if (-not $ok) { throw "No confirmed_locations.json row found for name $name (category eagle)." }
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$name.ToUpper(); confirmed=$confirmFlag } -Compress)
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
                 ($path -eq '/api/map-confirm' -and $method -eq 'POST') {
-                    # Consolidated single confirm endpoint (added Phase 4) -- body:
-                    # { category, key?, species?, name?, confirmed }. Not yet called by
-                    # dashboard.html (the six routes above still are); added now, ahead of
-                    # the client-side cutover, so it can be smoke-tested independently of
-                    # any dashboard.html change.
+                    # Admin-only manual confirm from a map marker popup checkbox (see
+                    # EFFIGY_CONFIRM_ENABLED / toggleMapConfirm in dashboard.html). Body:
+                    # { category, key?, species?, name?, confirmed }. Flips "verified"
+                    # directly on the matching confirmed_locations.json row via
+                    # Set-MapConfirmVerified. Replaced six separate per-category routes
+                    # (/api/effigy-confirm, /api/journal-confirm, /api/bounty-confirm,
+                    # /api/tower-confirm, /api/fugitive-confirm, /api/eagle-confirm), which
+                    # each wrote to their own *_confirmed_keys.json overlay file -- those
+                    # files are retired now that every route/client call goes through this
+                    # one, single-source-of-truth path.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $category = [string]$body.category

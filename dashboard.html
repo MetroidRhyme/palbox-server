@@ -3139,12 +3139,12 @@ var effigyLeaflet=null, effigyMarkerLayer=null, effigyLocations=null, effigyColl
 var _effigyAwaitingRoster=false;
 var _effigyPrefsWaitTries=0;
 var EFFIGY_MAX_RANK=353;
-// Admin-only "Confirm" checkbox in the effigy popup (see toggleEffigyConfirm below) --
+// Admin-only "Confirm" checkbox in the effigy popup (see toggleMapConfirm below) --
 // picking an effigy up in-game does NOT prove the scraped coordinate is right, so found
 // and confirmed are deliberately separate signals (see renderEffigyMap's status logic).
 // Flipped to false for the public site by gen_public_site.ps1, same convention as
 // PREFS_ENABLED but in reverse (true on admin, false on public) -- the confirm-write route
-// (see toggleEffigyConfirm below) only exists in the Manager's own HttpListener, not in
+// (see toggleMapConfirm below) only exists in the Manager's own HttpListener, not in
 // _worker.js. (Route path spelled out there, not here, so this comment doesn't itself trip
 // gen_public_site.ps1's leaked-admin-route scan.)
 var EFFIGY_CONFIRM_ENABLED=true;
@@ -3319,90 +3319,44 @@ function toggleBountyManual(species){
   savePrefs();
 }
 
-// Admin-only manual effigy confirm (see EFFIGY_CONFIRM_ENABLED above) -- persisted server-side
-// to effigy_confirmed_keys.json via /api/effigy-confirm, separate from confirmed_locations.json
-// (which stays owned exclusively by the Desktop dataminer script). Unlike toggleBountyManual
-// this hits the Manager directly rather than /api/prefs, since it's an admin curation action,
-// not a per-player self-report.
-function toggleEffigyConfirm(key,checked){
+// Admin-only manual confirm from a map marker popup checkbox (see EFFIGY_CONFIRM_ENABLED
+// above) -- one shared function (Phase 4B) for all six categories with a confirm UI,
+// replacing toggleEffigyConfirm/toggleJournalConfirm/toggleBountyConfirm/
+// toggleTowerConfirm/toggleFugitiveConfirm/toggleEagleConfirm. Posts to the consolidated
+// /api/map-confirm endpoint, which flips "verified" directly on the matching
+// confirmed_locations.json row (the six *_confirmed_keys.json overlay files this used to
+// write are retired). "ident" is whatever identity that category's pins are keyed by --
+// key for effigy/journal, species for bounty, name for tower/fugitive/eagle -- matching
+// exactly what Get-MapCategoryJson emits, so the round-trip always resolves.
+function toggleMapConfirm(category,ident,checked){
   if(!EFFIGY_CONFIRM_ENABLED)return;
-  fetch('/api/effigy-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,confirmed:checked})})
+  var body={category:category,confirmed:checked};
+  if(category==='effigy'||category==='journal') body.key=ident;
+  else if(category==='bounty') body.species=ident;
+  else body.name=ident;
+  fetch('/api/map-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
     .then(function(){
-      if(effigyLocations&&effigyLocations[key]) effigyLocations[key].m=checked;
+      if(category==='effigy'){
+        if(effigyLocations&&effigyLocations[ident]) effigyLocations[ident].m=checked;
+      } else if(category==='journal'){
+        var je=journalLocations&&journalLocations.find(function(j){return j.key&&j.key.toUpperCase()===ident.toUpperCase();});
+        if(je) je.m=checked;
+      } else if(category==='bounty'){
+        var be=bossLocations&&bossLocations.find(function(b){return b.species&&b.species.toUpperCase()===ident.toUpperCase();});
+        if(be) be.m=checked;
+      } else if(category==='tower'){
+        var te=towerLocations&&towerLocations.find(function(t){return t.name&&t.name.toUpperCase()===ident.toUpperCase();});
+        if(te) te.m=checked;
+      } else if(category==='fugitive'){
+        var he=wantedFugitiveLocations&&wantedFugitiveLocations.find(function(h){return h.name&&h.name.toUpperCase()===ident.toUpperCase();});
+        if(he) he.m=checked;
+      } else if(category==='eagle'){
+        var ee=eagleStatueLocations&&eagleStatueLocations.find(function(es){return es.name&&es.name.toUpperCase()===ident.toUpperCase();});
+        if(ee) ee.m=checked;
+      }
       renderEffigyMap();
-      toast(checked?'Effigy confirmed.':'Effigy unconfirmed.','success');
-    })
-    .catch(function(){ toast('Failed to update confirm status.','error'); });
-}
-// Same manual-confirm pattern as toggleEffigyConfirm above, for the Journal popup checkbox --
-// persisted to journal_confirmed_keys.json via /api/journal-confirm, unioned into
-// Merge-ConfirmedJournals server-side.
-function toggleJournalConfirm(key,checked){
-  if(!EFFIGY_CONFIRM_ENABLED)return;
-  fetch('/api/journal-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,confirmed:checked})})
-    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
-    .then(function(){
-      var entry=journalLocations&&journalLocations.find(function(j){return j.key&&j.key.toUpperCase()===key.toUpperCase();});
-      if(entry) entry.m=checked;
-      renderEffigyMap();
-      toast(checked?'Journal confirmed.':'Journal unconfirmed.','success');
-    })
-    .catch(function(){ toast('Failed to update confirm status.','error'); });
-}
-// Same manual-confirm pattern, keyed by species instead of a GUID, for the Field Boss popup
-// checkbox -- persisted to bounty_confirmed_species.json via /api/bounty-confirm, unioned
-// into Merge-ConfirmedBounty server-side.
-function toggleBountyConfirm(species,checked){
-  if(!EFFIGY_CONFIRM_ENABLED)return;
-  fetch('/api/bounty-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({species:species,confirmed:checked})})
-    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
-    .then(function(){
-      var entry=bossLocations&&bossLocations.find(function(b){return b.species&&b.species.toUpperCase()===species.toUpperCase();});
-      if(entry) entry.m=checked;
-      renderEffigyMap();
-      toast(checked?'Field Boss location confirmed.':'Field Boss location unconfirmed.','success');
-    })
-    .catch(function(){ toast('Failed to update confirm status.','error'); });
-}
-// Same manual-confirm pattern, keyed by NAME (paldb's scrape has no GUID/species id for
-// these three) -- Tower/Wanted Fugitive/Eagle Statue popup checkboxes, persisted to
-// tower_confirmed_keys.json/fugitive_confirmed_keys.json/eagle_confirmed_keys.json via
-// /api/tower-confirm//api/fugitive-confirm//api/eagle-confirm, unioned into
-// Merge-ConfirmedTowers/WantedFugitives/EagleStatues server-side.
-function toggleTowerConfirm(name,checked){
-  if(!EFFIGY_CONFIRM_ENABLED)return;
-  fetch('/api/tower-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,confirmed:checked})})
-    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
-    .then(function(){
-      var entry=towerLocations&&towerLocations.find(function(t){return t.name&&t.name.toUpperCase()===name.toUpperCase();});
-      if(entry) entry.m=checked;
-      renderEffigyMap();
-      toast(checked?'Tower confirmed.':'Tower unconfirmed.','success');
-    })
-    .catch(function(){ toast('Failed to update confirm status.','error'); });
-}
-function toggleFugitiveConfirm(name,checked){
-  if(!EFFIGY_CONFIRM_ENABLED)return;
-  fetch('/api/fugitive-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,confirmed:checked})})
-    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
-    .then(function(){
-      var entry=wantedFugitiveLocations&&wantedFugitiveLocations.find(function(h){return h.name&&h.name.toUpperCase()===name.toUpperCase();});
-      if(entry) entry.m=checked;
-      renderEffigyMap();
-      toast(checked?'Wanted Fugitive confirmed.':'Wanted Fugitive unconfirmed.','success');
-    })
-    .catch(function(){ toast('Failed to update confirm status.','error'); });
-}
-function toggleEagleConfirm(name,checked){
-  if(!EFFIGY_CONFIRM_ENABLED)return;
-  fetch('/api/eagle-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,confirmed:checked})})
-    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
-    .then(function(){
-      var entry=eagleStatueLocations&&eagleStatueLocations.find(function(es){return es.name&&es.name.toUpperCase()===name.toUpperCase();});
-      if(entry) entry.m=checked;
-      renderEffigyMap();
-      toast(checked?'Eagle Statue confirmed.':'Eagle Statue unconfirmed.','success');
+      toast(checked?'Location confirmed.':'Location unconfirmed.','success');
     })
     .catch(function(){ toast('Failed to update confirm status.','error'); });
 }
@@ -3523,7 +3477,7 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
     m.on('popupopen',function(e){
       var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+chkId);
       if(!box) return;
-      box.onchange=function(){ toggleEffigyConfirm(id,box.checked); };
+      box.onchange=function(){ toggleMapConfirm('effigy',id,box.checked); };
     });
   }
   return m;
@@ -3552,7 +3506,7 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
       jm.on('popupopen',function(e){
         var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+jChkId);
         if(!box) return;
-        box.onchange=function(){ toggleJournalConfirm(j.key,box.checked); };
+        box.onchange=function(){ toggleMapConfirm('journal',j.key,box.checked); };
       });
     }
   }
@@ -3596,7 +3550,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
       }
       var box=el.querySelector('#'+bChkId);
       if(box){
-        box.onchange=function(){ toggleBountyConfirm(b.species,box.checked); };
+        box.onchange=function(){ toggleMapConfirm('bounty',b.species,box.checked); };
       }
     });
     if(clickable) bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
@@ -3624,7 +3578,7 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
     hm.on('popupopen',function(e){
       var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+hChkId);
       if(!box) return;
-      box.onchange=function(){ toggleFugitiveConfirm(h.name,box.checked); };
+      box.onchange=function(){ toggleMapConfirm('fugitive',h.name,box.checked); };
     });
   }
   return hm;
@@ -3650,7 +3604,7 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
     esm.on('popupopen',function(e){
       var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+esChkId);
       if(!box) return;
-      box.onchange=function(){ toggleEagleConfirm(es.name,box.checked); };
+      box.onchange=function(){ toggleMapConfirm('eagle',es.name,box.checked); };
     });
   }
   return esm;
@@ -3675,7 +3629,7 @@ function buildTowerMarker(t,confirmed){
     tm.on('popupopen',function(e){
       var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+tChkId);
       if(!box) return;
-      box.onchange=function(){ toggleTowerConfirm(t.name,box.checked); };
+      box.onchange=function(){ toggleMapConfirm('tower',t.name,box.checked); };
     });
   }
   return tm;

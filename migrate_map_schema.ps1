@@ -1,17 +1,13 @@
 # migrate_map_schema.ps1
-# Phase 2 of the map-data consolidation plan. Backfills confirmed_locations.json with
-# a "category" field (effigy|journal|bounty|fugitive|eagle|tower|npc|landmark) and an
-# "origin" field (scraped|live|manual), then folds the six *_confirmed_keys.json /
-# bounty_confirmed_species.json overlay files into the single "verified" flag they were
-# always a parallel signal for. The overlay files themselves are NOT deleted yet -- the
-# routes still union them in on top of confirmed_locations.json's own verified flag, so
-# leaving them in place keeps output unchanged even where an overlay key had no matching
-# store row (a defensive branch below inserts one; in practice this never fires against
-# today's data -- every current overlay key already has a store row).
+# Originally Phase 2 of the map-data consolidation plan: backfills confirmed_locations.json
+# with a "category" field (effigy|journal|bounty|fugitive|eagle|tower|npc|landmark) and an
+# "origin" field (scraped|live|manual) on any entry missing them -- which, going forward,
+# should only ever be a fresh row inserted by something that predates Get-CategoryForEntry
+# (e.g. the Desktop dataminer script, which doesn't stamp these fields itself). Kept around
+# as a re-runnable safety net, not a one-time script -- re-run it any time an uncategorized
+# entry shows up.
 #
-# Idempotent: re-running with -Apply after a successful apply reports zero further
-# changes (category/origin already set are left alone; verified promotions only ever
-# flip false->true, never touch an already-true entry).
+# Idempotent: re-running with -Apply after a successful apply reports zero further changes.
 #
 # Usage: powershell -File migrate_map_schema.ps1          (dry run, prints the report)
 #        powershell -File migrate_map_schema.ps1 -Apply   (writes confirmed_locations.json)
@@ -61,110 +57,11 @@ foreach ($c in $confirmed) {
     }
 }
 
-# ── Step 4: fold the six manual-confirm overlay files into verified:true ───────────────
-# Each overlay file uses a DIFFERENT identity than the others (matching each one's own
-# former Merge-Confirmed* consumer, now retired -- see Phase 4): effigy/journal by key,
-# bounty by species, tower/fugitive/eagle by name. Overlay files are NOT deleted here --
-# see the file header. This reader used to be map_data_lib.ps1's own Get-ManualConfirmSet,
-# but the live Manager stopped using the overlay files in Phase 4, so it moved here --
-# this script is the only remaining reason to parse them at all.
-function Get-ManualConfirmSet([string]$fileName) {
-    $keys = @{}
-    $f = Join-Path $Root $fileName
-    if (Test-Path -LiteralPath $f) {
-        try {
-            $arr = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($null -eq $arr) { $arr = @() }
-            if ($arr -is [string]) { $arr = @($arr) }
-            foreach ($k in $arr) { if ($k) { $keys[$k.ToUpper()] = $true } }
-        } catch {}
-    }
-    return $keys
-}
-$overlayPromotions = @{}
-$overlayInserts = @{}
-
-function Backfill-ByKey([string]$categoryLabel, [string]$fileName) {
-    $overlayPromotions[$categoryLabel] = 0
-    $overlayInserts[$categoryLabel] = 0
-    $keys = Get-ManualConfirmSet $fileName
-    if ($keys.Count -eq 0) { return }
-    $byKey = @{}
-    foreach ($c in $confirmed) { if ($c.key) { $byKey[$c.key.ToUpper()] = $c } }
-    foreach ($k in $keys.Keys) {
-        if ($byKey.ContainsKey($k)) {
-            $c = $byKey[$k]
-            if ($c.verified -ne $true) { $c.verified = $true; $overlayPromotions[$categoryLabel]++ }
-        } else {
-            # Defensive-only branch: every overlay key in today's data already has a store
-            # row (checked by hand before writing this script), so this should never fire.
-            # If it ever does, insert a bare entry rather than silently dropping the confirm.
-            $script:confirmed += [pscustomobject]@{
-                key = $k; category = $categoryLabel; name = $null; gx = $null; gy = $null
-                x = $null; y = $null; species = $null; lv = $null; source = $null
-                origin = 'manual'; verified = $true
-            }
-            $overlayInserts[$categoryLabel]++
-        }
-    }
-}
-
-function Backfill-ByName([string]$categoryLabel, [string]$fileName) {
-    $overlayPromotions[$categoryLabel] = 0
-    $overlayInserts[$categoryLabel] = 0
-    $names = Get-ManualConfirmSet $fileName
-    if ($names.Count -eq 0) { return }
-    $byName = @{}
-    foreach ($c in $confirmed) { if ($c.name) { $byName[$c.name.ToUpper()] = $c } }
-    foreach ($n in $names.Keys) {
-        if ($byName.ContainsKey($n)) {
-            $c = $byName[$n]
-            if ($c.verified -ne $true) { $c.verified = $true; $overlayPromotions[$categoryLabel]++ }
-        } else {
-            $script:confirmed += [pscustomobject]@{
-                key = $null; category = $categoryLabel; name = $n; gx = $null; gy = $null
-                x = $null; y = $null; species = $null; lv = $null; source = $null
-                origin = 'manual'; verified = $true
-            }
-            $overlayInserts[$categoryLabel]++
-        }
-    }
-}
-
-function Backfill-BySpecies([string]$fileName) {
-    $overlayPromotions['bounty'] = 0
-    $overlayInserts['bounty'] = 0
-    $species = Get-ManualConfirmSet $fileName
-    if ($species.Count -eq 0) { return }
-    $anonMap = Get-AnonymousBossKeyMap
-    $bySpecies = @{}
-    foreach ($c in $confirmed) {
-        if (-not $c.key) { continue }
-        $sp = $anonMap[$c.key.ToUpper()]
-        if (-not $sp) { $sp = $c.key }
-        $bySpecies[$sp.ToUpper()] = $c
-    }
-    foreach ($sp in $species.Keys) {
-        if ($bySpecies.ContainsKey($sp)) {
-            $c = $bySpecies[$sp]
-            if ($c.verified -ne $true) { $c.verified = $true; $overlayPromotions['bounty']++ }
-        } else {
-            $script:confirmed += [pscustomobject]@{
-                key = $null; category = 'bounty'; name = $null; gx = $null; gy = $null
-                x = $null; y = $null; species = $sp; lv = $null; source = $null
-                origin = 'manual'; verified = $true
-            }
-            $overlayInserts['bounty']++
-        }
-    }
-}
-
-Backfill-ByKey 'effigy' 'effigy_confirmed_keys.json'
-Backfill-ByKey 'journal' 'journal_confirmed_keys.json'
-Backfill-BySpecies 'bounty_confirmed_species.json'
-Backfill-ByName 'tower' 'tower_confirmed_keys.json'
-Backfill-ByName 'fugitive' 'fugitive_confirmed_keys.json'
-Backfill-ByName 'eagle' 'eagle_confirmed_keys.json'
+# Step 4 (fold the six *_confirmed_keys.json / bounty_confirmed_species.json overlay
+# files into verified:true) applied once and is gone -- those files were deleted in
+# Phase 4B once every route/client call moved to the single confirmed_locations.json
+# "verified" flag. See git history (Phase 2 commit) for that step if it's ever needed
+# as a reference.
 
 # ── Accounting report ───────────────────────────────────────────────────────────
 $finalTotal = $confirmed.Count
@@ -173,9 +70,6 @@ $categoryPartition = $confirmed | Group-Object category | Sort-Object Count -Des
 
 Write-Step "baseline: total=$baselineTotal verifiedTrue=$baselineVerifiedTrue"
 Write-Step "category backfilled on $categoryBackfilled entries; origin backfilled on $originBackfilled entries"
-foreach ($k in $overlayPromotions.Keys) {
-    Write-Step "overlay fold [$k]: $($overlayPromotions[$k]) promoted to verified:true, $($overlayInserts[$k]) new rows inserted"
-}
 Write-Step "category partition:"
 $categoryPartition | ForEach-Object { Write-Step ("  {0,-10} {1,4}" -f $_.Name, $_.Count) }
 $partitionSum = ($categoryPartition | Measure-Object Count -Sum).Sum

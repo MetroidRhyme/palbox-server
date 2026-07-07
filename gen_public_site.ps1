@@ -152,10 +152,14 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
 # /api/syndicate-bosses and /api/player-datamine (routes with no public equivalent --
 # caught by the leaked-route scan further down). switchView's own call site is a
 # typeof-guarded no-op once this is gone (see the shared source), same as the vdm null
-# guard already covers its display-toggle line.
+# guard already covers its display-toggle line. Anchored on the "-- Data Mine tab --"
+# section-header comment rather than a specific variable name -- a prior refactor
+# (pre-2026-07-07, before the anchor was ever exercised by an actual public-site build)
+# renamed the old dmBountyRoster var this used to key off, silently breaking this without
+# anyone noticing since gen_public_site.ps1 hadn't been run end-to-end in the meantime.
 $before = $html
 $html = [System.Text.RegularExpressions.Regex]::Replace(
-  $html, 'var dmBountyRoster=null;.*?(?=function renderEffigyMap\(\))', '', $rxOpts)
+  $html, '// -- Data Mine tab -+.*?(?=function renderEffigyMap\(\))', '', $rxOpts)
 if ($html -eq $before) { throw "Data Mine JS block was not found to remove" }
 
 # (4) Replace the boot sequence: no live polling, just load the data views. The data-age
@@ -186,14 +190,16 @@ $before = $html
 $html = $html.Replace('var EFFIGY_CONFIRM_ENABLED=true;', 'var EFFIGY_CONFIRM_ENABLED=false;')
 if ($html -eq $before) { throw "effigy confirm: EFFIGY_CONFIRM_ENABLED flag not found to disable" }
 
-# toggleEffigyConfirm itself is dead code on the public site (its own EFFIGY_CONFIRM_ENABLED
-# check above already no-ops it) but its fetch('/api/effigy-confirm') literal would still
+# toggleMapConfirm itself is dead code on the public site (its own EFFIGY_CONFIRM_ENABLED
+# check above already no-ops it) but its fetch('/api/map-confirm') literal would still
 # trip the generic leaked-route scan further down, so remove the whole function rather than
-# whitelist a route that genuinely doesn't exist in _worker.js.
+# whitelist a route that genuinely doesn't exist in _worker.js. (Was six separate
+# toggle*Confirm functions pre-Phase-4B; consolidated into this one shared function, whose
+# comment starts with the same anchor text the regex below still looks for.)
 $before = $html
 $html = [System.Text.RegularExpressions.Regex]::Replace(
-  $html, '// Admin-only manual effigy confirm.*?(?=// Global visibility filter for the effigy map)', '', $rxOpts)
-if ($html -eq $before) { throw "toggleEffigyConfirm function was not found to remove" }
+  $html, '// Admin-only manual confirm from a map marker popup checkbox.*?(?=// Global visibility filter for the effigy map)', '', $rxOpts)
+if ($html -eq $before) { throw "toggleMapConfirm function was not found to remove" }
 
 # (4b) Make the public Pals view self-heal and stay refreshable. The Pals "Reload"
 # button was removed in (2b), so the only Pals load is the boot's guarded fetch -- if
