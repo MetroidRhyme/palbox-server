@@ -4,14 +4,18 @@
         "name":  null,
         "gx":  263,
         "gy":  -210,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "099440764403D1508D9BADADF4848697",
         "name":  "Tower of the PAL Genetic Research Unit",
         "gx":  -148,
         "gy":  447,
-        "verified":  true
+        "verified":  true,
+        "category":  "tower",
+        "origin":  "manual"
     },
     {
         "key":  "0B9C64E849BA38D328DD28AA02FE30BB",
@@ -19,336 +23,432 @@
         "gx":  -1294,
         "gy":  -1669,
         "source":  "FastTravelPointUnlockFlag",
-        "verified":  true
+        "verified":  true,
+        "category":  "tower",
+        "origin":  "live"
     },
     {
         "key":  "11BA233D4DF76C83A529DF83EAFDF23A",
         "name":  "Skilled Islander",
         "gx":  158,
         "gy":  -466,
-        "verified":  true
+        "verified":  true,
+        "category":  "npc",
+        "origin":  "manual"
     },
     {
         "key":  "1DC0898A45ED48935297D297D0F72718",
         "name":  null,
         "gx":  196,
         "gy":  2,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "1_10_PLAIN_F_BOSS_FAIRYDRAGON",
         "name":  "Chillet",
         "gx":  173,
         "gy":  -418,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "20EBCF62447D3E25EAE3FAA4B28BC611",
         "name":  null,
         "gx":  -676,
         "gy":  -239,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "229CFE1641228D892249A0A948AA8B79",
         "name":  null,
         "gx":  135,
         "gy":  -355,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "236E7DD447C9BD09C08D319E5CF6EDCF",
         "name":  null,
         "gx":  -634,
         "gy":  -1032,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "2801DF834644293C3766F19AE7052C12",
         "name":  "Cautious PIDF Officer",
         "gx":  433,
         "gy":  -347,
-        "verified":  true
+        "verified":  true,
+        "category":  "npc",
+        "origin":  "manual"
     },
     {
         "key":  "2BC5E46049E69D3549CFB58948BE3288",
         "name":  "Sand Dunes Entrance",
         "gx":  282,
         "gy":  159,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "2D2B0E174E5D7B24F0C3EE802D1B86E0",
         "name":  null,
         "gx":  174,
         "gy":  -452,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "2DE1702048A1D4A82126168C49BE51A9",
         "name":  "Mossanda Forest",
         "gx":  233,
         "gy":  -118,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "32B472714CB2984C4A2EF8B1EF716838",
         "name":  null,
         "gx":  268,
         "gy":  -315,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "3A84A3DD43C34B936CE6F18842A6FE1D",
         "name":  "Emberstone Plateau",
         "gx":  -720,
         "gy":  -1195,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "40441363454B4F6C391848989032BA49",
         "name":  null,
         "gx":  -473,
         "gy":  -530,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "41727100495D21DC905D309C53989914",
         "name":  "Fort Ruins",
         "gx":  182,
         "gy":  -390,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "426A93FF4B8C31DF8E9D4E8BF331C1E5",
         "name":  null,
         "gx":  514,
         "gy":  -90,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "49C3516D459F15C70ABEE88CD7F4D331",
         "name":  "Moonflower Tower Entrance",
         "gx":  -603,
         "gy":  214,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "513E166044565A0BD3360F94142577E8",
         "name":  "Marsh Island",
         "gx":  431,
         "gy":  -346,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "52C921BC4C9C65C0FEBA0788C18254F2",
         "name":  "Cowardly Victim",
         "gx":  425,
         "gy":  -346,
-        "verified":  true
+        "verified":  true,
+        "category":  "npc",
+        "origin":  "manual"
     },
     {
         "key":  "5669E36645C97EE9F38D308738ED30A7",
         "name":  "Frostbitten Isle",
         "gx":  -80,
         "gy":  -946,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "596996B948716D3FD2283C8B5C6E829C",
         "name":  "Sea Breeze Archipelago - Castaway Beach",
         "gx":  -99,
         "gy":  -712,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "5970E8E648D2A83AFDFF7C9151D9BEF5",
         "name":  "Eternal Pyre Tower Entrance",
         "gx":  -594,
         "gy":  -531,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "603ED0CD4CFB9AFDC9E11F805594CCE5",
         "name":  "Rayne Syndicate Tower Entrance",
         "gx":  118,
         "gy":  -423,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "6231802D40C81C00445379AE238D9F90",
         "name":  "Eastern Wild Island",
         "gx":  549,
         "gy":  -103,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "6282FE1E4029EDCDB14135AA4C171E4C",
         "name":  "Desolate Church",
         "gx":  63,
         "gy":  -417,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "65B10BB14ABDA9C2109167B21901D195",
         "name":  "PIDF Tower Entrance",
         "gx":  542,
         "gy":  334,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "665B347C4A056FE1245ED5A8F9D39DE6",
         "name":  null,
         "gx":  180,
         "gy":  8,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "6683A13E48EF97BBDE3D2FAA7CAAADA0",
         "name":  null,
         "gx":  561,
         "gy":  239,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "6E03F8464BAD9E458B843AA30BE1CC8F",
         "name":  "Plateau of Beginnings",
         "gx":  240,
         "gy":  -513,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "7C5E91514F6E84B0C1DEFFB52C7C4DBA",
         "name":  "Ruined Fortress City",
         "gx":  -561,
         "gy":  -247,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "7D3A585F4CEFCAFE7C262394D6DEA845",
         "name":  null,
         "gx":  204,
         "gy":  -453,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_FOREST_FBOSS_2",
         "name":  "Warsect",
         "gx":  161,
         "gy":  -223,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_FOREST_FBOSS_3",
         "name":  "Verdash",
         "gx":  285,
         "gy":  10,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_FOREST_FBOSS_4",
         "name":  "Vaelet",
         "gx":  129,
         "gy":  -51,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_1",
         "name":  "Mammorest",
         "gx":  189,
         "gy":  -478,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_11",
         "name":  "Bushi",
         "gx":  -116,
         "gy":  -491,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_13",
         "name":  "Jormuntide",
         "gx":  350,
         "gy":  -85,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_18",
         "name":  "Grintale",
         "gx":  356,
         "gy":  -246,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_2",
         "name":  "Kingpaca",
         "gx":  50,
         "gy":  -461,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_20",
         "name":  "Katress",
         "gx":  242,
         "gy":  -332,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_21",
         "name":  "Sweepa",
         "gx":  -227,
         "gy":  -593,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_23",
         "name":  "Univolt",
         "gx":  -117,
         "gy":  -543,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_24",
         "name":  "Broncherry",
         "gx":  -222,
         "gy":  -669,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_29",
         "name":  "Wumpo Botan",
         "gx":  449,
         "gy":  -51,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_9",
         "name":  "Penking",
         "gx":  114,
         "gy":  -352,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_2_DESSERT_FBOSS_3",
         "name":  "Menasting",
         "gx":  516,
         "gy":  102,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_3_VOLCANO_FBOSS_1",
         "name":  "Jetragon",
         "gx":  -789,
         "gy":  -321,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_3_VOLCANO_FBOSS_3",
         "name":  "Blazamut",
         "gx":  -442,
         "gy":  -561,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_15",
@@ -356,7 +456,9 @@
         "gx":  -1341,
         "gy":  -1429,
         "source":  "NormalBossDefeatFlag",
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "live"
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_18",
@@ -364,7 +466,9 @@
         "gx":  -1021,
         "gy":  -1448,
         "source":  "NormalBossDefeatFlag",
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "live"
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_20",
@@ -372,56 +476,72 @@
         "gx":  -1343,
         "gy":  -1580,
         "source":  "NormalBossDefeatFlag",
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "live"
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_4",
         "name":  "Faleris Aqua",
         "gx":  -628,
         "gy":  -1048,
-        "verified":  true
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "834398374941399E503F70BFD132AE60",
         "name":  "Bounty Intel Dealer",
         "gx":  148,
         "gy":  -209,
-        "verified":  true
+        "verified":  true,
+        "category":  "npc",
+        "origin":  "manual"
     },
     {
         "key":  "8565CC4242BEE5A8771DEB9693B2EE35",
         "name":  null,
         "gx":  -813,
         "gy":  -430,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "866881DB443444AA7F4E7C8E5DCDAA29",
         "name":  "Marsh Island Church Ruins",
         "gx":  399,
         "gy":  -277,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "8BCDE3654504C5823162BE83EB674216",
         "name":  null,
         "gx":  67,
         "gy":  -409,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "8CA5E9774FF1BBC1156ABCA09E616480",
         "name":  "Small Cove",
         "gx":  -205,
         "gy":  -546,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "8D664B8B4EE1FACD644F0CB24820546B",
         "name":  null,
         "gx":  263,
         "gy":  -210,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "902C96F44BC84002E39B52ACBFC61452",
@@ -429,14 +549,18 @@
         "gx":  -1389,
         "gy":  -1471,
         "source":  "FastTravelPointUnlockFlag",
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "live"
     },
     {
         "key":  "904C55D64A3780944F2FA19BB427D8AF",
         "name":  "Expedition Survivor",
         "gx":  241,
         "gy":  -509,
-        "verified":  true
+        "verified":  true,
+        "category":  "npc",
+        "origin":  "manual"
     },
     {
         "key":  "9521FEBF4A6D0D02AE9F80AE9513B99C",
@@ -444,196 +568,252 @@
         "gx":  -1287,
         "gy":  -1664,
         "source":  "FastTravelPointUnlockFlag",
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "live"
     },
     {
         "key":  "979BF2044C8E8FE559B598A95A83EDE3",
         "name":  "Small Settlement",
         "gx":  73,
         "gy":  -486,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "9B171E8246372372D29CDCAB3B1055A2",
         "name":  null,
         "gx":  243,
         "gy":  -201,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "9FBB93D84811BE424A37C391DBFBB476",
         "name":  "Sealed Realm of the Frozen Wings",
         "gx":  119,
         "gy":  -336,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "A1BC65AA445619EF338E0388BC010648",
         "name":  "Foot of the Volcano",
         "gx":  -352,
         "gy":  -491,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "A277AE6341EF40D84D711EA52303353F",
         "name":  "Sealed Realm of the Swift",
         "gx":  286,
         "gy":  18,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "A360858E448AF927AF914D8E9D74E416",
         "name":  null,
         "gx":  157,
         "gy":  -466,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "A472FE0E4AC819A740B43F9DE27AEDAB",
         "name":  null,
         "gx":  -279,
         "gy":  207,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "A78ABED2498158E6958D6AABA01D0D8A",
         "name":  null,
         "gx":  -627,
         "gy":  -532,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "A893B952423E429AA45A06B615A582FA",
         "name":  "Moonflower Tower",
         "gx":  -597,
         "gy":  206,
-        "verified":  true
+        "verified":  true,
+        "category":  "tower",
+        "origin":  "manual"
     },
     {
         "key":  "ACAE5FB04D48DE4197443E9C0993086B",
         "name":  "Sealed Realm of the Guardian",
         "gx":  120,
         "gy":  -62,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "AEC6234A4075A195914E5080A42E97D4",
         "name":  null,
         "gx":  -772,
         "gy":  -163,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "AECFED0D41AFEE11F30B4F9687BC3243",
         "name":  "Mount Obsidian - Midpoint",
         "gx":  -497,
         "gy":  -444,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "B1AFFBA0405900BAA6649C8D7A338C4E",
         "name":  null,
         "gx":  -116,
         "gy":  136,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "B639B7ED4EE18A7AA09BA189EA703032",
         "name":  "Tower of the Brothers of the Eternal Pyre",
         "gx":  -588,
         "gy":  -518,
-        "verified":  true
+        "verified":  true,
+        "category":  "tower",
+        "origin":  "manual"
     },
     {
         "key":  "B93B28214BED86A7C1E2FA8375853BF2",
         "name":  "Desert Runaway",
         "gx":  547,
         "gy":  -115,
-        "verified":  true
+        "verified":  true,
+        "category":  "npc",
+        "origin":  "manual"
     },
     {
         "key":  "BA6D1B934AFB81083ABB13A4A0973798",
         "name":  null,
         "gx":  162,
         "gy":  -8,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "BDEF577546E59F347439598FE82E8E8F",
         "name":  null,
         "gx":  -586,
         "gy":  -236,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "BF8B123244ADB794A06EA8A10503FBDD",
         "name":  "Gobfin\u0027s Turf",
         "gx":  149,
         "gy":  -207,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_FEMALE_SOLDIER03",
         "name":  "Aloha",
         "gx":  -592,
         "gy":  -235,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_HUNTER_RIFLE",
         "name":  "Hawk",
         "gx":  52,
         "gy":  -513,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_MALE_DESERTPEOPLE",
         "name":  "Phantom",
         "gx":  533,
         "gy":  133,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_MALE_PEOPLE",
         "name":  "Dyna",
         "gx":  349,
         "gy":  -7,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_MALE_PEOPLE03",
         "name":  "Scoot",
         "gx":  -15,
         "gy":  -482,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_MALE_PEOPLE2",
         "name":  "Mite",
         "gx":  349,
         "gy":  -2,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_MALE_SOLDIER02",
         "name":  "Dart",
         "gx":  268,
         "gy":  -216,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_MALE_TRADER01",
         "name":  "Skim",
         "gx":  -90,
         "gy":  144,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_NINJA",
         "name":  "Fumble",
         "gx":  162,
         "gy":  -2,
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_VIKINGELITE",
@@ -641,203 +821,261 @@
         "gx":  -1386,
         "gy":  -1485,
         "source":  "NormalBossDefeatFlag",
-        "verified":  true
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "live"
     },
     {
         "key":  "CB436F1A4047E5852B9500BD3694DD6B",
         "name":  null,
         "gx":  151,
         "gy":  -14,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "CBB18C5D4F5766E1F0068394325B79D7",
         "name":  null,
         "gx":  -620,
         "gy":  -1056,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "D1917BED4C918F31E082C4872AC226FA",
         "name":  null,
         "gx":  191,
         "gy":  -378,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "D27AFCAD472164F000D33A8D8B61FE8B",
         "name":  "Tower of the Rayne Syndicate",
         "gx":  111,
         "gy":  -431,
-        "verified":  true
+        "verified":  true,
+        "category":  "tower",
+        "origin":  "manual"
     },
     {
         "key":  "D84FBE7D4670D6DE3B559992E1BC30B0",
         "name":  null,
         "gx":  -359,
         "gy":  -495,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "D979B15740FF4660777D4D9BC1C4BA5E",
         "name":  null,
         "gx":  -588,
         "gy":  -521,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "DA1E148D43AC682FF5EC868DEA164738",
         "name":  null,
         "gx":  -210,
         "gy":  -537,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "DAY-XX",
         "name":  "Castaway\u0027s Journal - Day XX",
         "gx":  151,
         "gy":  -465,
-        "verified":  true
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "DAY1-1",
         "name":  "Castaway\u0027s Journal - Day 1-1",
         "gx":  259,
         "gy":  -522,
-        "verified":  true
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "DAY2",
         "name":  "Castaway\u0027s Journal - Day 2",
         "gx":  239,
         "gy":  -506,
-        "verified":  true
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "DAY3",
         "name":  "Castaway\u0027s Journal - Day 3",
         "gx":  189,
         "gy":  -379,
-        "verified":  true
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "DAY8",
         "name":  "Castaway\u0027s Journal - Day 8",
         "gx":  64,
         "gy":  -418,
-        "verified":  true
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "DDBBFFAF43D9219AE68DF98744DF0831",
         "name":  "Grassy Behemoth Hills",
         "gx":  172,
         "gy":  -475,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "DF9FB9CB41B43052A9C74FA79A826A50",
         "name":  "Sealed Realm of the Swordmaster",
         "gx":  -109,
         "gy":  -467,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "E0819EFB41581AEAC3A029B0EE2FE195",
         "name":  "Genetic Research Unit Tower Entrance",
         "gx":  -139,
         "gy":  466,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "E0EB2FAF49B39196D9F71E9485CADA3E",
         "name":  null,
         "gx":  308,
         "gy":  -108,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "E188669B4A16E1ECDBE29F9C6EEAD15A",
         "name":  null,
         "gx":  -220,
         "gy":  -594,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "E2F0D38D4BF7A68056125382AFAA8E6C",
         "name":  null,
         "gx":  -845,
         "gy":  -397,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "E88379634CB5B6117DA2E7B8810BFE0A",
         "name":  "Tower of the Free Pal Alliance",
         "gx":  182,
         "gy":  30,
-        "verified":  true
+        "verified":  true,
+        "category":  "tower",
+        "origin":  "manual"
     },
     {
         "key":  "EC20140543804F88E0943F9A5C1765EB",
         "name":  null,
         "gx":  50,
         "gy":  -513,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "EC94023A4CA571FF0FD19E90944F4231",
         "name":  "Icy Weasel Hill",
         "gx":  4,
         "gy":  183,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "F382ADAE4259150BF994FF873ECF242B",
         "name":  "Ice Wind Island",
         "gx":  -352,
         "gy":  76,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "F6C005A14B38FE0B57F1C7869FD899CB",
         "name":  "Natural Bridge",
         "gx":  377,
         "gy":  -213,
-        "verified":  true
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "F8C928554A80DEBF93C25FAC6E5AD604",
         "name":  null,
         "gx":  169,
         "gy":  -350,
-        "verified":  true
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
     },
     {
         "key":  "FE45304945C418937F0909BAA0F2059A",
         "name":  "Mercenary With a Wounded Knee",
         "gx":  -107,
         "gy":  -711,
-        "verified":  true
+        "verified":  true,
+        "category":  "npc",
+        "origin":  "manual"
     },
     {
         "key":  "FE90632845114C7FBFA4669D071E285F",
         "name":  "Tower of the PIDF",
         "gx":  556,
         "gy":  335,
-        "verified":  true
+        "verified":  true,
+        "category":  "tower",
+        "origin":  "manual"
     },
     {
         "key":  "GRASSBOSS3",
         "name":  "Zoe Rayne\u0027s Diary - 3",
         "gx":  126,
         "gy":  -337,
-        "verified":  true
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "SNOWBOSS1",
         "name":  "Victor Ashford\u0027s Diary - 1",
         "gx":  -87,
         "gy":  178,
-        "verified":  true
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "PVPISLAND_003",
@@ -845,7 +1083,9 @@
         "gx":  -352,
         "gy":  76,
         "source":  "FindAreaFlagMap",
-        "verified":  true
+        "verified":  true,
+        "category":  "landmark",
+        "origin":  "live"
     },
     {
         "key":  "003DA14648849E95678E4E880BA4B034",
@@ -853,7 +1093,9 @@
         "gx":  53,
         "gy":  -532,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "0D0BF38A4E8EF27A57F81CB5154C4633",
@@ -861,7 +1103,9 @@
         "gx":  73,
         "gy":  -473,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "110687784959461EB701A7B840AFCF96",
@@ -869,7 +1113,9 @@
         "gx":  159,
         "gy":  -516,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "185ED6D6481B4FD30F48809CBC07EAEA",
@@ -877,7 +1123,9 @@
         "gx":  -1197,
         "gy":  -1460,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "19A530564F83F895127D029DDD163DC3",
@@ -885,7 +1133,9 @@
         "gx":  -1157,
         "gy":  -1316,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "26527B8B40F5D6D4662B829B571FEFC9",
@@ -893,7 +1143,9 @@
         "gx":  -1271,
         "gy":  -1043,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "316608D442787569D41144A031491606",
@@ -901,7 +1153,9 @@
         "gx":  33,
         "gy":  -519,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "3756EA4E49FC727B61583AAD0A6FBE82",
@@ -909,7 +1163,9 @@
         "gx":  -1344,
         "gy":  -1294,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "3F847C354A32E867CECD22B500E57477",
@@ -917,7 +1173,9 @@
         "gx":  -998,
         "gy":  -1292,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "4740AD0B4B13712D510794A5097B38A7",
@@ -925,7 +1183,9 @@
         "gx":  107,
         "gy":  -471,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "496F99A84756435AD43DB59DD0271049",
@@ -933,7 +1193,9 @@
         "gx":  126,
         "gy":  -373,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "511CC0CF44BDA87D8A619293B15D688B",
@@ -941,7 +1203,9 @@
         "gx":  -1042,
         "gy":  -1188,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "5229005A47071DDBB699E6B5DCC8B678",
@@ -949,7 +1213,9 @@
         "gx":  135,
         "gy":  -472,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "5C0F766B48E86E82378CA784F52E0205",
@@ -957,7 +1223,9 @@
         "gx":  -1160,
         "gy":  -1432,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "659CE9004E8006AF71E19A843F48DDD5",
@@ -965,7 +1233,9 @@
         "gx":  -1042,
         "gy":  -1352,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "66D7AD804F44D66D9D877ABEC77DA500",
@@ -973,7 +1243,9 @@
         "gx":  -1094,
         "gy":  -1131,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "6A4744544927D603CC8C3993B4411F89",
@@ -981,7 +1253,9 @@
         "gx":  60,
         "gy":  -498,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "6CA64B00492057D6B5D82D96C534472F",
@@ -989,7 +1263,9 @@
         "gx":  121,
         "gy":  -375,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "6DA046304988CBE0A654FEA13A0D1E2A",
@@ -997,7 +1273,9 @@
         "gx":  -1206,
         "gy":  -1360,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "6DF591234CACF474A68749BF080AC5BA",
@@ -1005,7 +1283,9 @@
         "gx":  243,
         "gy":  -558,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "6EC7B5894CD1AF8EBBA09BB806B5159E",
@@ -1013,7 +1293,9 @@
         "gx":  83,
         "gy":  -505,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "7070CECE49015A36A9D092AD8A4AD024",
@@ -1021,7 +1303,9 @@
         "gx":  -1219,
         "gy":  -1572,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "87687B8D4FC6DEB7D415F792DAC5BF2E",
@@ -1029,7 +1313,9 @@
         "gx":  -1124,
         "gy":  -1391,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "917957F04963F56B007F8080AF770EA8",
@@ -1037,7 +1323,9 @@
         "gx":  -1173,
         "gy":  -1215,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "94566DEA47B221ECE6A7BC832D9F14E1",
@@ -1045,7 +1333,9 @@
         "gx":  -1086,
         "gy":  -1245,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "9A2253484EF695D98D7487986C2164FB",
@@ -1053,7 +1343,9 @@
         "gx":  -1390,
         "gy":  -984,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "A3901924413BDAC32B37EDA4CDC24DF9",
@@ -1061,7 +1353,9 @@
         "gx":  -981,
         "gy":  -1341,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "A9589829471FDB190D97DC89537CE11F",
@@ -1069,7 +1363,9 @@
         "gx":  251,
         "gy":  -523,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "C18C1B0A4E34F0A1483D998B2118F10B",
@@ -1077,7 +1373,9 @@
         "gx":  92,
         "gy":  -520,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "C1AFE622464C5BF0D698D38F9D69FE3F",
@@ -1085,7 +1383,9 @@
         "gx":  267,
         "gy":  -484,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "C57C4CB2433B59C108A8DFA0B2677435",
@@ -1093,7 +1393,9 @@
         "gx":  -1107,
         "gy":  -1189,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "CAA1B5564F5DCF5DAEDAA7916159B6DA",
@@ -1101,7 +1403,9 @@
         "gx":  -1211,
         "gy":  -1354,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "CC98CCBC40FC74B5742D2A809F4ED532",
@@ -1109,7 +1413,9 @@
         "gx":  -1034,
         "gy":  -1351,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "CFC9A3D14E31E17FE75B48A24B328B21",
@@ -1117,7 +1423,9 @@
         "gx":  -1119,
         "gy":  -1173,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "D0E37650469F9F43842694A561D3E59A",
@@ -1125,7 +1433,9 @@
         "gx":  -1212,
         "gy":  -1299,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "D8E69F7C4D62570A8E02A6A1874A29E3",
@@ -1133,7 +1443,9 @@
         "gx":  -1175,
         "gy":  -1215,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "DC5827504BE728DD0555D49103B28AFB",
@@ -1141,7 +1453,9 @@
         "gx":  -1276,
         "gy":  -1354,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "E244D63B46F1B9C1966BF58EA71B3B7D",
@@ -1149,7 +1463,9 @@
         "gx":  -1244,
         "gy":  -1520,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "E31E6A634C7F84EB6132BDB1AB6595E4",
@@ -1157,7 +1473,9 @@
         "gx":  -1274,
         "gy":  -1098,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "E4286D164A8925DFC09D0FBFDA2B3698",
@@ -1165,7 +1483,9 @@
         "gx":  126,
         "gy":  -413,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "EBC32D5F47C7340F2739A2B9DF81702B",
@@ -1173,7 +1493,9 @@
         "gx":  -1267,
         "gy":  -1081,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "EF3A2C5E4CD6F9922B6772A763704120",
@@ -1181,7 +1503,9 @@
         "gx":  -1258,
         "gy":  -1321,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "F264B568403FFE1B5A5A0F827B66B38A",
@@ -1189,7 +1513,9 @@
         "gx":  -1187,
         "gy":  -1265,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "F3B4F2724A77FC980D06CBBBF24C86B9",
@@ -1197,7 +1523,9 @@
         "gx":  -1194,
         "gy":  -1350,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "F40698424F051577FDD827B369F74685",
@@ -1205,7 +1533,9 @@
         "gx":  -1205,
         "gy":  -1180,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "F46AC65845829B56452D129B68E4A81B",
@@ -1213,7 +1543,9 @@
         "gx":  -1346,
         "gy":  -1159,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "F61D61A94150A16C05DDEF89A0F837D8",
@@ -1221,7 +1553,9 @@
         "gx":  -1219,
         "gy":  -1225,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "F6974F26465A10C0BFC891962D02BE0D",
@@ -1229,7 +1563,9 @@
         "gx":  231,
         "gy":  -497,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "F69AF7014CE92C6E2C7FD0B0F6B195CD",
@@ -1237,7 +1573,9 @@
         "gx":  -1193,
         "gy":  -1286,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "F7E049A14647DEDE492569A8CBFB3AEB",
@@ -1245,7 +1583,9 @@
         "gx":  70,
         "gy":  -509,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "FC884FFA41F8BDEFD0D705ADA621F09E",
@@ -1253,7 +1593,9 @@
         "gx":  -1354,
         "gy":  -1159,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "FCAA60474B3A7C0030EC8DBE91BFA992",
@@ -1261,7 +1603,9 @@
         "gx":  -1251,
         "gy":  -1118,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "FD4C57144BC73654EBFB2B9A81FA6915",
@@ -1269,7 +1613,9 @@
         "gx":  151,
         "gy":  -421,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "FE49CFA2496600D365EB1399212898B3",
@@ -1277,7 +1623,9 @@
         "gx":  -1372,
         "gy":  -1103,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "FFAC0658483B0524FE00A1834705A639",
@@ -1285,7 +1633,9 @@
         "gx":  -1193,
         "gy":  -1168,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
     },
     {
         "key":  "DAY11",
@@ -1293,6 +1643,5208 @@
         "gx":  122,
         "gy":  -397,
         "source":  "NoteObtainForInstanceFlag",
-        "verified":  false
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "008FAEEA4A7658955323A190E5D3142E",
+        "name":  null,
+        "gx":  406,
+        "gy":  5,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "00A068BF4C28E32DDF7D07865B933295",
+        "name":  null,
+        "gx":  -38,
+        "gy":  -230,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "00A73133430E1FCC5763D5A4F4999554",
+        "name":  null,
+        "gx":  -207,
+        "gy":  -506,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "00E6B309409DAAACD97204AFC57945A1",
+        "name":  null,
+        "gx":  323,
+        "gy":  10,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "013FF2FC4DDCCC22C290A09264F499BC",
+        "name":  null,
+        "gx":  -278,
+        "gy":  -403,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0151C99747CA5A13F2597EA411AAAA1F",
+        "name":  null,
+        "gx":  -388,
+        "gy":  140,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "01BB1F2646DEDAC51319F2A924E78F08",
+        "name":  null,
+        "gx":  -401,
+        "gy":  165,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "01BBC5B246A735726746D58929BE7614",
+        "name":  null,
+        "gx":  123,
+        "gy":  -248,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "02609F3A403932ED52F0F388BC171AC0",
+        "name":  null,
+        "gx":  406,
+        "gy":  -257,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0281828F425CC4331AB0F38ECE226088",
+        "name":  null,
+        "gx":  -371,
+        "gy":  -344,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0302078A4C2E567C2D81B99493A76F60",
+        "name":  null,
+        "gx":  -24,
+        "gy":  -528,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "03505B8C41418C8E4F093FA7B1D3A44D",
+        "name":  null,
+        "gx":  258,
+        "gy":  106,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "03FFF91F4D2C03EDE3311E9CEDA9473C",
+        "name":  null,
+        "gx":  -452,
+        "gy":  167,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "04110F5A4204984BB568FE824886125A",
+        "name":  null,
+        "gx":  -572,
+        "gy":  242,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "041249354B7AF4A58FCA9F90A031B0DA",
+        "name":  null,
+        "gx":  -298,
+        "gy":  -648,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0457EFA34A7771D5AC7FAA90A4AB92B1",
+        "name":  null,
+        "gx":  30,
+        "gy":  -219,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "047D6738462C5807DE94DCA7E678BC65",
+        "name":  null,
+        "gx":  -270,
+        "gy":  -97,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "04FE47374849876D3339BAA610391880",
+        "name":  null,
+        "gx":  166,
+        "gy":  -11,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0547DB424A9C200ED2EED1B9DABACCF6",
+        "name":  null,
+        "gx":  -782,
+        "gy":  -965,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "05C3B4084382710BC11949A2EB6EDD31",
+        "name":  null,
+        "gx":  485,
+        "gy":  623,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "060FBB9E4FC0123B03A22D91807C6909",
+        "name":  null,
+        "gx":  -370,
+        "gy":  -168,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "062C5A3A473DD504959460BE3D6373E3",
+        "name":  null,
+        "gx":  -1102,
+        "gy":  -1489,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "063921F64B16530ACE9720A694E261CC",
+        "name":  null,
+        "gx":  1,
+        "gy":  -89,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "07545C7B4BB6BBA63C246B84F99A998F",
+        "name":  null,
+        "gx":  14,
+        "gy":  -159,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "07919A9F41E7F3F85EA79BBF511C295B",
+        "name":  null,
+        "gx":  -545,
+        "gy":  320,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "07D1F22C4F4474307EB55CAF422B5B89",
+        "name":  null,
+        "gx":  -189,
+        "gy":  535,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "081B11224E095BAFCD1A78A7FB0895CD",
+        "name":  null,
+        "gx":  -321,
+        "gy":  -100,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "08601EE54E7FBA3902737DAEF2F84016",
+        "name":  null,
+        "gx":  -141,
+        "gy":  -540,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "099F24204E412F1BA1B8EEB0EE4CC406",
+        "name":  null,
+        "gx":  343,
+        "gy":  -251,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "09FBA23F4CAF8A1C93CBF7B2EE930D23",
+        "name":  null,
+        "gx":  11,
+        "gy":  -128,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0A50F2AA43BEAB2AB281C4B08D5E4F53",
+        "name":  null,
+        "gx":  268,
+        "gy":  -236,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0C80D1E9436C02411BA8EFAC0B79BD34",
+        "name":  null,
+        "gx":  264,
+        "gy":  88,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0CA1CBB84957413FF8FEF2877E7FCE1B",
+        "name":  null,
+        "gx":  -189,
+        "gy":  -350,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0D0DDC6B4878EB2C90AFA9894FE279FB",
+        "name":  null,
+        "gx":  29,
+        "gy":  -121,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0D135F004915D8CCB54F04BE5D5F8124",
+        "name":  null,
+        "gx":  -232,
+        "gy":  -277,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0DAC0DB84418184A2E0A82938C594A16",
+        "name":  null,
+        "gx":  -68,
+        "gy":  -315,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0EF461FE4C696C53882AA69AACA312FF",
+        "name":  null,
+        "gx":  -668,
+        "gy":  -934,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0EFD47994161F3A948DFD39B878988F0",
+        "name":  null,
+        "gx":  -837,
+        "gy":  -542,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0F1F4A08413591CD03E008A861A09525",
+        "name":  null,
+        "gx":  -334,
+        "gy":  -308,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "0F38BAE54CD0448CAB68D4BE1AFF2A64",
+        "name":  null,
+        "gx":  158,
+        "gy":  -130,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "100B730E45DA12466A768AB7B25C4A31",
+        "name":  null,
+        "gx":  28,
+        "gy":  -155,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "103988F64D60AD65494F9B80A581D286",
+        "name":  null,
+        "gx":  -1316,
+        "gy":  -1661,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "10941D7941D90332952B4FA470ABE515",
+        "name":  null,
+        "gx":  -249,
+        "gy":  -365,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "119889CD4C223ACBF4017CA4C52BDAB7",
+        "name":  null,
+        "gx":  397,
+        "gy":  -360,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "12A95C214AA3D49F4D2C57B78F7985B1",
+        "name":  null,
+        "gx":  182,
+        "gy":  -268,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "13757E4A46F3F9AE4D9CF3920BFF2780",
+        "name":  null,
+        "gx":  184,
+        "gy":  -137,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1435A5FD459639256BA269981598E8B3",
+        "name":  null,
+        "gx":  -348,
+        "gy":  314,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "144D469D4F900991969D7291AF6E8378",
+        "name":  null,
+        "gx":  -6,
+        "gy":  -460,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1464770B4008D00B6646EBA20A521F4C",
+        "name":  null,
+        "gx":  -251,
+        "gy":  596,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "149707E44F0EE557E36284BDA44A0B6E",
+        "name":  null,
+        "gx":  -633,
+        "gy":  -1124,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "15CFF082426DA9F92D74F6905B9D176E",
+        "name":  null,
+        "gx":  -668,
+        "gy":  -716,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "17101EED49DB703225670C8194A99105",
+        "name":  null,
+        "gx":  -23,
+        "gy":  9,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "172313F643EE8DD7430C58AF70F95993",
+        "name":  null,
+        "gx":  -813,
+        "gy":  -329,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "177DACE14502183F9AF2FC8BE9E3D44A",
+        "name":  null,
+        "gx":  172,
+        "gy":  14,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1A96190240D46F2FAB5C48BBE422FF17",
+        "name":  null,
+        "gx":  28,
+        "gy":  11,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1B3417C74DCCC8E6AEF7C4AE9F7D7456",
+        "name":  null,
+        "gx":  54,
+        "gy":  -114,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1BAA36434BBEB31E642A37924374F50C",
+        "name":  null,
+        "gx":  -482,
+        "gy":  203,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1BD255BF4E1E3D9650A6408B90FB2FDA",
+        "name":  null,
+        "gx":  331,
+        "gy":  158,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1CECC324419465F4FE16488CB95F9E10",
+        "name":  null,
+        "gx":  -1159,
+        "gy":  -1000,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1D22696E4A22F0971CD872B4E1F17C1B",
+        "name":  null,
+        "gx":  -421,
+        "gy":  -692,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1D48FEBA467E5841994178B7B808130C",
+        "name":  null,
+        "gx":  127,
+        "gy":  -198,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1D4E096F403B28C10E9969991ED88631",
+        "name":  null,
+        "gx":  -69,
+        "gy":  72,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1DAB346C48FDCC4DEAF501883039703F",
+        "name":  null,
+        "gx":  -579,
+        "gy":  -711,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1DAC288742D5962E5D499EBF0A564760",
+        "name":  null,
+        "gx":  -1112,
+        "gy":  -922,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1E0FB21749269395879F00A96B7859A4",
+        "name":  null,
+        "gx":  208,
+        "gy":  -194,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1E15689D486E45F63DD3888A01096A6B",
+        "name":  null,
+        "gx":  -200,
+        "gy":  -319,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1E325A4047599B5A42BF0896AF231F57",
+        "name":  null,
+        "gx":  414,
+        "gy":  451,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1E8721014205D8076E69709A4C8CBB45",
+        "name":  null,
+        "gx":  -631,
+        "gy":  -337,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1EB29BDD47D5088C237A02B0A97C93BE",
+        "name":  null,
+        "gx":  -344,
+        "gy":  -254,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1EE0E0DC453E35896A744EA01FD05CD9",
+        "name":  null,
+        "gx":  -685,
+        "gy":  217,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1F413F5D4C60C6F9FFA4B5AB45C810D8",
+        "name":  null,
+        "gx":  15,
+        "gy":  -451,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "1F4B6F624B807B9DBBFA45AA4C06CD4E",
+        "name":  null,
+        "gx":  -260,
+        "gy":  -87,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2022728B4B66837F424363BE8A6FBBEB",
+        "name":  null,
+        "gx":  149,
+        "gy":  -39,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "209C7AE94E05DFBC912768927F74C240",
+        "name":  null,
+        "gx":  -425,
+        "gy":  -640,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2122EA7140DFADD7013A239AA51C044F",
+        "name":  null,
+        "gx":  -306,
+        "gy":  -256,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "219EFCD14008657583EF74A7063818AB",
+        "name":  null,
+        "gx":  -487,
+        "gy":  -223,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "222265E546EC702BA313A1B6D0B38676",
+        "name":  null,
+        "gx":  -430,
+        "gy":  154,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2235B3164444843EFC5527AFABC38BA0",
+        "name":  null,
+        "gx":  -1321,
+        "gy":  -757,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "22D2DA15415268EC5375EFAEC03023E2",
+        "name":  null,
+        "gx":  -961,
+        "gy":  -1194,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2406CC964DA3D957CE201AB5D3BDCCB0",
+        "name":  null,
+        "gx":  -1049,
+        "gy":  -815,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "243765FA4D16072940E67190E0C106F9",
+        "name":  null,
+        "gx":  -782,
+        "gy":  -687,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2459F8214B1CA0D8329CBEB186930479",
+        "name":  null,
+        "gx":  -780,
+        "gy":  -1325,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "24AC69DD45C2989A803C02890CE5E336",
+        "name":  null,
+        "gx":  -714,
+        "gy":  -1022,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "24D9F2694FE51359E4566BB802CB57EF",
+        "name":  null,
+        "gx":  -354,
+        "gy":  -131,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "24F1101B40CCA19F28C35B93A8F426B3",
+        "name":  null,
+        "gx":  -672,
+        "gy":  321,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "25991B0E4820B3A017A0B2BBCCCE18B5",
+        "name":  null,
+        "gx":  87,
+        "gy":  -277,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "262E8A4A4CDDBB0858920F8C9A201A97",
+        "name":  null,
+        "gx":  86,
+        "gy":  -56,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "263547944FF57FC953A325BF02F5A61D",
+        "name":  null,
+        "gx":  59,
+        "gy":  -291,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "266848144146434CA79DCF96EB6F3572",
+        "name":  null,
+        "gx":  -1164,
+        "gy":  -1586,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "27DB93D3487B2144C89CA79227927023",
+        "name":  null,
+        "gx":  -336,
+        "gy":  -398,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "27E41AF74093E848828E60B328915D98",
+        "name":  null,
+        "gx":  -768,
+        "gy":  -338,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "280010614A92DEB3E79C7D9781D0F0DD",
+        "name":  null,
+        "gx":  -807,
+        "gy":  -1267,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "28B8A20B4B935107A604488A6DCF5365",
+        "name":  null,
+        "gx":  -581,
+        "gy":  204,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "28CB901F4D4603075D1939A8CAAE14A7",
+        "name":  null,
+        "gx":  -168,
+        "gy":  -230,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "28CE970F45D75AC90531699FFB8D7C95",
+        "name":  null,
+        "gx":  665,
+        "gy":  154,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2903BB444EBADBD8A26BCA8A200686C7",
+        "name":  null,
+        "gx":  40,
+        "gy":  -176,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "29657BA04B293DFEF2B0C3B60495A84E",
+        "name":  null,
+        "gx":  -246,
+        "gy":  -696,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "29DAD20343BE7B007019B89E540EF133",
+        "name":  null,
+        "gx":  -85,
+        "gy":  -626,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "29DBA5AD46570E684D53959AF8C45CBD",
+        "name":  null,
+        "gx":  -884,
+        "gy":  -1067,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "29F4B89E4A773320FD1DCFB562CF47EF",
+        "name":  null,
+        "gx":  -1004,
+        "gy":  -1489,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "29F98DDB4A2F23AD5AE8F69418691CE7",
+        "name":  null,
+        "gx":  234,
+        "gy":  648,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2A1E0FDA49D2F817177F498B8528E72D",
+        "name":  null,
+        "gx":  -277,
+        "gy":  478,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2A5B73654CD33BD92BBD62A6A7822A45",
+        "name":  null,
+        "gx":  -928,
+        "gy":  -1009,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2AF83062492C3EFE6D1592A97FF5F5DA",
+        "name":  null,
+        "gx":  -399,
+        "gy":  -188,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2B3406F64D07A392B3FAC5857FD97A2B",
+        "name":  null,
+        "gx":  -367,
+        "gy":  575,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2BB68E624AA7C6AFC2080889E86905F1",
+        "name":  null,
+        "gx":  127,
+        "gy":  104,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2D23D28A494AF17738035B96D17E4F26",
+        "name":  null,
+        "gx":  -599,
+        "gy":  284,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2D5B025E490125298869E89B0658ECFA",
+        "name":  null,
+        "gx":  -75,
+        "gy":  -428,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2D8B57B4406A6430E4BF228089EEF97E",
+        "name":  null,
+        "gx":  209,
+        "gy":  5,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2DF46B6C4764BBDF4C370AB1C49757FE",
+        "name":  null,
+        "gx":  -14,
+        "gy":  -268,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2E580E384416D14C21181A8BE0BD5393",
+        "name":  null,
+        "gx":  -35,
+        "gy":  -153,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "2F9F68AA479920543BACE69D8EC40BDF",
+        "name":  null,
+        "gx":  187,
+        "gy":  -20,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "30D13DA94C0C9C097AC31A8AD1432F3B",
+        "name":  null,
+        "gx":  268,
+        "gy":  -47,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3111FB35443A4EF2E1C26DB99C44E6B8",
+        "name":  null,
+        "gx":  -472,
+        "gy":  -757,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3154850E40007D563A748FAB5B251AE0",
+        "name":  null,
+        "gx":  194,
+        "gy":  -246,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "317455ED4F135F883941518C4EE733B8",
+        "name":  null,
+        "gx":  153,
+        "gy":  405,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "320DD1B84DD18A2F211345BBFB5A1B6D",
+        "name":  null,
+        "gx":  -61,
+        "gy":  -2,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "323E273A4BDA190D13032AA58136CDA7",
+        "name":  null,
+        "gx":  -620,
+        "gy":  211,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "328C38AC42FF2AFC3B301189B22FF1A9",
+        "name":  null,
+        "gx":  230,
+        "gy":  31,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "32BC33CB4D6EEDA580B99498A91721FA",
+        "name":  null,
+        "gx":  -897,
+        "gy":  -1111,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "33829598432660A7393869B3E73A9C65",
+        "name":  null,
+        "gx":  -720,
+        "gy":  111,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "33906F2B42A41C6C06E4A599C509FB66",
+        "name":  null,
+        "gx":  -844,
+        "gy":  -1210,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "34ADE93F41269063F25BF38E7D2BBF8D",
+        "name":  null,
+        "gx":  -528,
+        "gy":  -208,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3559545742EE2BD698D0B0805DE0F125",
+        "name":  null,
+        "gx":  294,
+        "gy":  76,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "35F6AC8A4B7B9D1C4089D58D07598B42",
+        "name":  null,
+        "gx":  169,
+        "gy":  -209,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3664419C471F15788BE4EC83F0472FF4",
+        "name":  null,
+        "gx":  -428,
+        "gy":  192,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3734DEBA43BE4A177DB26CB824E8EB9C",
+        "name":  null,
+        "gx":  -9,
+        "gy":  -471,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3812DF1046828D253533B39915F66D76",
+        "name":  null,
+        "gx":  -996,
+        "gy":  -1073,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3847D9C84D56600AFA1185BF2017C30C",
+        "name":  null,
+        "gx":  209,
+        "gy":  -6,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "38A88A974A8EF3444032C8A6E021B34E",
+        "name":  null,
+        "gx":  58,
+        "gy":  -33,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "396C82EE430037F6B91EBA928313A607",
+        "name":  null,
+        "gx":  -365,
+        "gy":  -663,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3A860F064749C5EE0190E18E90189AC8",
+        "name":  null,
+        "gx":  16,
+        "gy":  -115,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3AB9CE5C4B8A44C17F118F86035C6DC3",
+        "name":  null,
+        "gx":  115,
+        "gy":  -278,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3B501AB34D8B02D9C6EC1AB8EC9E79C0",
+        "name":  null,
+        "gx":  -765,
+        "gy":  -112,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3B7064E0488FEE9BC1BAC887FA92FDD5",
+        "name":  null,
+        "gx":  -962,
+        "gy":  -814,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3BEAD93C444A52F725E72FA673F8CE42",
+        "name":  null,
+        "gx":  339,
+        "gy":  354,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3C9CCBEB48860DE5AEF3AFBD8C1395CB",
+        "name":  null,
+        "gx":  -406,
+        "gy":  201,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3CD048BA48EA6AC44943EBA6DB18217D",
+        "name":  null,
+        "gx":  -956,
+        "gy":  -1494,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3D9263B94CA576D6C0ABB680573CC4C1",
+        "name":  null,
+        "gx":  73,
+        "gy":  16,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3DD90A28413AF705303A2C8289C30B75",
+        "name":  null,
+        "gx":  -1013,
+        "gy":  -1125,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3DDB92D34C70A8A4D1D573AD6445B55A",
+        "name":  null,
+        "gx":  -643,
+        "gy":  -762,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3DE122F346F70CFA961C7E949F0C879C",
+        "name":  null,
+        "gx":  -52,
+        "gy":  -591,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3E3916D64D6CA243F19F2EB76DE41143",
+        "name":  null,
+        "gx":  -423,
+        "gy":  -300,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3EBBDD9049A6D53B2B9EDA91AD9B64AB",
+        "name":  null,
+        "gx":  -428,
+        "gy":  -263,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3EEFF8DE4E9D732CF41740841098480E",
+        "name":  null,
+        "gx":  -575,
+        "gy":  -561,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3F1D4EBA413B408004F0B285A4C9A387",
+        "name":  null,
+        "gx":  -302,
+        "gy":  -533,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3F32194747AE9B883B1A9985BE584392",
+        "name":  null,
+        "gx":  -94,
+        "gy":  -263,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3FAB5D0B4C8711966802C8A5AEDB456A",
+        "name":  null,
+        "gx":  428,
+        "gy":  -2,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "3FCDD60241813499AB43C1B0A6C6A581",
+        "name":  null,
+        "gx":  263,
+        "gy":  43,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "411B0EC34BED09C6BFB8C5978AB66D1B",
+        "name":  null,
+        "gx":  142,
+        "gy":  22,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "416E04734D82DB11908448BFF42D61AC",
+        "name":  null,
+        "gx":  669,
+        "gy":  434,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "41AFC6754221873FCA8837BAEE35B5C1",
+        "name":  null,
+        "gx":  -184,
+        "gy":  -406,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "41F03E9D4CF93547CA5806A21CCB3B6D",
+        "name":  null,
+        "gx":  -148,
+        "gy":  -407,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "42DC77FB45BB23C83DAAE6B1F3F517E7",
+        "name":  null,
+        "gx":  -526,
+        "gy":  -755,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4344C10F45BE6311EE208388ACA8BE08",
+        "name":  null,
+        "gx":  -1022,
+        "gy":  -927,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "437992C941DA8F34C3E3FC9B82A332CC",
+        "name":  null,
+        "gx":  -181,
+        "gy":  -263,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4379F5694529BF5AB5FD83A9BDE21BB5",
+        "name":  null,
+        "gx":  391,
+        "gy":  -76,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4417DB8242FE1B079BBC4686623AC43E",
+        "name":  null,
+        "gx":  -321,
+        "gy":  601,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "44D31A944FB8A3CA9A4E8283DB84444B",
+        "name":  null,
+        "gx":  -754,
+        "gy":  -1197,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "454D5355432D0AD822740DB92100780E",
+        "name":  null,
+        "gx":  -632,
+        "gy":  234,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "46CB2EEE46FF491C7DF4AA820F1D8DBF",
+        "name":  null,
+        "gx":  -113,
+        "gy":  427,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "46E08C1D4CE0A7C9A0EE499006D81A56",
+        "name":  null,
+        "gx":  -103,
+        "gy":  -355,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "491A94DC414A73975100BF84B0D04F42",
+        "name":  null,
+        "gx":  44,
+        "gy":  2,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4985D9564F9D5C17954A1B8A44E08269",
+        "name":  null,
+        "gx":  -550,
+        "gy":  207,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "49A5F9F1437CDA7BD6657CBE8C8C6BE5",
+        "name":  null,
+        "gx":  -7,
+        "gy":  -90,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "49D0419A456A370581F5F5BB1F0A6649",
+        "name":  null,
+        "gx":  -115,
+        "gy":  -687,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4A0FDBE54CC2EBD377225CBDFA451223",
+        "name":  null,
+        "gx":  -551,
+        "gy":  104,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4A67B45943D38C899E9DBFA6EE436E22",
+        "name":  null,
+        "gx":  -234,
+        "gy":  -103,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4AEF06B54DB08B4102F1E880DDA7B339",
+        "name":  null,
+        "gx":  -241,
+        "gy":  -204,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4BCA0B884DD53E1A50E324BEB5650666",
+        "name":  null,
+        "gx":  78,
+        "gy":  -21,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4C24AD604AA1FEDBD869B284CDD6CE91",
+        "name":  null,
+        "gx":  72,
+        "gy":  -91,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4C52401E446D083834AC5994E92E4615",
+        "name":  null,
+        "gx":  -113,
+        "gy":  -589,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4C68754B4135C849C083E78C4C704E54",
+        "name":  null,
+        "gx":  269,
+        "gy":  221,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4C7961DE42CF1C6D9BE54EB86997313C",
+        "name":  null,
+        "gx":  109,
+        "gy":  82,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4C8DE1D443F94E2AD79A18A7FB1F7ACD",
+        "name":  null,
+        "gx":  272,
+        "gy":  41,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4D10E6B94AE2EE55C3B2458A83B91961",
+        "name":  null,
+        "gx":  -194,
+        "gy":  -280,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4D1D2D0643AB1058F118C18B06A804F4",
+        "name":  null,
+        "gx":  501,
+        "gy":  360,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4D61A45F4FF43FBAEAB902AC57CDA1F0",
+        "name":  null,
+        "gx":  231,
+        "gy":  134,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4DA7B97242E0D8A140157EAFD104F2B8",
+        "name":  null,
+        "gx":  208,
+        "gy":  306,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4DBA14414EE6FBE734A02BABC5C4F32B",
+        "name":  null,
+        "gx":  -1082,
+        "gy":  -1467,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4F0F015C453E4B6B306E0D80514787DE",
+        "name":  null,
+        "gx":  -90,
+        "gy":  206,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "4F9239674E242374696B838601E94C19",
+        "name":  null,
+        "gx":  -749,
+        "gy":  -212,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "50F62A3846DC0DC13DEA8CB4D6982653",
+        "name":  null,
+        "gx":  22,
+        "gy":  20,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "515F64F047AE5F0A1ACDA1A20CB050FC",
+        "name":  null,
+        "gx":  446,
+        "gy":  283,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "51C2F2B945B5C694611554B33465197C",
+        "name":  null,
+        "gx":  206,
+        "gy":  -13,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "52E8F1F641E1E211DE2483AB40EE67ED",
+        "name":  null,
+        "gx":  -31,
+        "gy":  190,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "53CE7F4D48051FA609B0A892FD40FC8A",
+        "name":  null,
+        "gx":  -140,
+        "gy":  615,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5576ACE64240EAC63DD5DB8DC8EE1702",
+        "name":  null,
+        "gx":  -22,
+        "gy":  -119,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "55948DDD41D315C905206ABD81E7019C",
+        "name":  null,
+        "gx":  -9,
+        "gy":  -164,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "56124ABD45A00948DD0263AA1AD504C8",
+        "name":  null,
+        "gx":  263,
+        "gy":  0,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "569D62344E73C1D195D679AFA24E1CC7",
+        "name":  null,
+        "gx":  149,
+        "gy":  61,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "56AB53A54D67AAC1F9905F8EC49AADA3",
+        "name":  null,
+        "gx":  -595,
+        "gy":  212,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "56D7B8504246DA206286B7B24578E187",
+        "name":  null,
+        "gx":  190,
+        "gy":  74,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "57BAE06341018F4DA7D16A9DCD097759",
+        "name":  null,
+        "gx":  -297,
+        "gy":  -153,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "57F55BC3405870FEDEFDF3B0CC40F348",
+        "name":  null,
+        "gx":  -195,
+        "gy":  -406,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "59E271844298A873A748A8A442956223",
+        "name":  null,
+        "gx":  -920,
+        "gy":  -1067,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "59E70CF8474C1874D36A26B4CC989F79",
+        "name":  null,
+        "gx":  -388,
+        "gy":  -313,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "59FB04454BBF05BB7CFB9493C85B5822",
+        "name":  null,
+        "gx":  -1254,
+        "gy":  -806,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5A727EBD413D9F0B076278B3857688EF",
+        "name":  null,
+        "gx":  -926,
+        "gy":  -1252,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5B88178843604DFEB88277AE89EEB036",
+        "name":  null,
+        "gx":  268,
+        "gy":  457,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5BCB1D2E4181E41CD6DAEB8FFA66982B",
+        "name":  null,
+        "gx":  -960,
+        "gy":  -939,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5BFE9FAC4EC6570C2C6102922CDD691C",
+        "name":  null,
+        "gx":  181,
+        "gy":  -93,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5C3BAE9E461C942C821E52959CD13A52",
+        "name":  null,
+        "gx":  -343,
+        "gy":  -185,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5CBF30E84CA7F6B95813818387B45BF2",
+        "name":  null,
+        "gx":  14,
+        "gy":  -153,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5CD83A574B527C5EB6DBE7988999917C",
+        "name":  null,
+        "gx":  -434,
+        "gy":  471,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5D3FAB0C4221315FAAA28F92CBA07874",
+        "name":  null,
+        "gx":  -1002,
+        "gy":  -1169,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5DC4E46C44955AFD8964E88AE0A089A9",
+        "name":  null,
+        "gx":  -646,
+        "gy":  -234,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5E6C9FF94A591C09F59D79A2CD930B6F",
+        "name":  null,
+        "gx":  2,
+        "gy":  -438,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5E7F59E849C0D6AB9E3222ABB19A47A5",
+        "name":  null,
+        "gx":  259,
+        "gy":  39,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5E9C7CB3484B5ED33551AE99337DC182",
+        "name":  null,
+        "gx":  -732,
+        "gy":  -280,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5EF659654F666F8C28C20CA85691D089",
+        "name":  null,
+        "gx":  -701,
+        "gy":  -919,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5F3ED63E4F31C226DCAC739190FCBC97",
+        "name":  null,
+        "gx":  -253,
+        "gy":  -489,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5F441A54475FE2EE55BA4FB80D8D465B",
+        "name":  null,
+        "gx":  -195,
+        "gy":  611,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5F96D0B74C3BED075496E08725F7E6AE",
+        "name":  null,
+        "gx":  -329,
+        "gy":  254,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5FA638D64D45419369DE1C97E3D2ABE4",
+        "name":  null,
+        "gx":  -614,
+        "gy":  237,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "5FBD3A0047D3257532748DB1FC87EA16",
+        "name":  null,
+        "gx":  -455,
+        "gy":  197,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6021025E47132C4AA0CC409983857F59",
+        "name":  null,
+        "gx":  352,
+        "gy":  -109,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6027DE094D79B72B07DF3186809027AF",
+        "name":  null,
+        "gx":  -575,
+        "gy":  156,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "606DC0AD4FA780FAB5B9B5881B087197",
+        "name":  null,
+        "gx":  -189,
+        "gy":  288,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "607827F345E67A9F5AB28DA02EAE7A64",
+        "name":  null,
+        "gx":  -870,
+        "gy":  -1411,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6154498D497241F03589B9B1A0E2B50D",
+        "name":  null,
+        "gx":  -451,
+        "gy":  230,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "61A7FF7343DF8368E1E6098925FF4960",
+        "name":  null,
+        "gx":  -136,
+        "gy":  -433,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6220D5C84BD8A0A0E7C173A0A973923B",
+        "name":  null,
+        "gx":  383,
+        "gy":  5,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "62867FF04D5C7B426EA4EB9A754322F1",
+        "name":  null,
+        "gx":  -655,
+        "gy":  243,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "630D546A4FEF9C4036BFC9B31C888EDA",
+        "name":  null,
+        "gx":  -5,
+        "gy":  -226,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "631A5BCF415A81ABF98598B6EF83EB0A",
+        "name":  null,
+        "gx":  -948,
+        "gy":  -1232,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "635F6B52405321AF23459AA8557C0A7E",
+        "name":  null,
+        "gx":  -911,
+        "gy":  -1314,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "63DFCAE9461F068493612B861BEDE094",
+        "name":  null,
+        "gx":  -553,
+        "gy":  270,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "651438294671C1A7946F39A22059599F",
+        "name":  null,
+        "gx":  -413,
+        "gy":  347,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "65AF6C8C44650974590B73AF335E379B",
+        "name":  null,
+        "gx":  -224,
+        "gy":  -114,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6638945F4B26A1D2EA04D9BD011B359E",
+        "name":  null,
+        "gx":  -829,
+        "gy":  -1132,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6669E1194D13247182AD36AF0D8AD560",
+        "name":  null,
+        "gx":  -377,
+        "gy":  181,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "677D8D0C4D0C430433C430A7738F9A85",
+        "name":  null,
+        "gx":  -880,
+        "gy":  -1292,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "679390DB4EF0DE756D245FAF9A42494F",
+        "name":  null,
+        "gx":  -1362,
+        "gy":  -1671,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "67BBBA8045CE1B0648963BA86184D9FB",
+        "name":  null,
+        "gx":  409,
+        "gy":  -121,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "67E3CA8846D7D39B12B7EDA82D1D614F",
+        "name":  null,
+        "gx":  254,
+        "gy":  -45,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "696283994BC4D82F381346A000D969BF",
+        "name":  null,
+        "gx":  287,
+        "gy":  124,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6A2AE93641023E6406DB1CA5D354E604",
+        "name":  null,
+        "gx":  26,
+        "gy":  -470,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6A4E8926421B3ACB05423D80A4B45D1E",
+        "name":  null,
+        "gx":  203,
+        "gy":  -97,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6A4F5B5D408608A44780658734175852",
+        "name":  null,
+        "gx":  -1277,
+        "gy":  -1589,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6A686D9E43BA834AB61202BB43F6AC84",
+        "name":  null,
+        "gx":  -723,
+        "gy":  -723,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6B126A9B42B3BD19E90C58A594A0C657",
+        "name":  null,
+        "gx":  -613,
+        "gy":  -269,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6B216B174D257553C2F18094567B7992",
+        "name":  null,
+        "gx":  -65,
+        "gy":  -628,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6B57BFD24497B78680557A806420F1C0",
+        "name":  null,
+        "gx":  200,
+        "gy":  112,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6B9D18BB4E61ACDA7AE9C49F925A514C",
+        "name":  null,
+        "gx":  94,
+        "gy":  -76,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6C8680F3416FEFDAA9D0DFA5DAC408B1",
+        "name":  null,
+        "gx":  -980,
+        "gy":  -994,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6C95343C41621B8AA11E8BA3308667D8",
+        "name":  null,
+        "gx":  367,
+        "gy":  -323,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6CA78AF74504A5AC88A5BE8FF8D9F399",
+        "name":  null,
+        "gx":  125,
+        "gy":  -13,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6CB4BCF64FAA2AB76490FB997D1F1A27",
+        "name":  null,
+        "gx":  48,
+        "gy":  -199,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6D668C844129793E30B5F395EEDEBF96",
+        "name":  null,
+        "gx":  -226,
+        "gy":  -311,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6DFBA012486A7742E146CD93DF0E7DEB",
+        "name":  null,
+        "gx":  -699,
+        "gy":  -627,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6E29310F41280B9CA1295B9BC0A60928",
+        "name":  null,
+        "gx":  453,
+        "gy":  666,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6E97A40944415B2E8451858C50613591",
+        "name":  null,
+        "gx":  269,
+        "gy":  -227,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "6F971B0B4B4BD0BE22DCFF9D764C2D87",
+        "name":  null,
+        "gx":  250,
+        "gy":  153,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7083643D4CCFE3FF924B7E8464126CC0",
+        "name":  null,
+        "gx":  -13,
+        "gy":  -402,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "70B24CE647EDD0544EF32A9C4676B935",
+        "name":  null,
+        "gx":  -31,
+        "gy":  231,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7109F86647621F392735E0A54C1CE8BA",
+        "name":  null,
+        "gx":  199,
+        "gy":  -27,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "71943897422D30DF62372DA5881064B3",
+        "name":  null,
+        "gx":  73,
+        "gy":  -159,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7196345E496A2264FD10DFBBFFE8CA5B",
+        "name":  null,
+        "gx":  -786,
+        "gy":  -295,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "719B93DD4C87F5480FC8EF9C9AF7D5A0",
+        "name":  null,
+        "gx":  -953,
+        "gy":  -1146,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "72752B3645F6BC82F997B2801AB1E6C3",
+        "name":  null,
+        "gx":  -157,
+        "gy":  -331,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "739799584D0EE9B1FFAE79B5455377F8",
+        "name":  null,
+        "gx":  -10,
+        "gy":  -58,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "73986D754F51ACE239106AB8EA44C431",
+        "name":  null,
+        "gx":  -480,
+        "gy":  163,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "74C730DC45159B7C08D024BC6CA99243",
+        "name":  null,
+        "gx":  -63,
+        "gy":  -557,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "75D6CF6546BC8494AC8C6CB47BE9E040",
+        "name":  null,
+        "gx":  -313,
+        "gy":  -426,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "75E418CF45ECD6DBE045CE8772EA53C5",
+        "name":  null,
+        "gx":  -231,
+        "gy":  477,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "75F2D9CE44A49B342673EDA14C56531E",
+        "name":  null,
+        "gx":  -712,
+        "gy":  -1178,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "763EFBFD41DC28047A682A8C9BB9C3E1",
+        "name":  null,
+        "gx":  -118,
+        "gy":  -279,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7761BCC746EBB119AA123392A3899F39",
+        "name":  null,
+        "gx":  132,
+        "gy":  143,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "778AC97F48FC15DE10EFBC83AA93528B",
+        "name":  null,
+        "gx":  -1275,
+        "gy":  -1577,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "77A263A24596F5CA09F94D85F82EE049",
+        "name":  null,
+        "gx":  -1129,
+        "gy":  -1485,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "79109B8C4555D461A9F2B198856142E1",
+        "name":  null,
+        "gx":  -356,
+        "gy":  133,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "793A6EDE4801E6DB2A6572A5BC142841",
+        "name":  null,
+        "gx":  247,
+        "gy":  104,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "79479C394743C7953D28FF887E333D30",
+        "name":  null,
+        "gx":  -871,
+        "gy":  -1472,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "799EC6BE42EA92541ED028BC53E98E6A",
+        "name":  null,
+        "gx":  63,
+        "gy":  -62,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "79F7ED9C4833F8DE209DE19EE6E2B926",
+        "name":  null,
+        "gx":  -136,
+        "gy":  -314,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7ABEBDB14A4E2183FBB00E992DD1612C",
+        "name":  null,
+        "gx":  -976,
+        "gy":  -1168,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7B3AA6BD4A60381E9E683F9F9FD21CF9",
+        "name":  null,
+        "gx":  -94,
+        "gy":  -193,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7BE923C64F489783B88FA9860E9C1DA3",
+        "name":  null,
+        "gx":  328,
+        "gy":  84,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7C2629AB46A4B48B0B155386A51D0085",
+        "name":  null,
+        "gx":  -1117,
+        "gy":  -1655,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7CEA05054179699A91BF559065AEB2F2",
+        "name":  null,
+        "gx":  -295,
+        "gy":  -344,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7D5E18984F78A70E792F2F9E6F253002",
+        "name":  null,
+        "gx":  -490,
+        "gy":  -368,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7DBEA2174D9767F67E3077BAEB0C0A51",
+        "name":  null,
+        "gx":  -68,
+        "gy":  -502,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7DF2AAAA495D0DA1841B928F72029B2D",
+        "name":  null,
+        "gx":  -701,
+        "gy":  261,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "7E127B194B35DA6692E895888B65D93A",
+        "name":  null,
+        "gx":  -8,
+        "gy":  -86,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "80C6B94044469FFF8DE18D87DAC1A839",
+        "name":  null,
+        "gx":  -448,
+        "gy":  443,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "81118C5049718D266612669DF7304116",
+        "name":  null,
+        "gx":  507,
+        "gy":  154,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8121AA0B45186DF08442A78078D8E7C4",
+        "name":  null,
+        "gx":  270,
+        "gy":  -199,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "81E32E2443E153C6566D7997DB1641C8",
+        "name":  null,
+        "gx":  -353,
+        "gy":  -194,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "81F0A3354CBA6423FD7CD4B2AD694801",
+        "name":  null,
+        "gx":  -46,
+        "gy":  -342,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "826B740443BA5FBC6243158CD8EF0E37",
+        "name":  null,
+        "gx":  16,
+        "gy":  -339,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "82B79ED24AB3BE776148848CD6CDE2CF",
+        "name":  null,
+        "gx":  5,
+        "gy":  -310,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "82C7859D438F9EC3781D8A9D09752138",
+        "name":  null,
+        "gx":  208,
+        "gy":  -39,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "84880092496314E1DC07F589AF020EFB",
+        "name":  null,
+        "gx":  -1295,
+        "gy":  -1653,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "84A48481457B2BC2FDDE2CBF2832FD44",
+        "name":  null,
+        "gx":  30,
+        "gy":  -82,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8506A286489BB70551F2B2B3A75DD370",
+        "name":  null,
+        "gx":  352,
+        "gy":  46,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "85ABEF994CFCE2EE2BA378A8B19DB9F8",
+        "name":  null,
+        "gx":  33,
+        "gy":  -122,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "86C32CA14B78E33B7885AE9FEC13D917",
+        "name":  null,
+        "gx":  -1239,
+        "gy":  -1730,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8925B5664C1D0C0DC197B89E1E8337FD",
+        "name":  null,
+        "gx":  -379,
+        "gy":  -154,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8AB2B6B648868F0CF32D4F8EF6F725D3",
+        "name":  null,
+        "gx":  -508,
+        "gy":  221,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8AB69DBE4E703513F9424D8162B75864",
+        "name":  null,
+        "gx":  -771,
+        "gy":  -1251,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8B0DBD6043D5F944191FBFBD084F3E1A",
+        "name":  null,
+        "gx":  219,
+        "gy":  10,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8B59E12B426BFFE2C54CF994D69BEE19",
+        "name":  null,
+        "gx":  125,
+        "gy":  116,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8BD3BC884E2BDEC920048AB4B9A7F448",
+        "name":  null,
+        "gx":  -1184,
+        "gy":  -1666,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8DA9161C4615F39E3B3A5294CC7E6901",
+        "name":  null,
+        "gx":  389,
+        "gy":  714,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8DF47C344AD92E08CA1309A73C67119A",
+        "name":  null,
+        "gx":  -730,
+        "gy":  -552,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8E26D917486BF1D961EB17B9E76FE985",
+        "name":  null,
+        "gx":  -680,
+        "gy":  190,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8E9382D64D81329B3B56D7B28ED704A5",
+        "name":  null,
+        "gx":  371,
+        "gy":  493,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8ECF58564560CF995B2D63BD1E32EDD8",
+        "name":  null,
+        "gx":  -330,
+        "gy":  -504,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "8F51CB8F4F95387C33A04E8B2B782958",
+        "name":  null,
+        "gx":  -978,
+        "gy":  -924,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9299F76949EE7D7104EA848CF103B829",
+        "name":  null,
+        "gx":  -478,
+        "gy":  119,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "93903EA841E81D4D32A95CBEF3F432F1",
+        "name":  null,
+        "gx":  225,
+        "gy":  -276,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "94BBD21847A4C080D6B48CA66F3A4914",
+        "name":  null,
+        "gx":  412,
+        "gy":  -341,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "94F35AC94A2094A39D129E870028072B",
+        "name":  null,
+        "gx":  -813,
+        "gy":  -1427,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "950640AE4BCA06E9399E6783C4CCDC0D",
+        "name":  null,
+        "gx":  -492,
+        "gy":  -728,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9597C62C48288BB2BFE8CF9FED52D535",
+        "name":  null,
+        "gx":  -558,
+        "gy":  -753,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "97FB6B534E107CE4E719229FEFC2CAC2",
+        "name":  null,
+        "gx":  539,
+        "gy":  324,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9816364A4F712D2C6C3EFA8D4D41DDC1",
+        "name":  null,
+        "gx":  -1024,
+        "gy":  -1404,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "98D57915461DFEDC2DCF0CBB3F8937AC",
+        "name":  null,
+        "gx":  -355,
+        "gy":  -625,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "999B9EAA4711936662748BB0F5CECAE7",
+        "name":  null,
+        "gx":  -96,
+        "gy":  172,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9B2195DC41F175C0CA3BFAA401C4FD79",
+        "name":  null,
+        "gx":  182,
+        "gy":  9,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9B4471254D16AD254C952F9B85142CA9",
+        "name":  null,
+        "gx":  -93,
+        "gy":  -240,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9C354F5C4182BA6D3EB689B7693A0A0D",
+        "name":  null,
+        "gx":  289,
+        "gy":  -26,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9CE7AE0B41FB86AE798CD392DF43D4F8",
+        "name":  null,
+        "gx":  8,
+        "gy":  100,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9DB7A86D4DC36C967812839837637549",
+        "name":  null,
+        "gx":  -147,
+        "gy":  447,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9DCA7ADF464FF9BC33326CB649D0A438",
+        "name":  null,
+        "gx":  -351,
+        "gy":  -582,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9E236141475508390E441380232FBFEC",
+        "name":  null,
+        "gx":  -348,
+        "gy":  -369,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9E3042744AB914E93BBE048BE1F3193C",
+        "name":  null,
+        "gx":  110,
+        "gy":  -93,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9E6E13AD452C095A4C8F94851A58D937",
+        "name":  null,
+        "gx":  -766,
+        "gy":  -1100,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9F36CB08444A93C0AF3F7C90A2F1FE79",
+        "name":  null,
+        "gx":  439,
+        "gy":  514,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9F3A78AE444B817FF3939EA1A5491234",
+        "name":  null,
+        "gx":  130,
+        "gy":  -108,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9F3D3C7D4972BDD19010758C87239EC6",
+        "name":  null,
+        "gx":  -1043,
+        "gy":  -1395,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "9FF65BD844567FDC73655BA090CE8AAD",
+        "name":  null,
+        "gx":  -614,
+        "gy":  -749,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A0E2AB764338CE9B9A549D8E09467A7A",
+        "name":  null,
+        "gx":  -204,
+        "gy":  -411,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A183ABCE4A03A869EB1D98B109305286",
+        "name":  null,
+        "gx":  -121,
+        "gy":  317,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A1AC95BC4CF9E77EC5758FBBB32F8523",
+        "name":  null,
+        "gx":  140,
+        "gy":  -115,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A268530447118301470C7AB2B9321C37",
+        "name":  null,
+        "gx":  -232,
+        "gy":  -207,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A26B3FF54C64BE3F8427B0BD90C75129",
+        "name":  null,
+        "gx":  38,
+        "gy":  -64,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A2D70A164660FB5CF59C25848B23C017",
+        "name":  null,
+        "gx":  -587,
+        "gy":  292,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A35549F14A60465C4B3A71AAC96D458F",
+        "name":  null,
+        "gx":  -116,
+        "gy":  -499,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A3626D264B90759B454FCD825E55738E",
+        "name":  null,
+        "gx":  267,
+        "gy":  61,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A39AEA08429D0D78062320A84EE37242",
+        "name":  null,
+        "gx":  -1359,
+        "gy":  -1534,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A3A1A15C455C30BEFB950D945BC6FC07",
+        "name":  null,
+        "gx":  24,
+        "gy":  -156,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A3E6E01344031D7480822BB1B094C49D",
+        "name":  null,
+        "gx":  -160,
+        "gy":  -600,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A3FE59C5405E806A2B88DCA1561C0F0E",
+        "name":  null,
+        "gx":  -380,
+        "gy":  -106,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A41C6171452D0755F0AC9E959F3D94CE",
+        "name":  null,
+        "gx":  135,
+        "gy":  -30,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A43563A7460DEC5F339267AC8E986938",
+        "name":  null,
+        "gx":  -183,
+        "gy":  -556,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A48EDF9248901537AF02AEA417B6C7E2",
+        "name":  null,
+        "gx":  -418,
+        "gy":  510,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A52ABF464C3063FE669825BD3E8C6867",
+        "name":  null,
+        "gx":  -631,
+        "gy":  221,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A586AD9E4C6088FABF5C028976314D0C",
+        "name":  null,
+        "gx":  -130,
+        "gy":  -260,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A5A6EAFF409EB65E6AE129BDDEA68BAD",
+        "name":  null,
+        "gx":  -509,
+        "gy":  269,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A5C235FB4F397124631C14AD8205E17B",
+        "name":  null,
+        "gx":  -1226,
+        "gy":  -921,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A5DC68A04FDF2695B751FD8AAC9F65BA",
+        "name":  null,
+        "gx":  -36,
+        "gy":  82,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A602E36E4048E760883727BB61531245",
+        "name":  null,
+        "gx":  59,
+        "gy":  -397,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A6C152C74821F7A5858B6EA6D195089E",
+        "name":  null,
+        "gx":  -26,
+        "gy":  -259,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A6FCC866485F18E8283DD2A98C37D211",
+        "name":  null,
+        "gx":  -398,
+        "gy":  -260,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A6FDB8FC430BF12ACDB69B9A0E45C78F",
+        "name":  null,
+        "gx":  -192,
+        "gy":  -239,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A8175A1D495327E5071EC09BEB1ACD50",
+        "name":  null,
+        "gx":  -6,
+        "gy":  -540,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A82B62294EF3AA391D0A3BBBA2ACB89C",
+        "name":  null,
+        "gx":  -710,
+        "gy":  -234,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A88A5FE1471AE6B802081B877EA5DC1C",
+        "name":  null,
+        "gx":  231,
+        "gy":  -193,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A968F46848B45292962B4198B36CEF78",
+        "name":  null,
+        "gx":  -89,
+        "gy":  -285,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A982DB424CB1B339C0B667B379C2D827",
+        "name":  null,
+        "gx":  255,
+        "gy":  -129,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "A9BD549F4C0C5604B104568F1101E786",
+        "name":  null,
+        "gx":  159,
+        "gy":  3,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AA53E9394DF329145D702AB6F6016A11",
+        "name":  null,
+        "gx":  307,
+        "gy":  537,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AA6D55584DE09A235F6931A23286F430",
+        "name":  null,
+        "gx":  229,
+        "gy":  10,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AAD58FB74D61492BA94C739B42097445",
+        "name":  null,
+        "gx":  -413,
+        "gy":  394,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AB03766D4DB9075651006E9AE42AF748",
+        "name":  null,
+        "gx":  388,
+        "gy":  -18,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AC2F287B481EEF21B1C47392B8FEC534",
+        "name":  null,
+        "gx":  -254,
+        "gy":  -147,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AD5B95FD4DDD1F208ECF08B2AFCBAF0F",
+        "name":  null,
+        "gx":  -895,
+        "gy":  -799,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "ADA1BF0246A8849190482E9558C59FB0",
+        "name":  null,
+        "gx":  48,
+        "gy":  4,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "ADF9EE0D40D0FEF2274E7D870F8523E1",
+        "name":  null,
+        "gx":  -19,
+        "gy":  41,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AE48D0D44E4F73CDF9E26A83E70A1120",
+        "name":  null,
+        "gx":  -613,
+        "gy":  -1102,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AEA25E804026B70357E0838B64B06E67",
+        "name":  null,
+        "gx":  182,
+        "gy":  -38,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AEF1BB4C4BB9E48AA2A9FEA81710642D",
+        "name":  null,
+        "gx":  -668,
+        "gy":  286,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AF9415FF405293DA3EB134AEE3ADEE0A",
+        "name":  null,
+        "gx":  -69,
+        "gy":  -268,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "AFE825AD4FDE212D27DCD0A6740C5BF6",
+        "name":  null,
+        "gx":  -290,
+        "gy":  -494,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B04E8EB240DA10FCE91944AA6DBF3424",
+        "name":  null,
+        "gx":  -555,
+        "gy":  -209,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B077AFD44059109C629881BE83C2F39B",
+        "name":  null,
+        "gx":  -45,
+        "gy":  -302,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B0AA171B48BAF5EC7B5BFFBD5C9766D3",
+        "name":  null,
+        "gx":  175,
+        "gy":  -32,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B0BC175A43531898929F879E7A4CA27D",
+        "name":  null,
+        "gx":  -821,
+        "gy":  -836,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B0EA3B864C8542421B316A90E04172F3",
+        "name":  null,
+        "gx":  239,
+        "gy":  318,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B217F6C544874E373C00CD9DA55D3A0F",
+        "name":  null,
+        "gx":  -3,
+        "gy":  -292,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B370922341BAB67960039489220F89E6",
+        "name":  null,
+        "gx":  -234,
+        "gy":  399,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B4283FC847577F08AF9815BA9EDCF8D5",
+        "name":  null,
+        "gx":  -57,
+        "gy":  -207,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B52640BB43E5331D03A5AD8BCBAA7A4C",
+        "name":  null,
+        "gx":  -913,
+        "gy":  -1063,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B614C1CA4C4D431B94409AA88F97E8A4",
+        "name":  null,
+        "gx":  164,
+        "gy":  159,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B6D4E4714380FF64A32DFBA8E5FDB0C6",
+        "name":  null,
+        "gx":  -553,
+        "gy":  -603,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B77E3AA3421A13D9D2FE5A826A02F9A1",
+        "name":  null,
+        "gx":  -912,
+        "gy":  -1058,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B8919B664C1FC69132058081DB1360EF",
+        "name":  null,
+        "gx":  -281,
+        "gy":  -290,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B8C66EBC4C132EA10AE6B3A215458B80",
+        "name":  null,
+        "gx":  -36,
+        "gy":  -358,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B9A36C3E49929005068103A5C0420B97",
+        "name":  null,
+        "gx":  234,
+        "gy":  -30,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B9B314AF4A793CC4167BEE8F4AF2FD35",
+        "name":  null,
+        "gx":  -125,
+        "gy":  -306,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B9C10503440B85A72910EBA47BF66D4B",
+        "name":  null,
+        "gx":  -1005,
+        "gy":  -1393,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "B9DD5C1643B0CBE1E6DB678BB2E0D6DD",
+        "name":  null,
+        "gx":  159,
+        "gy":  226,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BB1320054376E3E5A2F5318E7DF6C9D5",
+        "name":  null,
+        "gx":  -791,
+        "gy":  -1114,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BB392A91477A8876509984941D62FB33",
+        "name":  null,
+        "gx":  -635,
+        "gy":  124,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BB7E2C3F45306800466A20A524D61706",
+        "name":  null,
+        "gx":  449,
+        "gy":  -93,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BCAFB9B146B1E555921E2983BBABE640",
+        "name":  null,
+        "gx":  337,
+        "gy":  -206,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BCB9461240E67524592E58A03775C7EC",
+        "name":  null,
+        "gx":  -479,
+        "gy":  -685,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BCBB46604B91E74D1A870DA7267D8CB8",
+        "name":  null,
+        "gx":  -52,
+        "gy":  -245,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BDC3B5FB4CA1DFA3B2C83A9C8382EE5A",
+        "name":  null,
+        "gx":  268,
+        "gy":  -17,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BDF589CE46446C60D7A80995B790B7EB",
+        "name":  null,
+        "gx":  94,
+        "gy":  -306,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "BF69CDD34E2112673ECF7D860F16BA24",
+        "name":  null,
+        "gx":  -441,
+        "gy":  -216,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C005EF5C4FDF3ABC8088BFB66705BEE0",
+        "name":  null,
+        "gx":  -12,
+        "gy":  -456,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C01130C249E8A1CCDEFABA85BD2F7C18",
+        "name":  null,
+        "gx":  -329,
+        "gy":  -613,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C0C560924697E63DB90958803D0F7114",
+        "name":  null,
+        "gx":  105,
+        "gy":  479,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C171A0FB4B7A7DBB248B36B0FBA693B5",
+        "name":  null,
+        "gx":  28,
+        "gy":  -120,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C28B5DEE4EE2942F6E93D6AE8D14FDDF",
+        "name":  null,
+        "gx":  -1431,
+        "gy":  -1476,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C50B4331425AD7745E247C8AD9553EFD",
+        "name":  null,
+        "gx":  -286,
+        "gy":  -429,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C5CCFF5D43AC61019DF5CBB3D072E8EB",
+        "name":  null,
+        "gx":  51,
+        "gy":  55,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C5D0747349D32E13541BA9A862F69902",
+        "name":  null,
+        "gx":  -606,
+        "gy":  312,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C5E3C29941E0E08FE74A58B5BE2DAE88",
+        "name":  null,
+        "gx":  -662,
+        "gy":  76,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C79E444B4B24DDD64E694D9902BD51AC",
+        "name":  null,
+        "gx":  394,
+        "gy":  11,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C7ADD4AA41C80AF4F52378A8F7050E53",
+        "name":  null,
+        "gx":  -36,
+        "gy":  -177,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C8BA41384E30B7FA28705195A0788643",
+        "name":  null,
+        "gx":  -269,
+        "gy":  -151,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C8C21B0146CF197B384A0DA265E8D688",
+        "name":  null,
+        "gx":  173,
+        "gy":  12,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C8F3D0AD494FEF8779F519AB69717F84",
+        "name":  null,
+        "gx":  453,
+        "gy":  -115,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C93B9CAA4659FBEAE300FF866B2688AD",
+        "name":  null,
+        "gx":  -737,
+        "gy":  -672,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C958A96D4D7922A9E3B564B08E09B519",
+        "name":  null,
+        "gx":  -199,
+        "gy":  -728,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "C984C2AF4B08141209F292A94070C2F0",
+        "name":  null,
+        "gx":  -61,
+        "gy":  -179,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CA03149A473BA2FF149DD4B559C637C7",
+        "name":  null,
+        "gx":  -10,
+        "gy":  59,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CA21F184494897457C5A578DB905C770",
+        "name":  null,
+        "gx":  -540,
+        "gy":  151,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CA4BE85E4F23F8BEAF3BCA94B712C9EE",
+        "name":  null,
+        "gx":  -828,
+        "gy":  -579,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CAB5ABEC4E8762AB68CE3C936C353E03",
+        "name":  null,
+        "gx":  -625,
+        "gy":  263,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CBBD0BEC48B28DE935277CAB8EB75669",
+        "name":  null,
+        "gx":  58,
+        "gy":  95,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CCC7CED2429C7A39FBA43CB80533EE13",
+        "name":  null,
+        "gx":  -142,
+        "gy":  -468,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CD0005DC4B97063B002F13A1C70C3070",
+        "name":  null,
+        "gx":  -1222,
+        "gy":  -1702,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CD1F04E349EF8B30C1367CAE0B09F03A",
+        "name":  null,
+        "gx":  -431,
+        "gy":  -251,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "CE18F94A4EB82EE49C8CC89776D5D42A",
+        "name":  null,
+        "gx":  199,
+        "gy":  -38,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D02F0AFD43BB2C43257A6184DE317245",
+        "name":  null,
+        "gx":  86,
+        "gy":  132,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D03E68AC4FB5D26E04E754AA2C235CD1",
+        "name":  null,
+        "gx":  -298,
+        "gy":  -337,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D059F59543F6E1387E55C192DE4AA396",
+        "name":  null,
+        "gx":  -1109,
+        "gy":  -983,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D061C8F7489DD9A7A6818A8DC8CC85D3",
+        "name":  null,
+        "gx":  -936,
+        "gy":  -1401,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D0948D51429A4157A057FBA89D59BA6E",
+        "name":  null,
+        "gx":  -146,
+        "gy":  -307,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D0D38F81460BD37DFED5B89A9EEB6C1D",
+        "name":  null,
+        "gx":  -1184,
+        "gy":  -1596,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D1C4E3694D9FBDC8EC006D8D34F761D3",
+        "name":  null,
+        "gx":  -663,
+        "gy":  182,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D1EDB7AF4660B0B428B1AFB9F031C590",
+        "name":  null,
+        "gx":  -251,
+        "gy":  -528,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D2506521436592CEDFEBB59E32086F86",
+        "name":  null,
+        "gx":  -464,
+        "gy":  -742,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D30845F549705C4B46E6D7997F9BB672",
+        "name":  null,
+        "gx":  -288,
+        "gy":  -148,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D5A743E343C9D04A80DCE68F2B6F6243",
+        "name":  null,
+        "gx":  310,
+        "gy":  708,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D5BD8D544171C2EEC6C0338D5AFBF4D7",
+        "name":  null,
+        "gx":  192,
+        "gy":  -137,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D725DBA9479863CDF6EF9BBEE3DA817A",
+        "name":  null,
+        "gx":  -705,
+        "gy":  -746,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D83845C0472D0BA036EFA1B36FFEBD5B",
+        "name":  null,
+        "gx":  306,
+        "gy":  -43,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D8B2072C41DB17F1C1DDD9815DA745FB",
+        "name":  null,
+        "gx":  -940,
+        "gy":  -1169,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D8CA4F4F413103D7BB9012B1C47E3BAE",
+        "name":  null,
+        "gx":  -19,
+        "gy":  -350,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D8F3653E47C06372CDAF7395DD2BB9ED",
+        "name":  null,
+        "gx":  -731,
+        "gy":  191,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "D91BB6854B636D6428F8A6BF35F9ADEA",
+        "name":  null,
+        "gx":  -1036,
+        "gy":  -827,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DA1938814973E31858C870A27AE08BD0",
+        "name":  null,
+        "gx":  24,
+        "gy":  -418,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DB171F934E4CC6D73EA899BDC5D27958",
+        "name":  null,
+        "gx":  224,
+        "gy":  -188,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DBDF77B440E27BA55735B6928FABAB64",
+        "name":  null,
+        "gx":  590,
+        "gy":  105,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DC38FB994FD09BB72D842498AB4FAD8B",
+        "name":  null,
+        "gx":  -831,
+        "gy":  -502,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DCA92F2545C98E3553004285BAE23754",
+        "name":  null,
+        "gx":  -275,
+        "gy":  -463,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DCB077074E2B7AEFF4BB56A8208E4AA7",
+        "name":  null,
+        "gx":  -964,
+        "gy":  -1129,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DD0F368F457A260FEB83D1AEBEF555A4",
+        "name":  null,
+        "gx":  -526,
+        "gy":  130,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DD5DDA594935D92234C3779738FA3F87",
+        "name":  null,
+        "gx":  463,
+        "gy":  -235,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DD7E16D246DA13F780A9C8946232702B",
+        "name":  null,
+        "gx":  -170,
+        "gy":  597,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DE0C2D9F4EA4EA8FBBEE0C9E3C07239C",
+        "name":  null,
+        "gx":  -1346,
+        "gy":  -1413,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DE62C05C4EBCF330C641B79056AB7E2F",
+        "name":  null,
+        "gx":  -1063,
+        "gy":  -887,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DEE20FCD4F36E21061DD638C946E7350",
+        "name":  null,
+        "gx":  -106,
+        "gy":  53,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DF208AE449B4A18CD240D59BAA07F2A4",
+        "name":  null,
+        "gx":  401,
+        "gy":  -41,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DFA66F2E41563DB0DC96B7ADD7993AE7",
+        "name":  null,
+        "gx":  -463,
+        "gy":  -209,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "DFF933A548AEAC22467953BC9F77C66B",
+        "name":  null,
+        "gx":  -673,
+        "gy":  137,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E06545D44030102A600E74B96FB25CDB",
+        "name":  null,
+        "gx":  41,
+        "gy":  -318,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E22FD32543A4B954D38CF593FC38BD18",
+        "name":  null,
+        "gx":  29,
+        "gy":  63,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E4BFE4784D0F646845604BB190DEFDFE",
+        "name":  null,
+        "gx":  -1124,
+        "gy":  -1008,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E4C61A41441CAB566B9AA3B5ED7708C3",
+        "name":  null,
+        "gx":  -105,
+        "gy":  110,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E4CCA3164C726E1322ACF4A59F349723",
+        "name":  null,
+        "gx":  170,
+        "gy":  16,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E54E6F0B4D9126E212D8E4B5508E5016",
+        "name":  null,
+        "gx":  -1015,
+        "gy":  -1075,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E616A76B43EF1A1FE65828857417B308",
+        "name":  null,
+        "gx":  -1306,
+        "gy":  -1686,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E65EC04040B34DAD992691A08E6825FB",
+        "name":  null,
+        "gx":  -433,
+        "gy":  498,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E6FA06E2406EA5A19DDC13B6CDC75583",
+        "name":  null,
+        "gx":  201,
+        "gy":  -7,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E7C337DE4BD8DC7E54280F859828D335",
+        "name":  null,
+        "gx":  -257,
+        "gy":  -344,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E8DCC94B41B90D75CBF9F9B24E035C54",
+        "name":  null,
+        "gx":  211,
+        "gy":  129,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E8FA73ED46DE830D91C2DB8DB5EC1123",
+        "name":  null,
+        "gx":  -779,
+        "gy":  -650,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "E916A91B49342AB4A4BD45B74AAFAAF2",
+        "name":  null,
+        "gx":  0,
+        "gy":  -173,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EA073EA54A7A8E4464A9C1A71AD4DEFA",
+        "name":  null,
+        "gx":  -54,
+        "gy":  -527,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EB0AF3214246C4A2198D54AD315B0522",
+        "name":  null,
+        "gx":  217,
+        "gy":  -108,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EBFEF1B144FA38C81CFC01B33C9A3FB9",
+        "name":  null,
+        "gx":  -271,
+        "gy":  -654,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EC86B1A74A62A2EC3D22BAA46500FD88",
+        "name":  null,
+        "gx":  -176,
+        "gy":  332,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "ECAD0A7A477DF0F0DFA0A785AF3C7B40",
+        "name":  null,
+        "gx":  -355,
+        "gy":  -227,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "ECD56F3D4830A840BD4AC486D16AFD94",
+        "name":  null,
+        "gx":  -147,
+        "gy":  -506,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "ED393E6945F92DCBBBF80C8856F7A2CF",
+        "name":  null,
+        "gx":  -820,
+        "gy":  -1114,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "ED4F7E99476AA3D7A30B9DACBC43A990",
+        "name":  null,
+        "gx":  -611,
+        "gy":  -220,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EE5650754259BE7072E7789BF533C53D",
+        "name":  null,
+        "gx":  -183,
+        "gy":  -230,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EE61E98D4910AD8982A202BB113AEB84",
+        "name":  null,
+        "gx":  -91,
+        "gy":  -314,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EF63298C4CDC4033C8F205880DD5205D",
+        "name":  null,
+        "gx":  -162,
+        "gy":  -172,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EF659AB546F255D220E961A390B1B460",
+        "name":  null,
+        "gx":  118,
+        "gy":  -95,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EFCF4A3E4E552497FA666BBB82E82100",
+        "name":  null,
+        "gx":  -613,
+        "gy":  -17,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "EFE19F894B89F63555CFC08AB027D96B",
+        "name":  null,
+        "gx":  -787,
+        "gy":  -1068,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F0B31BD94F80474A8B2E22B51370BFA1",
+        "name":  null,
+        "gx":  -133,
+        "gy":  -370,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F11E94074A8D4C447BC383AF6D8D35A9",
+        "name":  null,
+        "gx":  -1151,
+        "gy":  -1667,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F13ACDD54E8CACFB1DAE44AB6D26E309",
+        "name":  null,
+        "gx":  -668,
+        "gy":  200,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F1C6872A41CBD11AC50BE7A5977499B8",
+        "name":  null,
+        "gx":  162,
+        "gy":  -62,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F1F8A8B74C1C0B9A53C96FBFBFB8690D",
+        "name":  null,
+        "gx":  -1316,
+        "gy":  -1591,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F2E5E1D34A7EB41109B0109D1B97EFF7",
+        "name":  null,
+        "gx":  -225,
+        "gy":  647,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F43A7F854B4903E80479E8A8A457EA49",
+        "name":  null,
+        "gx":  -686,
+        "gy":  245,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F5C7B86C4738B3D1CC7FFFA910289C03",
+        "name":  null,
+        "gx":  -386,
+        "gy":  -116,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F5F7532A41E4FA4A5AEA8DA23FD8C927",
+        "name":  null,
+        "gx":  -264,
+        "gy":  -397,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F65A4AA74D816734BA9FC0AFCCB93F05",
+        "name":  null,
+        "gx":  -135,
+        "gy":  -728,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F664E5D3430197466B429DB8087A40BA",
+        "name":  null,
+        "gx":  -666,
+        "gy":  168,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F6A27B68434D796FA273148BA5677695",
+        "name":  null,
+        "gx":  -335,
+        "gy":  -479,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F6E81E69495D4CB3AA28D7BC83E6431C",
+        "name":  null,
+        "gx":  -1382,
+        "gy":  -1466,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "F8940495410F36218768E6B840205D11",
+        "name":  null,
+        "gx":  203,
+        "gy":  -94,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FB1476184DDB71FB747232BEE15FC9E3",
+        "name":  null,
+        "gx":  -716,
+        "gy":  -453,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FD7BD3EA412978207C7EBCBB8884FB84",
+        "name":  null,
+        "gx":  35,
+        "gy":  334,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FDCD00E74288268441BBDABE30259425",
+        "name":  null,
+        "gx":  -104,
+        "gy":  -243,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FE1169B7437C8DE7BE2E1BB4A3D5BB0E",
+        "name":  null,
+        "gx":  31,
+        "gy":  -166,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FE2EC16E45B3926AD2ABA3A82A2A00F9",
+        "name":  null,
+        "gx":  45,
+        "gy":  -389,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FE73DF3642A01BD7D1F7C782EA9C34F2",
+        "name":  null,
+        "gx":  -598,
+        "gy":  266,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FE90EE264B5B6B9097D891A779E574E1",
+        "name":  null,
+        "gx":  -791,
+        "gy":  -605,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FF20D9AF402A1212B07BD9855C3ABE1A",
+        "name":  null,
+        "gx":  -1080,
+        "gy":  -1405,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FF84BA00472DBA739360FDA72714B24D",
+        "name":  null,
+        "gx":  -1146,
+        "gy":  -1025,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FFADFCB94296F21356D190B7330FBC45",
+        "name":  null,
+        "gx":  -379,
+        "gy":  515,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FFC84CEE440AEE8B616215AEB56AF0B5",
+        "name":  null,
+        "gx":  -524,
+        "gy":  -726,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FFED6DDC4936C921340733AECF2E9C78",
+        "name":  null,
+        "gx":  -568,
+        "gy":  -221,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "FFF066F94CC2DCEA3D34EA9DACFD542F",
+        "name":  null,
+        "gx":  -110,
+        "gy":  568,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  false,
+        "category":  "effigy",
+        "origin":  "scraped"
+    },
+    {
+        "key":  "923B781345D2AB7ECED6BABD6E97ECE8",
+        "name":  "Hypocrite Hill",
+        "gx":  71,
+        "gy":  -248,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "live"
+    },
+    {
+        "key":  "81_1_FOREST_FBOSS_7",
+        "name":  "Elphidran",
+        "gx":  44,
+        "gy":  -284,
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "live"
+    },
+    {
+        "key":  "81_1_FOREST_FBOSS_1",
+        "name":  "Petallia",
+        "gx":  -19,
+        "gy":  -264,
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "live"
+    },
+    {
+        "key":  "16C7164C43E2B96BEDCC6696E2E592F7",
+        "name":  "Ancient Ritual Site",
+        "gx":  -15,
+        "gy":  -292,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "live"
     }
 ]

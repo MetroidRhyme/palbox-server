@@ -268,10 +268,16 @@ function Merge-ConfirmedTowers([string]$json) {
     try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
     if ($null -eq $arr) { $arr = @() }
     $manualNames = Get-TowerConfirmedNames
+    # Only a verified entry counts as a match (a scraped/unverified candidate row --
+    # see Phase 3's importers -- must not show m:true just for existing); an entry with
+    # an explicit "category" (added in the schema migration) must also agree it's a
+    # tower, so a keyless scraped row Phase 3 inserts for a DIFFERENT category can never
+    # accidentally match here via a stray name/coord coincidence.
+    $candidates = @($confirmed | Where-Object { $_.verified -ne $false -and (-not $_.category -or $_.category -eq 'tower') })
     $result = @()
     foreach ($entry in $arr) {
         $out = @{ name = $entry.name; x = $entry.x; y = $entry.y; lv = $entry.lv }
-        $c = Find-ConfirmedByNameOrCoord $entry $confirmed
+        $c = Find-ConfirmedByNameOrCoord $entry $candidates
         if ($c) {
             $xy = ConvertTo-WorldXY $c.gx $c.gy
             $out.x = $xy.x
@@ -311,8 +317,22 @@ function Merge-ConfirmedBounty([string]$json) {
     foreach ($k in $anonMap.Keys) { $reverseAnon[$anonMap[$k].ToUpper()] = $k }
     $bySpecies = @{}
     foreach ($c in $confirmed) {
-        $species = $anonMap[$c.key.ToUpper()]
-        if (-not $species) { $species = $c.key }
+        # Only a verified entry counts as a match, and (once the schema migration has run)
+        # only one whose own category agrees it's a bounty -- same reasoning as the
+        # candidate-list gating in Merge-ConfirmedTowers/WantedFugitives/EagleStatues below.
+        if ($c.verified -eq $false) { continue }
+        if ($c.category -and $c.category -ne 'bounty') { continue }
+        # A keyless entry (a scraped species-only import from a future importer phase) has
+        # no key to resolve via $anonMap, so fall back to its own "species" field directly --
+        # guards against calling .ToUpper() on a null key, which would otherwise throw.
+        $species = $null
+        if ($c.key) {
+            $species = $anonMap[$c.key.ToUpper()]
+            if (-not $species) { $species = $c.key }
+        } elseif ($c.species) {
+            $species = $c.species
+        }
+        if (-not $species) { continue }
         $bySpecies[$species.ToUpper()] = $c
     }
     $manualSpecies = Get-BountyConfirmedSpecies
@@ -343,6 +363,8 @@ function Merge-ConfirmedBounty([string]$json) {
         # Field Boss, not Wanted Fugitive -- show it now from his own confirmed
         # name/coords rather than waiting on a manual anonymous_boss_keys.json edit, if it
         # isn't already covered by a bounty_bosses.json roster entry above.
+        if ($c.verified -eq $false) { continue }
+        if (-not $c.key) { continue }
         if ($c.source -ne 'NormalBossDefeatFlag' -or (Test-SyndicateKeyShape $c.key)) { continue }
         $species = $anonMap[$c.key.ToUpper()]
         if (-not $species) { $species = $c.key }
@@ -369,7 +391,13 @@ function Merge-ConfirmedWantedFugitives([string]$json) {
     try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
     if ($null -eq $arr) { $arr = @() }
     $towerNames = Get-TowerNameSet
-    $candidates = @($confirmed | Where-Object { -not ($_.name -and $towerNames.Contains($_.name.ToUpper())) })
+    # Only a verified entry counts as a match, and (once the schema migration has run) only
+    # one whose own category agrees it's a fugitive -- see Merge-ConfirmedTowers' comment.
+    $candidates = @($confirmed | Where-Object {
+        $_.verified -ne $false -and
+        (-not ($_.name -and $towerNames.Contains($_.name.ToUpper()))) -and
+        (-not $_.category -or $_.category -eq 'fugitive')
+    })
     $manualNames = Get-FugitiveConfirmedNames
     $result = @()
     foreach ($entry in $arr) {
@@ -401,7 +429,13 @@ function Merge-ConfirmedEagleStatues([string]$json) {
     try { $arr = $json | ConvertFrom-Json } catch { $arr = @() }
     if ($null -eq $arr) { $arr = @() }
     $towerNames = Get-TowerNameSet
-    $candidates = @($confirmed | Where-Object { -not ($_.name -and $towerNames.Contains($_.name.ToUpper())) })
+    # Only a verified entry counts as a match, and (once the schema migration has run) only
+    # one whose own category agrees it's an eagle -- see Merge-ConfirmedTowers' comment.
+    $candidates = @($confirmed | Where-Object {
+        $_.verified -ne $false -and
+        (-not ($_.name -and $towerNames.Contains($_.name.ToUpper()))) -and
+        (-not $_.category -or $_.category -eq 'eagle')
+    })
     $manualNames = Get-EagleConfirmedNames
     $result = @()
     foreach ($entry in $arr) {
@@ -442,7 +476,12 @@ function Get-ConfirmedNPCs {
     }
     $result = @()
     foreach ($c in $confirmed) {
-        $isNpc = ($c.source -eq 'NPCTalkCountMap') -or $roster.Contains($c.key.ToUpper())
+        # Category-first (set by the schema migration) takes precedence over the
+        # source/roster fallback below, which only still matters for an entry inserted
+        # before category existed (or by the Desktop dataminer script, until it's taught
+        # to stamp category too). Guard $c.key with "-and" since a future entry from a
+        # different category could be keyless (e.g. a Phase 3 bounty import).
+        $isNpc = if ($c.category) { $c.category -eq 'npc' } else { ($c.source -eq 'NPCTalkCountMap') -or ($c.key -and $roster.Contains($c.key.ToUpper())) }
         if ($isNpc) {
             $xy = ConvertTo-WorldXY $c.gx $c.gy
             $name = if ($c.name) { $c.name } else { $c.key }
@@ -486,6 +525,7 @@ function Get-ConfirmedLandmarks {
         } catch {}
     }
     foreach ($c in $confirmed) {
+        if (-not $c.key) { continue }
         $species = $anonMap[$c.key.ToUpper()]
         if (-not $species) { $species = $c.key }
         if ($bountySpecies.ContainsKey($species.ToUpper())) { [void]$claimed.Add($c.key.ToUpper()) }
@@ -530,7 +570,7 @@ function Get-ConfirmedLandmarks {
         }
     }
     foreach ($c in $confirmed) {
-        if ($c.name -and $namedRosterNames.Contains($c.name.ToUpper())) { [void]$claimed.Add($c.key.ToUpper()) }
+        if ($c.key -and $c.name -and $namedRosterNames.Contains($c.name.ToUpper())) { [void]$claimed.Add($c.key.ToUpper()) }
     }
     # Anthony's dataminer script stamps a "source" (raw save-flag name) on every newly
     # confirmed entry now -- trust it directly instead of waiting on a roster-file edit.
@@ -542,14 +582,30 @@ function Get-ConfirmedLandmarks {
     # landmarks) and entries with no "source" at all (pre-dating this field) fall through
     # to Landmarks below.
     foreach ($c in $confirmed) {
-        if ($c.source -eq 'FastTravelPointUnlockFlag' -or $c.source -eq 'NPCTalkCountMap' -or
-            $c.source -eq 'NormalBossDefeatFlag') {
+        if ($c.key -and ($c.source -eq 'FastTravelPointUnlockFlag' -or $c.source -eq 'NPCTalkCountMap' -or
+            $c.source -eq 'NormalBossDefeatFlag')) {
             [void]$claimed.Add($c.key.ToUpper())
         }
     }
     $result = @()
     foreach ($c in $confirmed) {
-        if (-not $claimed.Contains($c.key.ToUpper())) {
+        # Category-first (set by the schema migration): an entry with an explicit category
+        # is claimed the instant that category isn't 'landmark', with NO dependency on
+        # having a key at all -- this is the only way a keyless entry (e.g. a Phase 3
+        # scraped-species bounty import) can ever avoid leaking in here, since it has no
+        # key for the roster-membership checks above to claim. An entry without a category
+        # yet (pre-migration legacy shape, or inserted by the Desktop dataminer script
+        # before it's taught to stamp category too) falls through to the roster-based
+        # $claimed check exactly as before.
+        if ($c.category) {
+            if ($c.category -eq 'landmark') {
+                $xy = ConvertTo-WorldXY $c.gx $c.gy
+                $name = if ($c.name) { $c.name } else { $c.key }
+                $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
+            }
+            continue
+        }
+        if ($c.key -and -not $claimed.Contains($c.key.ToUpper())) {
             $xy = ConvertTo-WorldXY $c.gx $c.gy
             $name = if ($c.name) { $c.name } else { $c.key }
             $result += @{ key = $c.key; name = $name; x = $xy.x; y = $xy.y }
