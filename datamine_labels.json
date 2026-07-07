@@ -2398,5 +2398,37 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FAIRYDRAGON",
+        "name":  "Elphidran",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FairyDragon",
+        "name":  "Elphidran",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FLOWERDOLL",
+        "name":  "Petallia",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FlowerDoll",
+        "name":  "Petallia",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]
