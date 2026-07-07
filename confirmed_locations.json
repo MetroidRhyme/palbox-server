@@ -9716,19 +9716,19 @@
         "name":  "Felbat"
     },
     {
-        "key":  null,
+        "key":  "81_1_GRASS_FBOSS_16",
         "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "gx":  -258,
+        "gy":  -458,
         "lv":  null,
-        "source":  null,
         "origin":  "scraped",
-        "verified":  false,
+        "verified":  true,
         "species":  "FengyunDeeper",
         "x":  -333940,
         "y":  39610,
         "z":  1600,
-        "name":  "Fenglope"
+        "name":  "Fenglope",
+        "source":  "NormalBossDefeatFlag"
     },
     {
         "key":  null,
