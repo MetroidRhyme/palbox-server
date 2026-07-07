@@ -8627,12 +8627,12 @@
         "gx":  -264,
         "gy":  -397,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -305936.8,
         "y":  37005.5,
-        "z":  2133.37
+        "z":  2133.37,
+        "verified":  true
     },
     {
         "key":  "F65A4AA74D816734BA9FC0AFCCB93F05",
@@ -10436,19 +10436,19 @@
         "name":  "Street Assassin Urchin"
     },
     {
-        "key":  null,
-        "category":  "fugitive",
+        "key":  "BOSS_FEMALE_PEOPLE02",
         "z":  null,
         "species":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -394,
         "gx":  -266,
         "x":  -304734,
         "y":  35906,
         "lv":  16,
-        "name":  "Serial Cheater Siren"
+        "name":  "Serial Cheater Siren",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -11201,19 +11201,19 @@
         "verified":  true
     },
     {
-        "key":  null,
-        "category":  "eagle",
+        "key":  "79C561B747335A7A0A8FBF9FAE280E62",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -348,
         "gx":  -215,
         "x":  -283620,
         "y":  59315,
-        "name":  "Sealed Realm of the Thunder Dragon"
+        "name":  "Sealed Realm of the Thunder Dragon",
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,

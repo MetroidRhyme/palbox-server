@@ -2508,13 +2508,25 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $existing.gy = $gy
                                 $existing | Add-Member -MemberType NoteProperty -Name source -Value $property -Force
                                 $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
-                                # Re-derive category (source/name may have just changed) and
+                                # Must run BEFORE Get-CategoryForEntry -- for a row matched via the
+                                # name-fallback above, $existing.key is still the OLD value (null,
+                                # for a scraped keyless row) at this point. Get-CategoryForEntry's
+                                # NormalBossDefeatFlag branch reads .key to tell a Field Boss key
+                                # apart from a syndicate "BOSS_*" one (Test-SyndicateKeyShape); with
+                                # the key still null, a Wanted Fugitive key (e.g.
+                                # "BOSS_FEMALE_PEOPLE02") always mis-derived to 'bounty' instead of
+                                # 'fugitive', which routed the pin into the wrong map layer entirely
+                                # and made its defeat status check the (always-false, since there's
+                                # no real species) bounty species list instead of the raw fugitive
+                                # key list -- confirmed live (2026-07-07): a manually-mapped
+                                # Wanted Fugitive stayed permanently yellow/undefeated this way.
+                                $existing.key = $key
+                                # Re-derive category (source/name/key may have just changed) and
                                 # origin -- see Get-CategoryForEntry; "manual" here overstates
                                 # nothing new, it's the same convention the schema migration
                                 # already used for any source-tagged, verified:true row.
                                 $existing | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $existing) -Force
                                 $existing | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
-                                $existing.key = $key
                             } else {
                                 $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property; verified = $verifiedFlag }
                                 $newEntry | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $newEntry) -Force
