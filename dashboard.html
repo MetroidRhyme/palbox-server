@@ -561,11 +561,6 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         <button id="eff-filt-fugitive" onclick="toggleEffigyFilter('fugitive')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide human/Syndicate boss (Wanted Fugitive) locations"><span style="color:#f85149;">&#9679;</span> Wanted Fugitive</button>
         <button id="eff-filt-eagle" onclick="toggleEffigyFilter('eagle')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide fast-travel point (Eagle Statue) locations"><span style="color:#e8b339;">&#9679;</span> Eagle Statues</button>
         <button id="eff-filt-tower" onclick="toggleEffigyFilter('tower')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide raid Tower locations"><span style="color:#e8b339;">&#9679;</span> Towers</button>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <button id="eff-filt-npc" onclick="toggleEffigyFilter('npc')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide NPC locations"><span style="color:#39c5bb;">&#9679;</span> NPCs</button>
-          <span id="npc-summary" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="NPCs talked to, from the save"></span>
-        </div>
-        <button id="eff-filt-landmark" onclick="toggleEffigyFilter('landmark')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide other confirmed landmarks (discovered areas, etc.)"><span style="color:#a371f7;">&#9679;</span> Landmarks</button>
         <button id="eff-filt-players" onclick="toggleEffigyFilter('players')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide every player's live position (from their own save's Translation/Rotation)"><span style="color:#58a6ff;">&#9679;</span> Players</button>
         </div>
       </div>
@@ -1230,7 +1225,7 @@ function switchView(name){
   if(name==='datamine'){_dmLivePollTimer=setInterval(dmLivePollTick,8000);}
   try{localStorage.setItem('palbox_active_tab',name);}catch(e){}
   // Player positions AND each overlay's found/collected state (effigies, journals,
-  // bosses, npcs, fugitives, eagles) can all change while the player is mid-session --
+  // bosses, fugitives, eagles) can all change while the player is mid-session --
   // poll faster than the 5-minute refreshAll cadence, but only while the tab is actually
   // on screen (stopped immediately on tab-away, not left running in the background
   // racking up needless save reads). Cheap even at 5s: Get-CachedReaderOutput keys on
@@ -1257,10 +1252,10 @@ var _mapRosterPollTimer=null;
 // trick DM_ICON_CATEGORIES' refetch() already uses for the Data Mine tab's own icon rows.
 async function refetchEffigyMapRosters(){
   effigyLocations=null; journalLocations=null; bossLocations=null; wantedFugitiveLocations=null;
-  landmarkLocations=null; eagleStatueLocations=null; towerLocations=null; npcLocations=null;
+  eagleStatueLocations=null; towerLocations=null;
   await Promise.all([
     fetchEffigyLocations(),fetchJournalLocations(),fetchBossLocations(),fetchWantedFugitives(),
-    fetchLandmarks(),fetchEagleStatues(),fetchTowerLocations(),fetchNPCs()
+    fetchEagleStatues(),fetchTowerLocations()
   ]);
   if(effigyLeaflet) renderEffigyMap();
 }
@@ -3212,19 +3207,6 @@ function bountyBossIcon(name,status){
   var img='<img src="'+palPortrait(name)+'" alt="" onerror="this.style.visibility=\'hidden\'" style="'+wash+'">';
   return _iconMemo[k]=statusRingIcon(img,status,BOUNTY_ICON_SZ);
 }
-// NPC and Landmarks (discovered areas, everything else) have no dedicated art -- plain
-// colored-dot divIcons, same sizing as the acorn/book glyphs. Landmarks has no per-player
-// state, so it keeps its own purple and is unaffected (found always undefined).
-function simpleDotIcon(colorHex,found){
-  var k='dot:'+colorHex+'|'+(found?'1':'0');
-  if(_iconMemo[k]) return _iconMemo[k];
-  return _iconMemo[k]=L.divIcon({
-    className:'eff-map-marker'+(found?' eff-map-found':''),
-    html:'<div style="width:100%;height:100%;border-radius:50%;background:'+colorHex+';border:2px solid #fff;box-sizing:border-box;"></div>',
-    iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
-    iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
-  });
-}
 // Wanted Fugitive (human/Syndicate bosses), Eagle Statue (fast-travel points), and Tower
 // (raid bosses) now OVERLAY real paldb-scraped rosters (added 2026-07-06, see
 // Merge-ConfirmedWantedFugitives/EagleStatues/Towers) with the same red/yellow/green
@@ -3250,7 +3232,6 @@ function towerIcon(status){
   var img='<img src="https://cdn.paldb.cc/image/Pal/Texture/UI/InGame/T_icon_compass_tower.webp" alt="">';
   return _iconMemo[k]=statusRingIcon(img,status,EFF_ACORN_SZ);
 }
-function landmarkIcon(){ return simpleDotIcon('#a371f7'); }
 // Live player position marker: a colored dot, plus (if the save has a current Rotation --
 // it's briefly absent right after a teleport/spawn, see /palworld-dataminer) a small
 // triangular "nose" showing facing direction, rotated by yawDeg. NOTE: yawDeg's mapping onto
@@ -3279,8 +3260,6 @@ function playerMarkerIcon(yawDeg,followed){
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
 }
-function npcIcon(found){ return simpleDotIcon('#3fb950',found); }
-
 // Static lore-journal/diary note locations (game-world fixed, not per-save), loaded once
 // from the journals route and overlaid on the same map as blue dots.
 var journalLocations=null;
@@ -3294,12 +3273,9 @@ var journalLocations=null;
 // without a key always render as "new" since their found state can't be determined.
 var journalCollected=[], journalCollectedCount=null;
 var JOURNAL_MAX=49;
-// Per-player NPC talked-to state, from NPCTalkCountMap (a count map, not a bool flag --
-// "collected" here means the player has talked to that NPC at least once).
-var npcCollected=[], npcCollectedCount=null;
 // Per-player Wanted Fugitive defeat state (raw NormalBossDefeatFlag keys, matched exactly --
 // see extract_fugitive_data) and Eagle Statue unlock state (FastTravelPointUnlockFlag keys --
-// see extract_fast_travel_data). Same convention as npcCollected above.
+// see extract_fast_travel_data).
 var fugitiveCollected=[], eagleCollected=[];
 
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
@@ -3381,7 +3357,7 @@ function toggleMapConfirm(category,ident,checked){
 // map. This is a VIEW filter only -- it never changes a Pal's actual found state (which comes
 // solely from the save). Both default on. effigyShowJournal/effigyShowBounty are independent
 // toggles for the journal-note / bounty-boss overlays (unrelated to found/new).
-var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowNpc=true, effigyShowLandmark=true, effigyShowPlayers=true;
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowPlayers=true;
 
 // "Layers" panel: collapsible so it doesn't sit open over most of a phone-sized map (it
 // used to be an always-open overlay). Collapsed by default only on phone widths, applied
@@ -3398,7 +3374,7 @@ function initFilterPanelCollapse(){
 }
 
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bp=document.getElementById('eff-filt-npc'), bl=document.getElementById('eff-filt-landmark'), bpl=document.getElementById('eff-filt-players');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bpl=document.getElementById('eff-filt-players');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
   if(bj) bj.style.opacity=effigyShowJournal?'1':'0.4';
@@ -3406,8 +3382,6 @@ function setEffigyFilterBtns(){
   if(bh) bh.style.opacity=effigyShowFugitive?'1':'0.4';
   if(be) be.style.opacity=effigyShowEagle?'1':'0.4';
   if(bt) bt.style.opacity=effigyShowTower?'1':'0.4';
-  if(bp) bp.style.opacity=effigyShowNpc?'1':'0.4';
-  if(bl) bl.style.opacity=effigyShowLandmark?'1':'0.4';
   if(bpl) bpl.style.opacity=effigyShowPlayers?'1':'0.4';
 }
 function toggleEffigyFilter(which){
@@ -3418,8 +3392,6 @@ function toggleEffigyFilter(which){
   else if(which==='fugitive') effigyShowFugitive=!effigyShowFugitive;
   else if(which==='eagle') effigyShowEagle=!effigyShowEagle;
   else if(which==='tower') effigyShowTower=!effigyShowTower;
-  else if(which==='npc') effigyShowNpc=!effigyShowNpc;
-  else if(which==='landmark') effigyShowLandmark=!effigyShowLandmark;
   else effigyShowNew=!effigyShowNew;
   setEffigyFilterBtns();
   renderEffigyMap();
@@ -3428,7 +3400,7 @@ function toggleEffigyFilter(which){
 // -- Marker cache + diff-render engine ------------------------------------------
 // Perf redesign (2026-07-06): with confirmed_locations.json cutting the roster down, the
 // effigy map still settled around ~750 combined markers (605 effigies + ~145 journals/
-// bosses/fugitives/eagles/NPCs/landmarks) -- clearLayers()+rebuild-everything on every
+// bosses/fugitives/eagles) -- clearLayers()+rebuild-everything on every
 // render (every filter toggle, every fetch, every 5s player-position poll) was the
 // dominant lag source. These caches let renderEffigyMapNow() reuse existing marker
 // objects (tooltip/popup/handlers intact) whenever a marker's rendered state hasn't
@@ -3650,37 +3622,6 @@ function buildTowerMarker(t,confirmed){
   return tm;
 }
 
-function buildNpcMarker(n,nGot){
-  var nm=L.marker(effigyRposToLatLng(n.x,n.y),{icon:npcIcon(nGot),interactive:true});
-  var _g=worldToGrid(n.x,n.y), cx=_g.cx, cy=_g.cy;
-  var nStatus=nGot?'<span style="color:#5a6573">&#10003; Met</span>':'<b style="color:#39c5bb">Not yet met</b>';
-  var nTip='<b style="color:#111;">'+n.name+'</b><br>'+nStatus
-    +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
-  nm.bindTooltip(nTip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
-  nm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
-  if(EFFIGY_CONFIRM_ENABLED){
-    nm.bindPopup('<b style="color:#111;">'+esc(n.name)+'</b><br>'+nStatus
-      +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+saveKeyRow(n.key),
-      {className:'eff-tip'});
-  }
-  return nm;
-}
-
-function buildLandmarkMarker(lm){
-  var lmk=L.marker(effigyRposToLatLng(lm.x,lm.y),{icon:landmarkIcon(),interactive:true});
-  var _g=worldToGrid(lm.x,lm.y), cx=_g.cx, cy=_g.cy;
-  lmk.bindTooltip('<b style="color:#a371f7">'+lm.name+'</b>'
-    +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>',
-    {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
-  lmk.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
-  if(EFFIGY_CONFIRM_ENABLED){
-    lmk.bindPopup('<b style="color:#a371f7">'+esc(lm.name)+'</b>'
-      +'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+saveKeyRow(lm.key),
-      {className:'eff-tip'});
-  }
-  return lmk;
-}
-
 // Reconciles effigyMarkerLayer against _effDesired (this render's desired marker set) --
 // removes shown markers that are no longer desired, replaced by a rebuild, or (once
 // EFF_CULLING_ENABLED) out of the padded viewport; adds newly-desired in-bounds ones.
@@ -3798,7 +3739,7 @@ function collectPrefs(){
   if(prefsApplied.effigy) o.bountyManual=bountyManual;
   var players={};
   if(PREFS&&PREFS.players){ players.paldeck=PREFS.players.paldeck; players.effigy=PREFS.players.effigy; }
-  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,npc:effigyShowNpc,landmark:effigyShowLandmark,players:effigyShowPlayers};
+  if(prefsApplied.effigy) o.effigy={found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,players:effigyShowPlayers};
   // Skip persisting while a watch is mid-edit-preview (palEditId/eggEditId set): the filter
   // controls hold that watch's criteria for live preview only, not the user's real standing
   // filter, and must not overwrite it just because a render happened to fire (e.g. clicking a
@@ -3866,7 +3807,7 @@ function maybeApplyEffigyPrefs(){
   if(prefsApplied.effigy||!prefsReady)return;
   prefsApplied.effigy=true;
   var e=PREFS&&PREFS.effigy;
-  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; effigyShowBounty=e.bounty!==false; effigyShowFugitive=e.fugitive!==false; effigyShowEagle=e.eagle!==false; effigyShowNpc=e.npc!==false; effigyShowLandmark=e.landmark!==false; effigyShowPlayers=e.players!==false; setEffigyFilterBtns(); }
+  if(e){ effigyShowFound=e.found!==false; effigyShowNew=e.nw!==false; effigyShowJournal=e.journal!==false; effigyShowBounty=e.bounty!==false; effigyShowFugitive=e.fugitive!==false; effigyShowEagle=e.eagle!==false; effigyShowPlayers=e.players!==false; setEffigyFilterBtns(); }
   if(PREFS&&PREFS.bountyManual&&typeof PREFS.bountyManual==='object') bountyManual=PREFS.bountyManual;
   var pe=PREFS&&PREFS.players&&PREFS.players.effigy;
   var sel=document.getElementById('effigy-player');
@@ -3907,7 +3848,7 @@ function initEffigyView(){
         // Plain layer group, no clustering -- every marker shows individually regardless of
         // how many are on screen or how tightly packed (Anthony asked to remove the
         // "nearby icons merge into a circle" behavior). This is the FULL scraped/confirmed
-        // roster (~605 effigies + ~145 journals/bosses/fugitives/eagles/NPCs/landmarks,
+        // roster (~605 effigies + ~145 journals/bosses/fugitives/eagles,
         // ~750 total) -- see the marker cache + diff engine above (effDesire/
         // renderEffigyMapNow/syncEffigyLayer) for how that count stays cheap to render.
         effigyMarkerLayer=L.layerGroup();
@@ -3934,8 +3875,6 @@ function initEffigyView(){
       fetchWantedFugitives();
       fetchEagleStatues();
       fetchTowerLocations();
-      fetchNPCs();
-      fetchLandmarks();
       fetchPlayerLocations();
     });
   });
@@ -3994,11 +3933,10 @@ async function fetchBossLocations(){
   }
 }
 
-// "Wanted Fugitive" (NPC/Syndicate boss locations) and "Landmarks" (fast-travel points,
-// discovered areas, everything else) -- both static, game-world-fixed, sourced entirely
-// from Anthony's own confirmed_locations.json (see Get-ConfirmedWantedFugitives/
-// Get-ConfirmedLandmarks). Same loading convention as journals/bounty bosses: loaded
-// once, failures are silent rather than blocking the rest of the effigy map.
+// "Wanted Fugitive" (NPC/Syndicate boss locations) -- static, game-world-fixed, sourced
+// entirely from Anthony's own confirmed_locations.json (see Get-CategoryForEntry). Same
+// loading convention as journals/bounty bosses: loaded once, failures are silent rather
+// than blocking the rest of the effigy map.
 var wantedFugitiveLocations=null;
 async function fetchWantedFugitives(){
   if(wantedFugitiveLocations)return;
@@ -4007,16 +3945,6 @@ async function fetchWantedFugitives(){
     if(effigyLeaflet) renderEffigyMap();
   }catch(e){
     wantedFugitiveLocations=[];
-  }
-}
-var landmarkLocations=null;
-async function fetchLandmarks(){
-  if(landmarkLocations)return;
-  try{
-    landmarkLocations=await api('/api/landmarks');
-    if(effigyLeaflet) renderEffigyMap();
-  }catch(e){
-    landmarkLocations=[];
   }
 }
 
@@ -4090,19 +4018,6 @@ async function fetchTowerLocations(){
     towerLocations=[];
   }
 }
-// NPC locations -- static list, but DOES get per-player found/unfound state (see
-// fetchNPCPlayer below), unlike Eagle Statues/Landmarks/Wanted Fugitive.
-var npcLocations=null;
-async function fetchNPCs(){
-  if(npcLocations)return;
-  try{
-    npcLocations=await api('/api/npcs');
-    if(effigyLeaflet) renderEffigyMap();
-  }catch(e){
-    npcLocations=[];
-  }
-}
-
 function populateEffigyPlayerDropdown(){
   var sel=document.getElementById('effigy-player');
   var prev=sel.value;
@@ -4162,7 +4077,7 @@ function populateEffigyPlayerDropdown(){
 async function fetchEffigyPlayer(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
-  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);return;}
+  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);return;}
   if(guid!==_effLastPlayerGuid) document.getElementById('effigy-summary').textContent='Loading...';
   _effLastPlayerGuid=guid;
   try{
@@ -4175,30 +4090,8 @@ async function fetchEffigyPlayer(){
   renderEffigyMap();
   fetchJournalPlayer(guid);
   fetchBossPlayer(guid);
-  fetchNPCPlayer(guid);
   fetchFugitivePlayer(guid);
   fetchEaglePlayer(guid);
-}
-
-// NPC talked-to state for the selected player (see npcCollected comment above).
-async function fetchNPCPlayer(guid){
-  if(!guid){npcCollected=[];npcCollectedCount=null;renderNpcSummary();if(effigyLeaflet)renderEffigyMap();return;}
-  try{
-    var data=await api('/api/player-npcs?guid='+encodeURIComponent(guid));
-    npcCollected=data.collected||[];
-    npcCollectedCount=npcCollected.length;
-  }catch(e){
-    npcCollected=[];
-    npcCollectedCount=null;
-  }
-  renderNpcSummary();
-  if(effigyLeaflet) renderEffigyMap();
-}
-function renderNpcSummary(){
-  var el=document.getElementById('npc-summary');
-  if(!el)return;
-  var total=npcLocations?npcLocations.length:0;
-  el.textContent=(npcCollectedCount===null||!total)?'':(npcCollectedCount+' / '+total+' met');
 }
 
 // Wanted Fugitive defeat state for the selected player (see fugitiveCollected comment above).
@@ -4281,7 +4174,6 @@ var DATAMINE_PROPERTIES=[
     desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab). Includes the full 605-entry effigies.json roster, not just keys a player has actually picked up.'},
   {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Journal'],desc:'Journal / diary note pickups.'},
   {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,iconCategories:['Eagle Statue'],desc:'Eagle Statue (fast travel) unlocks.'},
-  {name:'NPCTalkCountMap',kind:'int_map',spatial:true,desc:'Per-NPC talk counts (count > 0 = met).'},
   {name:'PaldeckUnlockFlag',kind:'bool_map',spatial:false,desc:'Paldeck species unlocks.'},
   {name:'PalCaptureBonusCount',kind:'int_map',spatial:false,desc:'Lifetime per-species bonus-capture counts.'}
 ];
@@ -4941,26 +4833,6 @@ function renderEffigyMapNow(){
       });
     });
   }
-  // NPC -- static list, but DOES track per-player found/unfound (talked to at least once
-  // via NPCTalkCountMap), same convention as effigies/journals (grey=met, teal=not met yet).
-  if(effigyShowNpc&&npcLocations&&npcLocations.length){
-    var npcCollectedSet=new Set(npcCollected.map(function(s){return s.toUpperCase();}));
-    npcLocations.forEach(function(n,idx){
-      var nGot=n.key&&npcCollectedSet.has(n.key.toUpperCase());
-      if(nGot&&!effigyShowFound) return;
-      effDesire('n:'+(n.key||idx),nGot?'1':'0',function(){
-        return buildNpcMarker(n,nGot);
-      });
-    });
-  }
-  if(effigyShowLandmark&&landmarkLocations&&landmarkLocations.length){
-    landmarkLocations.forEach(function(lm,idx){
-      effDesire('lm:'+idx,'1',function(){
-        return buildLandmarkMarker(lm);
-      });
-    });
-  }
-
   syncEffigyLayer();
   renderPlayerMarkers();
 

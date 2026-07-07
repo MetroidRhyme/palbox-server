@@ -173,21 +173,6 @@ def extract_fugitive_data(sav_path):
     return parse_name_bool_map(raw, p)
 
 
-def extract_npc_data(sav_path):
-    """Return list of uppercase hex GUID strings for NPCs the player has talked to at
-    least once. NPCTalkCountMap is a Name->Int map (talk count per NPC instance), not a
-    Name->Bool flag like Relic/Note/NormalBossDefeat -- so "collected" here means count > 0,
-    parsed via parse_name_int_map rather than parse_name_bool_map."""
-    raw = decompress_save(sav_path)
-    pos = find_property(raw, "NPCTalkCountMap")
-    if pos == -1:
-        return []
-    _, p = read_fstring(raw, pos)
-    _, p = read_fstring(raw, p)
-    counts = parse_name_int_map(raw, p)
-    return [name.upper() for name, count in counts.items() if count > 0]
-
-
 def load_bounty_species():
     """Species codes tracked as "bounty bosses" -- the curated set of named legendary
     Alpha bosses in bounty_bosses.json (single fixed world location each, source: paldb's
@@ -363,7 +348,6 @@ DATAMINE_PROPERTIES = [
     ("NoteObtainForInstanceFlag", "bool_map"),
     ("FastTravelPointUnlockFlag", "bool_map"),
     ("PaldeckUnlockFlag", "bool_map"),
-    ("NPCTalkCountMap", "int_map"),
     ("PalCaptureBonusCount", "int_map"),
 ]
 
@@ -512,14 +496,14 @@ def main():
         r"PATH\TO\Pal\Saved\SaveGames\0\<WorldGUID>"  # fallback for manual runs; the dashboard passes the real save folder as argv[1]
 
     # playerall mode: python pal_save_reader.py <save_dir> playerall <guid>
-    # Emits effigies/notes/bounties/fugitives/npcs/eagles in ONE decompress instead of the
-    # six separate process spawns build_public_data.ps1 used to make per player, per sync
+    # Emits effigies/notes/bounties/fugitives/eagles in ONE decompress instead of the
+    # five separate process spawns build_public_data.ps1 used to make per player, per sync
     # tick, each re-decompressing the same small per-player .sav. bounties and fugitives
     # both come from the same NormalBossDefeatFlag map -- parsed once here and shared via
     # _bounty_from_flags, rather than two more independent decompresses of the same file
-    # for the same underlying flag data. Output shapes match the six individual modes
+    # for the same underlying flag data. Output shapes match the five individual modes
     # exactly ({"guid":...,"collected":[...]} each) so the builder just splits this one
-    # response into the same six files it always wrote.
+    # response into the same five files it always wrote.
     if len(sys.argv) > 2 and sys.argv[2] == "playerall":
         guid = sys.argv[3] if len(sys.argv) > 3 else ""
         sav_path = os.path.join(save_dir, "Players", guid + ".sav")
@@ -538,13 +522,6 @@ def main():
                 return parse_name_bool_map(raw, p)
 
             boss_flags = flags_for("NormalBossDefeatFlag")
-            npcs = []
-            npcs_pos = find_property(raw, "NPCTalkCountMap")
-            if npcs_pos != -1:
-                _, p = read_fstring(raw, npcs_pos)
-                _, p = read_fstring(raw, p)
-                counts = parse_name_int_map(raw, p)
-                npcs = [name.upper() for name, count in counts.items() if count > 0]
 
             print(json.dumps({
                 "guid": guid,
@@ -552,12 +529,11 @@ def main():
                 "notes": flags_for("NoteObtainForInstanceFlag"),
                 "bounties": _bounty_from_flags(boss_flags),
                 "fugitives": boss_flags,
-                "npcs": npcs,
                 "eagles": flags_for("FastTravelPointUnlockFlag"),
             }, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "effigies": [], "notes": [], "bounties": [],
-                               "fugitives": [], "npcs": [], "eagles": [], "error": str(e)}))
+                               "fugitives": [], "eagles": [], "error": str(e)}))
         return
 
     # effigies mode: python pal_save_reader.py <save_dir> effigies <guid>
@@ -647,20 +623,6 @@ def main():
             return
         try:
             collected = extract_fast_travel_data(sav_path)
-            print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
-        except Exception as e:
-            print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
-        return
-
-    # npcs mode: python pal_save_reader.py <save_dir> npcs <guid>
-    if len(sys.argv) > 2 and sys.argv[2] == "npcs":
-        guid = sys.argv[3] if len(sys.argv) > 3 else ""
-        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
-        if not os.path.isfile(sav_path):
-            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
-            return
-        try:
-            collected = extract_npc_data(sav_path)
             print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))

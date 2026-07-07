@@ -304,8 +304,6 @@ $html = $html.Replace("'/api/bounty-bosses'", "'data/bounty-bosses.json'")
 $html = $html.Replace("'/api/wanted-fugitives'", "'data/wanted-fugitives.json'")
 $html = $html.Replace("'/api/eagle-statues'", "'data/eagle-statues.json'")
 $html = $html.Replace("'/api/towers'", "'data/towers.json'")
-$html = $html.Replace("'/api/npcs'", "'data/npcs.json'")
-$html = $html.Replace("'/api/landmarks'", "'data/landmarks.json'")
 $html = $html.Replace("'/api/pal-species'", "'data/pal-species.json'")
 $html = $html.Replace("'/api/pal-skills'", "'data/pal-skills.json'")
 $html = $html.Replace("'/api/pal-passives'", "'data/pal-passives.json'")
@@ -324,9 +322,6 @@ $html = $html.Replace(
 $html = $html.Replace(
   "'/api/player-bounties?guid='+encodeURIComponent(guid)",
   "'data/player-bounties/'+encodeURIComponent(guid)+'.json'")
-$html = $html.Replace(
-  "'/api/player-npcs?guid='+encodeURIComponent(guid)",
-  "'data/player-npcs/'+encodeURIComponent(guid)+'.json'")
 $html = $html.Replace(
   "'/api/player-fugitives?guid='+encodeURIComponent(guid)",
   "'data/player-fugitives/'+encodeURIComponent(guid)+'.json'")
@@ -372,13 +367,13 @@ if ($html -eq $before) { throw "player-locations: fetchPlayerLocations override 
 # of the effigy-player dropdown actually being populated/selected on first load.
 $before = $html
 $html = $html.Replace(
-  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);return;}",
-  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchNPCPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchPlayerLocations();return;}")
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);return;}",
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchPlayerLocations();return;}")
 if ($html -eq $before) { throw "player-locations: fetchEffigyPlayer empty-guid hook not found" }
 $before = $html
 $html = $html.Replace(
-  "  fetchNPCPlayer(guid);",
-  "  fetchNPCPlayer(guid);fetchPlayerLocations();")
+  "  fetchFugitivePlayer(guid);",
+  "  fetchFugitivePlayer(guid);fetchPlayerLocations();")
 if ($html -eq $before) { throw "player-locations: fetchEffigyPlayer main-guid hook not found" }
 
 # Portraits: 3 distinct call sites cover all 4 usages (palPortrait body + paldeck row,
@@ -640,11 +635,11 @@ foreach ($m in [regex]::Matches($html, '/api/[A-Za-z0-9_-]+')) {
 $expectedDataRefs = @(
   'data/pals.json', 'data/eggs.json', 'data/server-messages.json', 'data/paldeck.json',
   'data/effigies.json', 'data/journals.json', 'data/bounty-bosses.json',
-  'data/wanted-fugitives.json', 'data/eagle-statues.json', 'data/towers.json', 'data/npcs.json',
-  'data/landmarks.json', 'data/pal-species.json', 'data/pal-skills.json',
+  'data/wanted-fugitives.json', 'data/eagle-statues.json', 'data/towers.json',
+  'data/pal-species.json', 'data/pal-skills.json',
   'data/pal-passives.json', 'data/settings.json', 'data/meta.json',
   'data/player-location/', 'data/player-effigies/', 'data/player-notes/',
-  'data/player-bounties/', 'data/player-npcs/', 'data/player-fugitives/', 'data/player-eagles/'
+  'data/player-bounties/', 'data/player-fugitives/', 'data/player-eagles/'
 )
 foreach ($ref in $expectedDataRefs) {
   if (-not $html.Contains($ref)) { throw "expected data reference missing from output: $ref" }

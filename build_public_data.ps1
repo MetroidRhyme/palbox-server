@@ -34,7 +34,6 @@ $PubByPlayer = Join-Path $PubData 'by-player'
 $PubEffig = Join-Path $PubData 'player-effigies'
 $PubNotes = Join-Path $PubData 'player-notes'
 $PubBounty = Join-Path $PubData 'player-bounties'
-$PubNPCs = Join-Path $PubData 'player-npcs'
 $PubLocation = Join-Path $PubData 'player-location'
 $PubFugitives = Join-Path $PubData 'player-fugitives'
 $PubEagles = Join-Path $PubData 'player-eagles'
@@ -110,12 +109,11 @@ New-Item -ItemType Directory -Force -Path $PubData | Out-Null
 # player never lingers in the output set.
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doFreq) {
-  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubNPCs, $PubLocation, $PubFugitives, $PubEagles)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubLocation, $PubFugitives, $PubEagles)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   Get-ChildItem -LiteralPath $PubAll -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEffig -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNotes -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubBounty -File -ErrorAction SilentlyContinue | Remove-Item -Force
-  Get-ChildItem -LiteralPath $PubNPCs -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubLocation -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubFugitives -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEagles -File -ErrorAction SilentlyContinue | Remove-Item -Force
@@ -230,15 +228,15 @@ if ($doFreq) {
     [System.IO.File]::WriteAllText((Join-Path $PubAll 'eggs.json'), '{"eggs":[],"summary":{}}', $utf8)
   }
 
-  # -- player-effigies/player-notes/player-bounties/player-npcs/player-fugitives/
-  #    player-eagles/<guid>.json (one call per player instead of six) ------------
+  # -- player-effigies/player-notes/player-bounties/player-fugitives/
+  #    player-eagles/<guid>.json (one call per player instead of five) ------------
   # pal_save_reader.py's playerall mode decompresses each player's small .sav ONCE and
-  # returns all six sections in one JSON, instead of six separate process spawns each
+  # returns all five sections in one JSON, instead of five separate process spawns each
   # re-decompressing the same file (which is what this loop used to do, calling
-  # effigies/notes/bounties/npcs/fugitives/eagles modes one at a time). Each section's
+  # effigies/notes/bounties/fugitives/eagles modes one at a time). Each section's
   # shape is unchanged ({"guid":...,"collected":[...]}), so the split below just wraps
   # each field into the same per-player file this always wrote.
-  Write-Step "building data/player-effigies, -notes, -bounties, -npcs, -fugitives, -eagles/*.json"
+  Write-Step "building data/player-effigies, -notes, -bounties, -fugitives, -eagles/*.json"
   foreach ($p in @($paldeckObj.players)) {
     $guid = [string]$p.guid
     if (-not $guid) { continue }
@@ -252,7 +250,6 @@ if ($doFreq) {
       $PubEffig     = $pa.effigies
       $PubNotes     = $pa.notes
       $PubBounty    = $pa.bounties
-      $PubNPCs      = $pa.npcs
       $PubFugitives = $pa.fugitives
       $PubEagles    = $pa.eagles
     }
@@ -330,7 +327,7 @@ if ($doFreq) {
 # STATIC: rarely-changing data that ships with the Pages shell (NOT R2).
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doStatic) {
-  # All eight map categories now read straight from confirmed_locations.json via
+  # All six map categories now read straight from confirmed_locations.json via
   # Get-MapCategoryJson -- Phase 3's importer already upserted every scraped roster
   # (effigies.json, journal_locations.json, bounty_bosses.json, wanted_fugitives.json,
   # eagle_travel_locations.json, towers.json) into the canonical store, so there is no
@@ -354,18 +351,6 @@ if ($doStatic) {
 
   Write-Step "building data/towers.json"
   [System.IO.File]::WriteAllText((Join-Path $PubData 'towers.json'), (Get-MapCategoryJson 'tower'), $utf8)
-
-  # ── npcs.json (Anthony's confirmed NPC locations, static; per-player state is separate) ──
-  # The dashboard serves the same JSON at /api/npcs; per-player talked-to state is
-  # player-npcs/<guid>.json (Frequent branch above).
-  Write-Step "building data/npcs.json"
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'npcs.json'), (Get-MapCategoryJson 'npc'), $utf8)
-
-  # ── landmarks.json (Anthony's other confirmed locations: discovered areas, etc.) ──
-  # Catch-all for anything not already an effigy/journal/bounty/Wanted-Fugitive/
-  # Eagle-Statue/NPC. Dashboard serves the same JSON at /api/landmarks.
-  Write-Step "building data/landmarks.json"
-  [System.IO.File]::WriteAllText((Join-Path $PubData 'landmarks.json'), (Get-MapCategoryJson 'landmark'), $utf8)
 
   # ── pal-species.json (curated species data: type/work/skills/stats) ──────────
   # Built once by build_pal_species.py; bundled as a static file. The dashboard serves

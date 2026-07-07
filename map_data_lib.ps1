@@ -152,7 +152,7 @@ function ConvertTo-GridXY([double]$x, [double]$y) {
 # Coordinate precedence: the store's own x/y (scraped precision, or Anthony's own
 # hand-entered value once Phase 5-that-never-shipped or a future dashboard edit sets it)
 # when present, else derived from gx/gy -- gx/gy-only entries are exactly the ones Phase 3
-# never touched (npc, landmark), which predate x/y existing on any row at all.
+# never touched, which predate x/y existing on any row at all.
 #
 # Effigies alone keep their historical DICT shape (GUID -> {x,y,z,m}), matched by
 # dashboard.html's effigyLocations[key] lookups -- every other category is an array of
@@ -194,7 +194,7 @@ function Get-MapCategoryJson([string]$category) {
 # The one write path behind every POST .../*-confirm route (and the new consolidated
 # /api/map-confirm) -- resolves a confirmed_locations.json row by the category-appropriate
 # identity the client already displays for that pin (key for effigy/journal, species for
-# bounty, name for tower/fugitive/eagle -- npc/landmark have no confirm UI yet) and flips
+# bounty, name for tower/fugitive/eagle) and flips
 # its "verified" flag. Since Get-MapCategoryJson above always emits the STORE's own
 # name/species/key (never a blended roster value), whatever identity the client echoes
 # back on toggle is guaranteed to match a row here exactly -- no fuzzy matching needed on
@@ -236,9 +236,8 @@ function Set-MapConfirmVerified([string]$category, [string]$key, [string]$specie
 # Resolve a confirmed key to a bounty species via anonymous_boss_keys.json (the world
 # map is fixed, so a confirmed key/species pair holds for every save -- see the
 # palbox-bounty-tracker skill) plus literal species-named keys (BlueDragon/FairyDragon,
-# the two that self-name-tag in the save). Shared by Merge-ConfirmedBounty and
-# Get-ConfirmedLandmarks (which needs to know a key is already claimed as a bounty
-# species so it doesn't ALSO show up as a landmark).
+# the two that self-name-tag in the save). Used by Get-CategoryForEntry's bounty
+# roster-membership fallback above.
 function Get-AnonymousBossKeyMap {
     $anonMap = @{}
     $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
@@ -304,7 +303,7 @@ function Find-ConfirmedByNameOrCoord($rosterEntry, $candidates) {
     return $null
 }
 
-# Classifies a confirmed_locations.json entry into one of the 8 map categories: tower
+# Classifies a confirmed_locations.json entry into one of the 6 map categories: tower
 # name match first (paldb's Tower scrape has no save-flag key of its own), then the
 # entry's own "source" field, then roster-membership fallback for legacy entries that
 # predate "source". Originally migrate_map_schema.ps1's own private copy (used there for
@@ -313,6 +312,11 @@ function Find-ConfirmedByNameOrCoord($rosterEntry, $candidates) {
 # category on a freshly-typed-in entry immediately, instead of it sitting
 # uncategorized -- and therefore invisible to Get-MapCategoryJson -- until the next
 # manual re-run of the migration script.
+#
+# Returns $null (genuinely uncategorized) if nothing matches -- NPC and Landmark were
+# retired as map categories (2026-07-07, Anthony's call: Landmark existed only as a
+# catch-all fallback here and was never meant to hold real data going forward) rather
+# than silently bucketing an unrecognized entry into a fake category again.
 function Get-CategoryForEntry($c) {
     $towerNames = Get-TowerNameSet
     if ($c.name -and $towerNames.Contains($c.name.ToUpper())) { return 'tower' }
@@ -320,9 +324,7 @@ function Get-CategoryForEntry($c) {
         'RelicObtainForInstanceFlag' { return 'effigy' }
         'NoteObtainForInstanceFlag' { return 'journal' }
         'FastTravelPointUnlockFlag' { return 'eagle' }
-        'NPCTalkCountMap' { return 'npc' }
         'NormalBossDefeatFlag' { if ($c.key -and (Test-SyndicateKeyShape $c.key)) { return 'fugitive' } else { return 'bounty' } }
-        'FindAreaFlagMap' { return 'landmark' }
     }
     if ($c.key) {
         $k = $c.key.ToUpper()
@@ -349,12 +351,6 @@ function Get-CategoryForEntry($c) {
                 if ($e.key -and $e.key.ToUpper() -eq $k) { return 'eagle' }
             }
         }
-        $npcFile = "$script:MapDataRoot\npc_keys.json"
-        if (Test-Path -LiteralPath $npcFile) {
-            foreach ($e in (Get-Content -LiteralPath $npcFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key -and $e.key.ToUpper() -eq $k) { return 'npc' }
-            }
-        }
         $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
         if (Test-Path -LiteralPath $anonFile) {
             foreach ($e in (Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
@@ -362,5 +358,5 @@ function Get-CategoryForEntry($c) {
             }
         }
     }
-    return 'landmark'
+    return $null
 }

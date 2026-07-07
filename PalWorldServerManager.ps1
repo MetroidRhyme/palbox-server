@@ -430,7 +430,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # Shared map-location data layer (Get-ConfirmedLocations, Get-MapCategoryJson, etc.) --
     # also dot-sourced by build_public_data.ps1, so both callers share one implementation
     # instead of two hand-kept, drifting copies. See map_data_lib.ps1 for the full function
-    # list; used by the /api/effigies...landmarks routes below.
+    # list; used by the /api/effigies...towers routes below.
     . "$ServerDir\map_data_lib.ps1"
     Initialize-MapDataLib -Root $ServerDir
 
@@ -577,7 +577,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # separate datamine_labels.json instead.
     $script:DatamineSpatialProperties = @(
         'NormalBossDefeatFlag', 'RelicObtainForInstanceFlag', 'NoteObtainForInstanceFlag',
-        'FastTravelPointUnlockFlag', 'NPCTalkCountMap'
+        'FastTravelPointUnlockFlag'
     )
 
     # datamine_labels.json holds {property,key,name,gx,gy} for non-spatial properties --
@@ -2133,31 +2133,6 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
-                ($path -eq '/api/npcs' -and $method -eq 'GET') {
-                    # Anthony's own confirmed NPC locations -- static named pins; per-player
-                    # found state comes from a separate route, /api/player-npcs?guid=, below.
-                    try {
-                        $script:npcData = Get-MapCategoryJson 'npc'
-                        Send-Response $res 200 "application/json" $script:npcData
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
-                ($path -eq '/api/landmarks' -and $method -eq 'GET') {
-                    # Anthony's own confirmed locations that aren't an effigy, journal note,
-                    # bounty boss, Wanted Fugitive, Eagle Statue, or NPC -- discovered areas
-                    # etc.
-                    try {
-                        $script:landmarkData = Get-MapCategoryJson 'landmark'
-                        Send-Response $res 200 "application/json" $script:landmarkData
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
                 ($path -eq '/api/syndicate-bosses' -and $method -eq 'GET') {
                     # Static roster of NPC/Syndicate "boss" defeat-flag keys (human enemies,
                     # e.g. Syndicate Tower bosses) -- see syndicate_bosses.json. Unlike
@@ -2303,28 +2278,6 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = Get-CachedReaderOutput "bounties:$guid" (Join-Path $saveDir "Players\$guid.sav") {
                             $j = & python "$ServerDir\pal_save_reader.py" $saveDir bounties $guid 2>$null
-                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
-                            ($j -join '')
-                        }
-                        Send-Response $res 200 "application/json" $rawJson
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
-                ($path -eq '/api/player-npcs' -and $method -eq 'GET') {
-                    # NPC talked-to state, read from NPCTalkCountMap in the player's save (a
-                    # Name->Int count map, not a Name->Bool flag like effigies/journals/bounty
-                    # -- see extract_npc_data in pal_save_reader.py, "collected" means count>0).
-                    try {
-                        $guid = $req.QueryString['guid']
-                        if (-not $guid) { throw "Missing guid parameter" }
-                        $activeGuid = Get-ActiveGuid
-                        if (-not $activeGuid) { throw "No active world loaded" }
-                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = Get-CachedReaderOutput "npcs:$guid" (Join-Path $saveDir "Players\$guid.sav") {
-                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir npcs $guid 2>$null
                             if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                             ($j -join '')
                         }

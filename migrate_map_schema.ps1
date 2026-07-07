@@ -1,6 +1,6 @@
 # migrate_map_schema.ps1
 # Originally Phase 2 of the map-data consolidation plan: backfills confirmed_locations.json
-# with a "category" field (effigy|journal|bounty|fugitive|eagle|tower|npc|landmark) and an
+# with a "category" field (effigy|journal|bounty|fugitive|eagle|tower) and an
 # "origin" field (scraped|live|manual) on any entry missing them -- which, going forward,
 # should only ever be a fresh row inserted by something that predates Get-CategoryForEntry
 # (e.g. the Desktop dataminer script, which doesn't stamp these fields itself). Kept around
