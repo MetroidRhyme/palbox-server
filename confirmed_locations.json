@@ -9596,19 +9596,19 @@
         "name":  "Beakon"
     },
     {
-        "key":  null,
+        "key":  "81_1_GRASS_FBOSS_5",
         "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "gx":  -167,
+        "gy":  -448,
         "lv":  null,
-        "source":  null,
         "origin":  "scraped",
-        "verified":  false,
+        "verified":  true,
         "species":  "SakuraSaurus_Water",
         "x":  -329427.8,
         "y":  81512.31,
         "z":  -1862.61,
-        "name":  "Broncherry Aqua"
+        "name":  "Broncherry Aqua",
+        "source":  "NormalBossDefeatFlag"
     },
     {
         "key":  null,
@@ -9806,19 +9806,19 @@
         "name":  "Gildane"
     },
     {
-        "key":  null,
+        "key":  "81_1_GRASS_FBOSS_25",
         "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "gx":  -113,
+        "gy":  -628,
         "lv":  null,
-        "source":  null,
         "origin":  "scraped",
         "species":  "PlantSlime",
         "x":  -412259.28,
         "y":  106237.67,
         "z":  -2035.61,
         "name":  "Gumoss",
-        "verified":  true
+        "verified":  true,
+        "source":  "NormalBossDefeatFlag"
     },
     {
         "key":  null,
@@ -9881,19 +9881,19 @@
         "name":  "Loupmoon Cryst"
     },
     {
-        "key":  null,
+        "key":  "81_1_GRASS_FBOSS_28",
         "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "gx":  -147,
+        "gy":  -659,
         "lv":  null,
-        "source":  null,
         "origin":  "scraped",
         "species":  "Mutant",
         "x":  -426369,
         "y":  90527,
         "z":  0,
         "name":  "Lunaris",
-        "verified":  true
+        "verified":  true,
+        "source":  "NormalBossDefeatFlag"
     },
     {
         "key":  null,
