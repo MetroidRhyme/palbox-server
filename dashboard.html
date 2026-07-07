@@ -4439,11 +4439,19 @@ function dmPropByName(name){
 function dmMappingFor(propName,key){
   if(!dmMappings) return {name:null,gx:null,gy:null,fallback:false,verified:null};
   var prop=dmPropByName(propName);
+  // Case-insensitive on purpose: raw save keys always come back UPPERCASE (every bool_map/
+  // int_map parser in pal_save_reader.py upper()s them), but some scraped roster files (e.g.
+  // journal_locations.json's "Day6"/"Day18"/...) were entered in natural mixed case. A plain
+  // JS === here missed the match entirely -- unlike PowerShell's own -eq (case-insensitive by
+  // default), which is why the server-side matching never had this problem. Confirmed live
+  // (2026-07-07): "Day6" showed as both a brand-new unmapped key (as "DAY6", the raw save
+  // form) and a separately-already-mapped one (as "Day6", the roster form) in the same table.
+  var keyU=key?key.toUpperCase():key;
   if(prop&&prop.spatial){
-    var m=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key===key;})[0];
+    var m=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key&&c.key.toUpperCase()===keyU;})[0];
     return {name:m?m.name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false,verified:m?m.verified!==false:null};
   }
-  var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key===key;})[0];
+  var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key&&l.key.toUpperCase()===keyU;})[0];
   if(m2&&m2.name) return {name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false,verified:m2.verified!==false};
   var fb2=dmRosterFallback(propName,key);
   if(fb2) return {name:fb2.name,gx:(m2&&m2.gx!=null?m2.gx:null),gy:(m2&&m2.gy!=null?m2.gy:null),fallback:true,verified:false};
@@ -4496,19 +4504,28 @@ function dmRowId(propName,key,scope){
 // fullRosterKeys, effigies.json), every key in that roster too, so the table shows every known
 // effigy (605), not just ones a player has actually picked up (which is all a raw save's own
 // map entries can ever contain).
+// Deduped case-insensitively -- keyed by uppercase, valued by whichever original-case string
+// wins, since raw save keys and a roster's own key convention can disagree in case (e.g.
+// journal_locations.json's "Day6" vs. the save's always-uppercase "DAY6"; every bool_map/
+// int_map parser in pal_save_reader.py upper()s its keys, but roster files were sometimes
+// typed in natural mixed case). Without this, the same logical key showed up as two separate
+// rows -- one looking brand-new/unmapped (the raw "DAY6" form, which a case-sensitive lookup
+// couldn't match to the roster), one looking already-mapped (the roster's "Day6" form).
+// A raw save key always wins as the canonical form when both exist, since dmPlayerCellHtml
+// looks up player.properties entries by exact case and those are always uppercase.
 function dmAllKeysFor(propName){
   var keys={};
   (dmFullPlayers||[]).forEach(function(p){
     var d=(p.properties||{})[propName];
     if(!d) return;
-    if(d.kind==='name_array'){ (d.entries||[]).forEach(function(k){ keys[k]=1; }); }
-    else { Object.keys(d.entries||{}).forEach(function(k){ keys[k]=1; }); }
+    if(d.kind==='name_array'){ (d.entries||[]).forEach(function(k){ keys[k.toUpperCase()]=k; }); }
+    else { Object.keys(d.entries||{}).forEach(function(k){ keys[k.toUpperCase()]=k; }); }
   });
   var prop=dmPropByName(propName);
   if(prop&&prop.fullRosterKeys){
-    prop.fullRosterKeys().forEach(function(k){ keys[k]=1; });
+    prop.fullRosterKeys().forEach(function(k){ if(!(k.toUpperCase() in keys)) keys[k.toUpperCase()]=k; });
   }
-  return Object.keys(keys).sort();
+  return Object.keys(keys).map(function(u){return keys[u];}).sort();
 }
 
 // Per-player cell HTML for one key of one property: checkmark for bool_map/name_array

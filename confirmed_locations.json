@@ -4181,12 +4181,12 @@
         "gx":  -181,
         "gy":  -263,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -244671.53,
         "y":  74787.61,
-        "z":  -1300.42
+        "z":  -1300.42,
+        "verified":  true
     },
     {
         "key":  "4379F5694529BF5AB5FD83A9BDE21BB5",
@@ -5403,12 +5403,12 @@
         "gx":  -226,
         "gy":  -311,
         "source":  "RelicObtainForInstanceFlag",
-        "verified":  false,
         "category":  "effigy",
         "origin":  "scraped",
         "x":  -266469.38,
         "y":  54397.2,
-        "z":  6387.21
+        "z":  6387.21,
+        "verified":  true
     },
     {
         "key":  "6DFBA012486A7742E146CD93DF0E7DEB",
@@ -8957,13 +8957,13 @@
         "lv":  null,
         "source":  null,
         "origin":  "scraped",
-        "verified":  false,
         "gy":  -188,
         "key":  "Day6",
         "gx":  -234,
         "x":  -210180,
         "y":  50594,
-        "name":  "Castaway\u0027s Journal - Day 6"
+        "name":  "Castaway\u0027s Journal - Day 6",
+        "verified":  true
     },
     {
         "category":  "journal",
@@ -9152,13 +9152,13 @@
         "lv":  null,
         "source":  null,
         "origin":  "scraped",
-        "verified":  false,
         "gy":  -134,
         "key":  "Day38",
         "gx":  -263,
         "x":  -185394,
         "y":  37283,
-        "name":  "Castaway\u0027s Journal - Day 38"
+        "name":  "Castaway\u0027s Journal - Day 38",
+        "verified":  true
     },
     {
         "category":  "journal",
@@ -10076,19 +10076,19 @@
         "name":  "Quivern"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_1_GRASS_FBOSS_6",
+        "gx":  -203,
+        "gy":  -346,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "LazyDragon_Electric",
         "x":  -282702,
         "y":  64823,
         "z":  0,
-        "name":  "Relaxaurus Lux"
+        "name":  "Relaxaurus Lux",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -11156,19 +11156,19 @@
         "name":  "Deep Bamboo Thicket"
     },
     {
-        "key":  null,
-        "category":  "eagle",
+        "key":  "3A0F123947BE045BC415C6B061A5285A",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -155,
         "gx":  -264,
         "x":  -195033,
         "y":  36824,
-        "name":  "Sealed Realm of the Winged Tyrant"
+        "name":  "Sealed Realm of the Winged Tyrant",
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -11216,19 +11216,19 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "eagle",
+        "key":  "B001852C491FF5E70C4747BFF9972924",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -206,
         "gx":  -217,
         "x":  -218442,
         "y":  58397,
-        "name":  "Investigator\u0027s Fork"
+        "name":  "Investigator\u0027s Fork",
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,

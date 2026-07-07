@@ -2622,5 +2622,37 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "LAZYDRAGON",
+        "name":  "Relaxaurus",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "LAZYDRAGON_ELECTRIC",
+        "name":  "Relaxaurus Lux",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "LazyDragon",
+        "name":  "Relaxaurus",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "LazyDragon_Electric",
+        "name":  "Relaxaurus Lux",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

@@ -110,5 +110,9 @@
     {
         "key":  "81_1_GRASS_FBOSS_16",
         "species":  "FengyunDeeper"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_6",
+        "species":  "LazyDragon_Electric"
     }
 ]
