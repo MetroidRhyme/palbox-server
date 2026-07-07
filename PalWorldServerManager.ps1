@@ -270,6 +270,37 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
         Log "Off-machine backup uploaded: $key (${sizeMB}MB)"
     }
 
+    # Deploys the public site's STATIC shell (dashboard.html-derived index.html, map
+    # category data, pal-species/etc.) once per daily maintenance cycle. Map data
+    # (confirmed_locations.json changes -- new confirms, imports) only reaches
+    # palbox.evoveriv.com via a real deploy_public_site.ps1 run, unlike the per-player
+    # data sync_public_data.ps1 already pushes to R2 every ~60s -- see the
+    # palbox-confirmed-locations skill's "R2 vs static deploy" note. Independent of
+    # whether PalServer itself is up (it only reads local files + calls wrangler), so
+    # this runs regardless of the online-wait result below.
+    function Deploy-PublicSite {
+        # Same Process -> User -> Machine credential fallback as Backup-OffMachine above,
+        # since this job can start with a bare Process environment.
+        foreach ($v in 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID') {
+            if (-not [Environment]::GetEnvironmentVariable($v, 'Process')) {
+                $val = [Environment]::GetEnvironmentVariable($v, 'User')
+                if (-not $val) { $val = [Environment]::GetEnvironmentVariable($v, 'Machine') }
+                if ($val) { Set-Item -Path ("Env:" + $v) -Value $val }
+            }
+        }
+        if (-not $env:CLOUDFLARE_API_TOKEN -or -not $env:CLOUDFLARE_ACCOUNT_ID) {
+            Log "Public site deploy skipped: Cloudflare credentials not set in the environment."
+            return
+        }
+        Log "Deploying public site (deploy_public_site.ps1 -Force)..."
+        try {
+            & "$ServerDir\deploy_public_site.ps1" -Root $ServerDir -Force *>&1 | ForEach-Object { Log "  $_" }
+            Log "Public site deploy complete."
+        } catch {
+            Log "Public site deploy FAILED: $($_.Exception.Message)"
+        }
+    }
+
     # sync_public_data.ps1 logs a line roughly every ~60s tick (SUCCESS or FAILED, the
     # latter up to 4 lines) with no rotation of its own -- unlike this job's own Log
     # function, which already self-trims maintenance.log. Once/day here (same
@@ -364,6 +395,8 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
         } else {
             Log "=== MAINTENANCE COMPLETE - WARNING: health check timed out ==="
         }
+
+        Deploy-PublicSite
 
         Start-Sleep -Seconds 60
     }
