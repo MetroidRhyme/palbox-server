@@ -3490,8 +3490,9 @@ var EFF_CULL_PAD=0.5;
 // Below EFF_CULL_MIN_ZOOM culling is off, so the whole ~850-marker roster used
 // to sit in the DOM as divIcons -- the main pan/zoom lag at the default view.
 // In "dot mode" (zoom < EFF_CULL_MIN_ZOOM) every static marker renders instead
-// as a canvas circleMarker: fill = category color, stroke = the same
-// red/yellow/green STATUS_RING_COLOR the icon rings use. Same tooltips; NO
+// as a canvas circleMarker, solid-filled with the same red/yellow/green
+// STATUS_RING_COLOR the icon rings use (no separate category fill -- status
+// is the thing worth seeing at a glance zoomed out). Same tooltips; NO
 // popups (admin confirm needs icon zoom -- dots are view-only by design).
 var _effDotMode=false;      // set by renderEffigyMapNow from current zoom
 var _effLastDotMode=null;   // last mode seen by the moveend/zoomend handler
@@ -3500,24 +3501,15 @@ function effCanvasRenderer(){
   if(!_effCanvas) _effCanvas=L.canvas({padding:0.5});
   return _effCanvas;
 }
-// Slightly larger tap targets on touch devices.
+// Same radius for every category/status so zoomed-out dots read as one
+// uniform layer; slightly larger tap targets on touch devices.
 var EFF_LOD_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?5:3.5;
-// Fill = category identity; radius bumps make bosses/towers read at a glance.
-var EFF_DOT_CAT={
-  effigy:  {fill:'#8b5a2b', r:EFF_LOD_R},      // acorn brown
-  journal: {fill:'#1673d1', r:EFF_LOD_R},      // journal blue (matches tooltips)
-  eagle:   {fill:'#39c5cf', r:EFF_LOD_R},      // teal
-  fugitive:{fill:'#f778ba', r:EFF_LOD_R+1},    // pink
-  bounty:  {fill:'#a371f7', r:EFF_LOD_R+2},    // purple, stands out
-  tower:   {fill:'#e6edf3', r:EFF_LOD_R+3}     // near-white, biggest
-};
 function buildDotMarker(ll,cat,status,tip){
-  var c=EFF_DOT_CAT[cat]||EFF_DOT_CAT.effigy;
+  var color=STATUS_RING_COLOR[status]||STATUS_RING_COLOR.unconfirmed;
   var m=L.circleMarker(ll,{
-    renderer:effCanvasRenderer(),radius:c.r,
-    fillColor:c.fill,fillOpacity:0.9,
-    color:STATUS_RING_COLOR[status]||STATUS_RING_COLOR.unconfirmed,
-    weight:1.5,opacity:1,interactive:true
+    renderer:effCanvasRenderer(),radius:EFF_LOD_R,
+    fillColor:color,fillOpacity:1,
+    color:color,weight:1,opacity:1,interactive:true
   });
   if(tip) m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   return m;
@@ -3555,6 +3547,71 @@ function saveKeyRow(key){
   return key
     ? '<br><span style="color:#5a6573;font-size:11px;">Save key: <code>'+esc(key)+'</code></span>'
     : '<br><span style="color:#8a8f98;font-size:11px;font-style:italic;">No save data key linked</span>';
+}
+
+// "Map to key..." popup control (added 2026-07-08) -- lets Anthony link a keyless scraped
+// map pin (Journal/Field Boss/Wanted Fugitive/Eagle Statue) directly to a raw save key from
+// the Map tab, instead of switching to the Data Mine tab's "map to existing" dropdown (the
+// same action in the opposite direction). Same POST route and stored effect either way --
+// see applyIconKeyMapping, shared with saveDatamineIconKey below. Effigy/Tower excluded:
+// effigies always have a key by construction, and Tower keys are read-only here (matched
+// against towers.json, not written from either UI -- see DATAMINE_PROPERTIES' TowerBossDefeatFlag).
+function mapKeyButtonHtml(btnId){
+  return '<br><button type="button" class="btn btn-ghost eff-map-key-btn" id="'+btnId+'" style="margin-top:6px;font-size:12px;">Map to key...</button>';
+}
+function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
+  var btn=popupEl.querySelector('#'+btnId);
+  if(!btn) return;
+  btn.onclick=function(){
+    btn.disabled=true; btn.textContent='Loading keys...';
+    ensureDatamineDataLoaded().then(function(){
+      var cat=dmIconCatByLabel(catLabel);
+      var keys=cat?dmUnmappedKeysFor(cat.property):[];
+      if(!keys.length){
+        toast('No unmapped keys found -- nothing to link yet.','error');
+        btn.disabled=false; btn.textContent='Map to key...';
+        return;
+      }
+      var wrap=btn.parentElement;
+      var selId=btnId+'-sel';
+      wrap.innerHTML='<select id="'+selId+'" class="dm-edit-input" style="width:170px;"><option value="">Select key...</option>'
+        +keys.map(function(k){return '<option value="'+esc(k)+'">'+esc(k)+'</option>';}).join('')
+        +'</select> <button type="button" class="btn btn-ghost" id="'+btnId+'-go" style="font-size:12px;">Map</button>';
+      var goBtn=document.getElementById(btnId+'-go');
+      if(goBtn) goBtn.onclick=function(){
+        var sel=document.getElementById(selId);
+        if(!sel||!sel.value){ toast('Pick a key first.','error'); return; }
+        mapMarkerToKey(catLabel,name,gx,gy,sel.value,marker);
+      };
+    }).catch(function(e){
+      toast('Failed to load keys: '+String(e&&e.message||e),'error');
+      btn.disabled=false; btn.textContent='Map to key...';
+    });
+  };
+}
+async function mapMarkerToKey(catLabel,name,gx,gy,key,marker){
+  try{
+    await applyIconKeyMapping(catLabel,name,gx,gy,key);
+    toast('Mapped "'+name+'" to '+key+'.','success');
+    if(marker&&marker.closePopup) marker.closePopup();
+    renderEffigyMap();
+  }catch(e){
+    toast('Failed to map: '+String(e&&e.message||e),'error');
+  }
+}
+// Lazy, once-per-session load of the same raw-save-key data the Data Mine tab uses (dmFullPlayers/
+// dmMappings) -- the Map tab doesn't poll this on its own (perf: see /palbox-map-performance),
+// it only fetches it the first time a "Map to key..." button is actually clicked.
+var _dmMapLoadPromise=null;
+function ensureDatamineDataLoaded(){
+  if(dmFullPlayers&&dmMappings) return Promise.resolve();
+  if(!_dmMapLoadPromise){
+    _dmMapLoadPromise=dmFetchAndApply().catch(function(e){ _dmMapLoadPromise=null; throw e; });
+  }
+  return _dmMapLoadPromise;
+}
+function dmUnmappedKeysFor(propName){
+  return dmAllKeysFor(propName).filter(function(k){ return !dmMappingFor(propName,k).name; });
 }
 
 // Body-only tooltip text (no name header -- effigies have none), shared by the
@@ -3605,18 +3662,24 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
   if(EFFIGY_CONFIRM_ENABLED){
     var jPopup='<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+saveKeyRow(j.key);
     var jChkId='journal-confirm-'+j.key;
+    var jMapBtnId='journal-mapkey-'+j.name.replace(/[^a-zA-Z0-9]/g,'_');
     if(trackable){
       jPopup+='<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+jChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
+    } else {
+      jPopup+=mapKeyButtonHtml(jMapBtnId);
     }
     jm.bindPopup(jPopup,{className:'eff-tip'});
-    if(trackable){
-      jm.on('popupopen',function(e){
-        var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+jChkId);
-        if(!box) return;
-        box.onchange=function(){ toggleMapConfirm('journal',j.key,box.checked); };
-      });
-    }
+    jm.on('popupopen',function(e){
+      var el=e.popup.getElement();
+      if(!el) return;
+      if(trackable){
+        var box=el.querySelector('#'+jChkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('journal',j.key,box.checked); };
+      } else {
+        wireMapKeyButton(el,jMapBtnId,'Journal',j.name,j.gx,j.gy,jm);
+      }
+    });
   }
   return jm;
 }
@@ -3643,10 +3706,15 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
       bPopup+='<br><button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="margin-top:6px;font-size:12px;">'
         +(bManual?'Unmark defeated':'Mark defeated')+'</button>';
     }
+    var bMapBtnId='bounty-mapkey-'+sp;
     if(EFFIGY_CONFIRM_ENABLED){
       bPopup+=saveKeyRow(b.key);
-      bPopup+='<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-        +'<input type="checkbox" id="'+bChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
+      if(b.key){
+        bPopup+='<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+          +'<input type="checkbox" id="'+bChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
+      } else {
+        bPopup+=mapKeyButtonHtml(bMapBtnId);
+      }
     }
     bm.bindPopup(bPopup);
     bm.on('popupopen',function(e){
@@ -3661,9 +3729,12 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
           bm.closePopup();
         };
       }
-      var box=el.querySelector('#'+bChkId);
-      if(box){
-        box.onchange=function(){ toggleMapConfirm('bounty',b.species,box.checked); };
+      if(b.key){
+        var box=el.querySelector('#'+bChkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('bounty',b.species,box.checked); };
+      } else {
+        var g=worldToGrid(b.x,b.y);
+        wireMapKeyButton(el,bMapBtnId,'Field Boss',b.name,g.cx,g.cy,bm);
       }
     });
     if(clickable) bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
@@ -3688,14 +3759,23 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
   hm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   if(EFFIGY_CONFIRM_ENABLED){
     var hChkId='fugitive-confirm-'+h.name.replace(/[^a-zA-Z0-9]/g,'_');
-    hm.bindPopup('<b style="color:#111;">'+esc(h.name)+'</b><br>'+hTip+saveKeyRow(h.key)
-      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+hChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
-      {className:'eff-tip'});
+    var hMapBtnId='fugitive-mapkey-'+h.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var hPopup='<b style="color:#111;">'+esc(h.name)+'</b><br>'+hTip+saveKeyRow(h.key);
+    hPopup+=h.key
+      ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+        +'<input type="checkbox" id="'+hChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
+      :mapKeyButtonHtml(hMapBtnId);
+    hm.bindPopup(hPopup,{className:'eff-tip'});
     hm.on('popupopen',function(e){
-      var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+hChkId);
-      if(!box) return;
-      box.onchange=function(){ toggleMapConfirm('fugitive',h.name,box.checked); };
+      var el=e.popup.getElement();
+      if(!el) return;
+      if(h.key){
+        var box=el.querySelector('#'+hChkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('fugitive',h.name,box.checked); };
+      } else {
+        var g=worldToGrid(h.x,h.y);
+        wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
+      }
     });
   }
   return hm;
@@ -3718,14 +3798,23 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
   esm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   if(EFFIGY_CONFIRM_ENABLED){
     var esChkId='eagle-confirm-'+es.name.replace(/[^a-zA-Z0-9]/g,'_');
-    esm.bindPopup('<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+saveKeyRow(es.key)
-      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+esChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
-      {className:'eff-tip'});
+    var esMapBtnId='eagle-mapkey-'+es.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var esPopup='<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+saveKeyRow(es.key);
+    esPopup+=es.key
+      ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+        +'<input type="checkbox" id="'+esChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
+      :mapKeyButtonHtml(esMapBtnId);
+    esm.bindPopup(esPopup,{className:'eff-tip'});
     esm.on('popupopen',function(e){
-      var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+esChkId);
-      if(!box) return;
-      box.onchange=function(){ toggleMapConfirm('eagle',es.name,box.checked); };
+      var el=e.popup.getElement();
+      if(!el) return;
+      if(es.key){
+        var box=el.querySelector('#'+esChkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('eagle',es.name,box.checked); };
+      } else {
+        var g=worldToGrid(es.x,es.y);
+        wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm);
+      }
     });
   }
   return esm;
@@ -4837,23 +4926,24 @@ function dmIconRowId(property,label,name){
   return 'dm-icon-'+property+'-'+label+'-'+String(name).replace(/[^A-Za-z0-9_-]/g,'_');
 }
 
-async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
+// Links a keyless map-icon roster entry (Journal/Field Boss/Wanted Fugitive/Eagle Statue) to
+// a raw save key -- shared by saveDatamineIconKey (Data Mine tab, key typed in) and
+// mapMarkerToKey (Map tab popup, key picked from a dropdown of still-unmapped keys). Same
+// POST route and stored effect regardless of which UI surface triggered it. Throws on
+// failure/unknown category so each caller can toast in its own idiom.
+async function applyIconKeyMapping(catLabel,name,gx,gy,key){
   var cat=dmIconCatByLabel(catLabel);
-  if(!cat){ toast('Unknown category.','error'); return; }
-  var keyEl=document.getElementById(rowId+'-key');
-  if(!keyEl){ toast('Could not find that row -- try reloading.','error'); return; }
-  var key=keyEl.value.trim();
-  if(!key){ toast('Enter the raw save key first.','error'); return; }
-  try{
-    // verified:true -- Anthony typed this key in himself, so it's his own confirmation, not
-    // an auto-filled scrape suggestion.
-    await api('/api/datamine-mapping','POST',{property:cat.property,key:key,name:name,gx:gx,gy:gy,verified:true});
-    // Optimistic client-side update must land in the SAME store the server just wrote to --
-    // spatial properties go to confirmed_locations.json, everything else (e.g.
-    // TowerBossDefeatFlag, added 2026-07-08) to datamine_labels.json. Getting this branch
-    // wrong doesn't lose data (the server write already succeeded), it just shows stale
-    // info until the next dmFetchAndApply poll corrects it from the server's own truth.
-    var prop=dmPropByName(cat.property);
+  if(!cat) throw new Error('Unknown category.');
+  // verified:true -- Anthony picked/typed this key in himself, so it's his own confirmation,
+  // not an auto-filled scrape suggestion.
+  await api('/api/datamine-mapping','POST',{property:cat.property,key:key,name:name,gx:gx,gy:gy,verified:true});
+  // Optimistic client-side update must land in the SAME store the server just wrote to --
+  // spatial properties go to confirmed_locations.json, everything else (e.g.
+  // TowerBossDefeatFlag, added 2026-07-08) to datamine_labels.json. Getting this branch
+  // wrong doesn't lose data (the server write already succeeded), it just shows stale
+  // info until the next dmFetchAndApply poll corrects it from the server's own truth.
+  var prop=dmPropByName(cat.property);
+  if(dmMappings){
     if(prop&&prop.spatial){
       dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key!==key;});
       dmMappings.confirmedLocations.push({key:key,name:name,gx:gx,gy:gy,source:cat.property,verified:true});
@@ -4861,9 +4951,19 @@ async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
       dmMappings.labels=(dmMappings.labels||[]).filter(function(l){return !(l.property===cat.property&&l.key===key);});
       dmMappings.labels.push({property:cat.property,key:key,name:name,gx:gx,gy:gy,verified:true});
     }
-    // Refetch this category's roster so the just-matched entry's own "key" field updates and
-    // it drops out of the unmatched list immediately, instead of lingering until a full reload.
-    await cat.refetch();
+  }
+  // Refetch this category's roster so the just-matched entry's own "key" field updates and
+  // it drops out of the unmatched list immediately, instead of lingering until a full reload.
+  await cat.refetch();
+}
+
+async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
+  var keyEl=document.getElementById(rowId+'-key');
+  if(!keyEl){ toast('Could not find that row -- try reloading.','error'); return; }
+  var key=keyEl.value.trim();
+  if(!key){ toast('Enter the raw save key first.','error'); return; }
+  try{
+    await applyIconKeyMapping(catLabel,name,gx,gy,key);
     toast('Saved.','success');
     renderDataMine();
   }catch(e){
