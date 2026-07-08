@@ -337,7 +337,6 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <button class="nav-tab" data-tab="datamine" onclick="switchView('datamine')">Data Mine</button>
   </nav>
   <div class="hdr-right">
-    <button class="btn btn-primary" onclick="openAddIconModal()" title="Manually add a map pin before scraped/live data confirms it">+ Add Icon</button>
     <button class="btn btn-green" id="btn-start-hdr" onclick="startServer()" style="display:none">&#9654; Start Server</button>
     <span class="hdr-mid">Updated <b id="last-updated">-</b> &bull; refresh in <b id="countdown">5:00</b> &bull; <span id="sync-pill" class="sync-pill-ok">-</span></span>
     <div class="overflow-toggle-wrap">
@@ -540,6 +539,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         <select id="effigy-player" onchange="effigyPlayerChanged()" class="sel" style="min-width:120px;"></select>
         <span id="effigy-summary" style="color:var(--muted);font-size:12px;"></span>
       </div>
+      <button class="btn btn-primary" onclick="openAddIconModal()" title="Manually add a map pin before scraped/live data confirms it">+ Add Icon</button>
       <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
     </div>
     <div id="eff-map-wrap" style="position:relative;flex:1;min-height:0;">
