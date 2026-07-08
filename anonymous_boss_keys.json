@@ -118,5 +118,13 @@
     {
         "key":  "81_1_GRASS_FBOSS_10",
         "species":  "SkyDragon"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_15",
+        "species":  "CatVampire"
+    },
+    {
+        "key":  "1_10_PLAIN_F_BOSS_BLUEDRAGON",
+        "species":  "BlueDragon"
     }
 ]

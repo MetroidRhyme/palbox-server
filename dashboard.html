@@ -536,13 +536,16 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
   <div class="panel" style="flex:1;min-height:0;">
     <div class="panel-header">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="effigy-player" onchange="fetchEffigyPlayer()" class="sel" style="min-width:120px;"></select>
+        <select id="effigy-player" onchange="effigyPlayerChanged()" class="sel" style="min-width:120px;"></select>
         <span id="effigy-summary" style="color:var(--muted);font-size:12px;"></span>
       </div>
       <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
     </div>
     <div id="eff-map-wrap" style="position:relative;flex:1;min-height:0;">
-      <button id="eff-fullscreen-btn" class="btn-icon" onclick="toggleEffigyFullscreen()" title="Fullscreen map" style="position:absolute;top:8px;right:8px;z-index:1000;">&#9974; Fullscreen</button>
+      <div style="position:absolute;top:8px;right:8px;z-index:1000;display:flex;gap:6px;">
+        <button id="eff-follow-btn" class="btn-icon" onclick="toggleFollowSelectedPlayer()" title="Follow selected player's position">&#8982; Follow</button>
+        <button id="eff-fullscreen-btn" class="btn-icon" onclick="toggleEffigyFullscreen()" title="Fullscreen map">&#9974; Fullscreen</button>
+      </div>
       <div id="eff-filter-panel" style="position:absolute;top:8px;left:8px;z-index:1000;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;flex-direction:column;gap:5px;box-shadow:0 4px 16px rgba(0,0,0,.35);">
         <div id="eff-filter-hdr" onclick="toggleFilterPanel()" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-weight:600;">
           <span id="eff-filter-arrow" style="display:inline-block;font-size:10px;color:var(--muted);transition:transform .15s;">&#9660;</span> Layers
@@ -3402,6 +3405,28 @@ function toggleTowerKeyVerified(towerName,field,checked){
 // inconsistent with every other category's toggle). This is a VIEW filter only -- it never
 // changes a Pal's actual found state (which comes solely from the save). Both default on.
 var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowPlayers=true;
+// Layer filter toggles are remembered per-browser via localStorage (independent of the
+// server-side /api/prefs sync above, which is public-site-only) so admin AND public both
+// keep a hidden category hidden across refreshes. Loaded once at script parse time, same
+// pattern as SAVED_TAB.
+try{
+  var _savedMapFilters=JSON.parse(localStorage.getItem('palbox_map_filters')||'null');
+  if(_savedMapFilters&&typeof _savedMapFilters==='object'){
+    if(_savedMapFilters.found!==undefined)effigyShowFound=!!_savedMapFilters.found;
+    if(_savedMapFilters.nw!==undefined)effigyShowNew=!!_savedMapFilters.nw;
+    if(_savedMapFilters.journal!==undefined)effigyShowJournal=!!_savedMapFilters.journal;
+    if(_savedMapFilters.bounty!==undefined)effigyShowBounty=!!_savedMapFilters.bounty;
+    if(_savedMapFilters.fugitive!==undefined)effigyShowFugitive=!!_savedMapFilters.fugitive;
+    if(_savedMapFilters.eagle!==undefined)effigyShowEagle=!!_savedMapFilters.eagle;
+    if(_savedMapFilters.tower!==undefined)effigyShowTower=!!_savedMapFilters.tower;
+    if(_savedMapFilters.players!==undefined)effigyShowPlayers=!!_savedMapFilters.players;
+  }
+}catch(e){}
+function saveMapFilters(){
+  try{
+    localStorage.setItem('palbox_map_filters',JSON.stringify({found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,tower:effigyShowTower,players:effigyShowPlayers}));
+  }catch(e){}
+}
 
 // "Layers" panel: collapsible so it doesn't sit open over most of a phone-sized map (it
 // used to be an always-open overlay). Collapsed by default only on phone widths, applied
@@ -3438,6 +3463,7 @@ function toggleEffigyFilter(which){
   else if(which==='tower') effigyShowTower=!effigyShowTower;
   else effigyShowNew=!effigyShowNew;
   setEffigyFilterBtns();
+  saveMapFilters();
   renderEffigyMap();
 }
 
@@ -3819,19 +3845,20 @@ function renderPlayerMarkers(){
       }else{
         // Negative offset keeps player markers UNDER every other icon type (which default to
         // offset 0) when they overlap on screen, so a static icon behind the player is still
-        // clickable without having to hide the player layer first. Hover still bumps it to the
-        // front (positive offset) so the player marker itself remains clickable when isolated.
+        // clickable without having to hide the player layer first. Hover leaves this offset
+        // alone by design (see the mouseover/mouseout handlers below).
         var pm=L.marker(ll,{icon:playerMarkerIcon(pl.yawDeg,isFollowed),interactive:true,zIndexOffset:isFollowed?-800:-1000});
         pm.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
-        pm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');this.setZIndexOffset(1500);});
-        pm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');this.setZIndexOffset(followedPlayerGuid===pl.guid?-800:-1000);});
-        // Click toggles follow mode for this player (see centerOnFollowedPlayer / the map's
-        // own click handler in initEffigyView for how following ends). Reads followedPlayerGuid
-        // fresh at click time (not a captured isFollowed) since this marker is reused across polls.
-        pm.on('click',function(){
-          followedPlayerGuid=(followedPlayerGuid===pl.guid)?null:pl.guid;
-          renderPlayerMarkers();
-        });
+        // Unlike the other marker types (_effMarkerOver/_effMarkerOut), hover does NOT bump
+        // z-index to the front here -- player markers stay behind static icons even when
+        // hovered (Anthony: front-hopping made it hard to hover a player standing near/under
+        // an icon without the marker jumping around under the cursor). The glow/scale is
+        // purely a CSS effect (see .eff-map-hover), independent of z-order.
+        pm.on('mouseover',function(){var el=this.getElement();if(el)el.classList.add('eff-map-hover');});
+        pm.on('mouseout',function(){var el=this.getElement();if(el)el.classList.remove('eff-map-hover');});
+        // Follow is toggled via the #eff-follow-btn button next to Fullscreen now, not by
+        // clicking the marker itself (2026-07-07: clicking to follow was easy to trigger by
+        // accident while just inspecting a player's position). See toggleFollowSelectedPlayer.
         effigyPlayerLayer.addLayer(pm);
         _playerShown.set(pl.guid,{m:pm,followSig:isFollowed,tip:tip});
       }
@@ -3984,6 +4011,7 @@ function initEffigyView(){
   }
   effigyInited=true;
   initFilterPanelCollapse();
+  setEffigyFilterBtns(); // reflect any layer state loaded from localStorage above the defaults baked into the HTML
   loadLeaflet(function(){
     requestAnimationFrame(function(){
       if(!effigyLeaflet){
@@ -4013,11 +4041,11 @@ function initEffigyView(){
         // renderPlayerMarkers() so the 5s position poll never touches effigyMarkerLayer.
         effigyPlayerLayer=L.layerGroup();
         effigyLeaflet.addLayer(effigyPlayerLayer);
-        // Clicking empty map area cancels player-follow mode (Leaflet marker clicks don't
-        // bubble to the map's own click event, so this only fires for clicks that miss
-        // every marker -- see the player marker's own click handler in renderPlayerMarkers).
+        // Clicking empty map area also cancels player-follow mode (in addition to toggling
+        // #eff-follow-btn off) -- Leaflet marker clicks don't bubble to the map's own click
+        // event, so this only fires for clicks that miss every marker.
         effigyLeaflet.on('click',function(){
-          if(followedPlayerGuid){ followedPlayerGuid=null; renderPlayerMarkers(); }
+          if(followedPlayerGuid){ followedPlayerGuid=null; updateFollowBtnState(); renderPlayerMarkers(); }
         });
         // Viewport culling (see syncEffigyLayer/EFF_CULL_MIN_ZOOM): only the delta of
         // markers entering/leaving the padded viewport needs to touch the DOM per pan/zoom.
@@ -4079,7 +4107,7 @@ async function fetchEffigyLocations(force){
     var r=await fetch('/api/effigies');
     if(!r.ok) throw new Error('HTTP '+r.status);
     var txt=await r.text();
-    if(txt===_effRosterText.effigies){ populateEffigyPlayerDropdown(); return; }
+    if(txt===_effRosterText.effigies){ if(!effigyLocations&&txt){effigyLocations=JSON.parse(txt);if(effigyLeaflet)renderEffigyMap();} populateEffigyPlayerDropdown(); return; }
     _effRosterText.effigies=txt;
     effigyLocations=JSON.parse(txt);
     populateEffigyPlayerDropdown();
@@ -4097,7 +4125,7 @@ async function fetchJournalLocations(force){
     var r=await fetch('/api/journals');
     if(!r.ok) throw new Error('HTTP '+r.status);
     var txt=await r.text();
-    if(txt===_effRosterText.journals) return;
+    if(txt===_effRosterText.journals){ if(!journalLocations){journalLocations=JSON.parse(txt);if(effigyLeaflet)renderEffigyMap();} return; }
     _effRosterText.journals=txt;
     journalLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
@@ -4115,7 +4143,7 @@ async function fetchBossLocations(force){
     var r=await fetch('/api/bounty-bosses');
     if(!r.ok) throw new Error('HTTP '+r.status);
     var txt=await r.text();
-    if(txt===_effRosterText.bounty) return;
+    if(txt===_effRosterText.bounty){ if(!bossLocations){bossLocations=JSON.parse(txt);if(effigyLeaflet)renderEffigyMap();} return; }
     _effRosterText.bounty=txt;
     bossLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
@@ -4135,7 +4163,7 @@ async function fetchWantedFugitives(force){
     var r=await fetch('/api/wanted-fugitives');
     if(!r.ok) throw new Error('HTTP '+r.status);
     var txt=await r.text();
-    if(txt===_effRosterText.fugitive) return;
+    if(txt===_effRosterText.fugitive){ if(!wantedFugitiveLocations){wantedFugitiveLocations=JSON.parse(txt);if(effigyLeaflet)renderEffigyMap();} return; }
     _effRosterText.fugitive=txt;
     wantedFugitiveLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
@@ -4176,7 +4204,37 @@ function centerOnFollowedPlayer(){
   }else{
     // Player logged off / no longer resolvable -- stop following instead of getting stuck.
     followedPlayerGuid=null;
+    updateFollowBtnState();
   }
+}
+// #eff-follow-btn (next to Fullscreen) follows whichever player is currently selected in the
+// #effigy-player dropdown -- replaces the old click-a-marker-to-follow gesture (2026-07-07).
+function toggleFollowSelectedPlayer(){
+  var sel=document.getElementById('effigy-player');
+  var guid=sel?sel.value:'';
+  if(!guid){ toast('Select a player first.','error'); return; }
+  followedPlayerGuid=(followedPlayerGuid===guid)?null:guid;
+  updateFollowBtnState();
+  renderPlayerMarkers();
+}
+// Keeps the follow target pointed at the dropdown's current selection: called from the
+// dropdown's onchange so switching players while following retargets instead of silently
+// continuing to follow whoever was previously selected.
+function effigyPlayerChanged(){
+  if(followedPlayerGuid){
+    var sel=document.getElementById('effigy-player');
+    followedPlayerGuid=sel?sel.value:null;
+    updateFollowBtnState();
+  }
+  fetchEffigyPlayer();
+}
+function updateFollowBtnState(){
+  var btn=document.getElementById('eff-follow-btn');
+  if(!btn) return;
+  var sel=document.getElementById('effigy-player');
+  var on=!!(followedPlayerGuid&&sel&&sel.value===followedPlayerGuid);
+  btn.classList.toggle('btn-primary',on);
+  btn.title=on?'Stop following selected player':"Follow selected player's position";
 }
 async function fetchPlayerLocations(){
   try{
@@ -4204,7 +4262,7 @@ async function fetchEagleStatues(force){
     var r=await fetch('/api/eagle-statues');
     if(!r.ok) throw new Error('HTTP '+r.status);
     var txt=await r.text();
-    if(txt===_effRosterText.eagle) return;
+    if(txt===_effRosterText.eagle){ if(!eagleStatueLocations){eagleStatueLocations=JSON.parse(txt);if(effigyLeaflet)renderEffigyMap();} return; }
     _effRosterText.eagle=txt;
     eagleStatueLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
@@ -4221,7 +4279,7 @@ async function fetchTowerLocations(force){
     var r=await fetch('/api/towers');
     if(!r.ok) throw new Error('HTTP '+r.status);
     var txt=await r.text();
-    if(txt===_effRosterText.tower) return;
+    if(txt===_effRosterText.tower){ if(!towerLocations){towerLocations=JSON.parse(txt);if(effigyLeaflet)renderEffigyMap();} return; }
     _effRosterText.tower=txt;
     towerLocations=JSON.parse(txt);
     if(effigyLeaflet) renderEffigyMap();
@@ -4721,16 +4779,25 @@ async function dmLivePollTick(){
 // the generic "key" field dmPropertyRows/dmRowHtml expect, so only towers with no bossKey
 // yet (currently just Feybreak) show up as an icon row here. Name includes the boss/Pal so
 // Feybreak's placeholder is self-explanatory before its real key is ever seen.
+// refetch: force=true re-fetches without nulling the backing global first -- see the
+// refetchEffigyMapRosters comment above for why nulling-then-fetching is unsafe (each
+// fetchX bails out early, WITHOUT restoring the variable, whenever the server text is
+// unchanged from what's cached in _effRosterText -- e.g. mapping a Field Boss key still
+// refetches Wanted Fugitive too, since NormalBossDefeatFlag links both icon categories, and
+// if the fugitive roster text happens to be identical the variable was left null forever,
+// vanishing every Wanted Fugitive marker until a full page reload). Passing force:true
+// instead leaves the old data on screen if nothing actually changed, matching the Map tab's
+// own roster-poll behavior.
 var DM_ICON_CATEGORIES=[
-  {label:'Eagle Statue',property:'FastTravelPointUnlockFlag',getRoster:function(){return eagleStatueLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){eagleStatueLocations=null;return fetchEagleStatues();}},
-  {label:'Wanted Fugitive',property:'NormalBossDefeatFlag',getRoster:function(){return wantedFugitiveLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){wantedFugitiveLocations=null;return fetchWantedFugitives();}},
-  {label:'Field Boss',property:'NormalBossDefeatFlag',getRoster:function(){return bossLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){bossLocations=null;return fetchBossLocations();}},
-  {label:'Journal',property:'NoteObtainForInstanceFlag',getRoster:function(){return journalLocations||[];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){journalLocations=null;return fetchJournalLocations();}},
+  {label:'Eagle Statue',property:'FastTravelPointUnlockFlag',getRoster:function(){return eagleStatueLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchEagleStatues(true);}},
+  {label:'Wanted Fugitive',property:'NormalBossDefeatFlag',getRoster:function(){return wantedFugitiveLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchWantedFugitives(true);}},
+  {label:'Field Boss',property:'NormalBossDefeatFlag',getRoster:function(){return bossLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchBossLocations(true);}},
+  {label:'Journal',property:'NoteObtainForInstanceFlag',getRoster:function(){return journalLocations||[];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){return fetchJournalLocations(true);}},
   {label:'Tower',property:'TowerBossDefeatFlag',getRoster:function(){
     return (towerLocations||[]).map(function(t){
       return {name:t.name+((t.boss||t.bossPal)?(' -- '+(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+(t.bossPal||'')):''),x:t.x,y:t.y,key:t.bossKey};
     });
-  },getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){towerLocations=null;return fetchTowerLocations();}}
+  },getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchTowerLocations(true);}}
 ];
 
 function dmIconCatByLabel(label){

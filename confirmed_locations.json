@@ -9167,13 +9167,13 @@
         "lv":  null,
         "source":  null,
         "origin":  "scraped",
-        "verified":  false,
         "gy":  -504,
         "key":  "GRASSBOSS1",
         "gx":  -4,
         "x":  -355224,
         "y":  156164,
-        "name":  "Zoe Rayne\u0027s Diary - 1"
+        "name":  "Zoe Rayne\u0027s Diary - 1",
+        "verified":  true
     },
     {
         "category":  "journal",
@@ -9191,34 +9191,34 @@
         "verified":  true
     },
     {
-        "key":  null,
-        "category":  "journal",
+        "key":  "GRASSBOSS4",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -168,
         "gx":  -399,
         "x":  -201000,
         "y":  -25141,
-        "name":  "Zoe Rayne\u0027s Diary - 4"
+        "name":  "Zoe Rayne\u0027s Diary - 4",
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "journal",
+        "key":  "GRASSBOSS5",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -188,
         "gx":  -359,
         "x":  -210180,
         "y":  -6781,
-        "name":  "Zoe Rayne\u0027s Diary - 5"
+        "name":  "Zoe Rayne\u0027s Diary - 5",
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -9566,19 +9566,19 @@
         "name":  "Azurmane"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "1_10_PLAIN_F_BOSS_BLUEDRAGON",
+        "gx":  -53,
+        "gy":  -387,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "BlueDragon",
         "x":  -301521,
         "y":  133673,
         "z":  0,
-        "name":  "Azurobe"
+        "name":  "Azurobe",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -9701,19 +9701,19 @@
         "name":  "Elizabee"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_1_GRASS_FBOSS_15",
+        "gx":  -411,
+        "gy":  -55,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "CatVampire",
         "x":  -149133,
         "y":  -30649,
         "z":  0,
-        "name":  "Felbat"
+        "name":  "Felbat",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_16",
@@ -10931,19 +10931,19 @@
         "name":  "Shield Dragon Tunnel"
     },
     {
-        "key":  null,
-        "category":  "eagle",
+        "key":  "76B000914943BADDC56BCFBAE2BF051E",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -13,
         "gx":  -461,
         "x":  -129855,
         "y":  -53599,
-        "name":  "Forgotten Island Church Ruins"
+        "name":  "Forgotten Island Church Ruins",
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -11051,19 +11051,19 @@
         "name":  "Bridge of the Twin Knights"
     },
     {
-        "key":  null,
-        "category":  "eagle",
+        "key":  "74270C2F45B8DCA66B6A1FAAA911D024",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -425,
         "gx":  -67,
         "x":  -318963,
         "y":  127247,
-        "name":  "Ravine Entrance"
+        "name":  "Ravine Entrance",
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -11081,19 +11081,19 @@
         "name":  "Forgotten Island"
     },
     {
-        "key":  null,
-        "category":  "eagle",
+        "key":  "91DAC6F34D2A9FD7F01471B5166C6C02",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -101,
         "gx":  -408,
         "x":  -170247,
         "y":  -29272,
-        "name":  "Kelpsea Hill"
+        "name":  "Kelpsea Hill",
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,

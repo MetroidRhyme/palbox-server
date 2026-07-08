@@ -2670,5 +2670,53 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "EAGLE",
+        "name":  "Galeclaw",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Eagle",
+        "name":  "Galeclaw",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "KELPIE",
+        "name":  "Kelpsea",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Kelpie",
+        "name":  "Kelpsea",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "CATVAMPIRE",
+        "name":  "Felbat",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "CatVampire",
+        "name":  "Felbat",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]
