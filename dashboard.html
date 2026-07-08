@@ -3872,10 +3872,10 @@ function renderPlayerMarkers(){
   });
   if(!_effInitialCentered&&playerLocations&&playerLocations.length===1&&typeof playerLocations[0].x==='number'&&typeof playerLocations[0].y==='number'){
     // Start the map zoomed in on the logged-in player's own position instead of the default
-    // whole-map view (see initEffigyView's setView(...,1)) -- only once per page load, and
+    // whole-map view (see initEffigyView's setView(...,-1)) -- only once per page load, and
     // only for the single-player scoped case, so it never fights a manual pan/zoom afterward.
     _effInitialCentered=true;
-    effigyLeaflet.setView(effigyRposToLatLng(playerLocations[0].x,playerLocations[0].y),5);
+    effigyLeaflet.setView(effigyRposToLatLng(playerLocations[0].x,playerLocations[0].y),3);
   }
   centerOnFollowedPlayer();
 }
@@ -4017,7 +4017,7 @@ function initEffigyView(){
       if(!effigyLeaflet){
         var blockSize=131072;
         if(!window._palMapCfg) window._palMapCfg={blockSize:blockSize,realMin:{X:-999940,Y:-737262},realMax:{X:447900,Y:710578}};
-        effigyLeaflet=L.map('effigy-leaflet-map',{minZoom:0,maxZoom:8,zoom:1,crs:L.CRS.Simple,zoomControl:false});
+        effigyLeaflet=L.map('effigy-leaflet-map',{minZoom:-1,maxZoom:8,zoom:-1,crs:L.CRS.Simple,zoomControl:false});
         // Default top-left position would collide with this tab's filter panel/player
         // select; bottom-right is clear on both desktop and phone layouts. Paldeck's spawn
         // map keeps Leaflet's own default (top-left, no conflicting UI there).
@@ -4025,9 +4025,12 @@ function initEffigyView(){
         var sw=effigyLeaflet.unproject([0,blockSize],8);
         var ne=effigyLeaflet.unproject([blockSize,0],8);
         var bounds=L.latLngBounds(sw,ne);
-        effigyLeaflet.setMaxBounds(bounds).setView(effigyLeaflet.unproject([blockSize/2,blockSize/2],8),1);
+        effigyLeaflet.setMaxBounds(bounds).setView(effigyLeaflet.unproject([blockSize/2,blockSize/2],8),-1);
+        // minNativeZoom:0 -- the tile proxy only has real tiles from z0 up (see palmaptile
+        // in PalWorldServerManager.ps1), so below that Leaflet must upsample the z0 tile
+        // instead of requesting negative-z tiles that don't exist and would render blank.
         L.tileLayer('/api/palmaptile?z={z}&x={x}&y={y}',{
-          bounds:bounds,maxNativeZoom:4,tileSize:512,keepBuffer:4
+          bounds:bounds,minNativeZoom:0,maxNativeZoom:4,tileSize:512,keepBuffer:4
         }).addTo(effigyLeaflet);
         // Plain layer group, no clustering -- every marker shows individually regardless of
         // how many are on screen or how tightly packed (Anthony asked to remove the
@@ -4093,6 +4096,32 @@ function effigyRposToLatLng(x,y){
   var sx=(x-cfg.realMin.X)/(cfg.realMax.X-cfg.realMin.X);
   var sy=(y-cfg.realMin.Y)/(cfg.realMax.Y-cfg.realMin.Y);
   return effigyLeaflet.unproject([sy*cfg.blockSize,(1-sx)*cfg.blockSize],8);
+}
+
+// Some scraped roster entries share the exact same real-world spawn coordinate (e.g. the
+// Necromus/Paladius duo boss fight) -- the underlying x/y is genuinely correct for both, so
+// rather than falsify the data, nudge exact-duplicate points apart in world-space (in a
+// circle around the shared spot) purely for marker placement. Offset is in world units, so
+// it scales with zoom just like any other map distance -- separated enough to click
+// independently at the lowest icon-mode zoom, negligible next to the map's overall scale.
+function dedupeOverlappingCoords(arr){
+  var groups={};
+  arr.forEach(function(item,idx){
+    var k=item.x+','+item.y;
+    (groups[k]=groups[k]||[]).push(idx);
+  });
+  var out=arr.map(function(item){return {x:item.x,y:item.y};});
+  Object.keys(groups).forEach(function(k){
+    var idxs=groups[k];
+    if(idxs.length<2) return;
+    var n=idxs.length,offset=6000;
+    idxs.forEach(function(idx,i){
+      var angle=(2*Math.PI*i)/n;
+      out[idx].x+=Math.cos(angle)*offset;
+      out[idx].y+=Math.sin(angle)*offset;
+    });
+  });
+  return out;
 }
 
 // Last raw JSON text per roster, keyed by short name -- lets the 15s roster poll
@@ -5121,6 +5150,7 @@ function renderEffigyMapNow(){
     var bpSel=document.getElementById('effigy-player');
     var bpGuid=bpSel?bpSel.value:'';
     var manualSet=bountyManualSetFor(bpGuid);
+    var bountyDisplayPos=dedupeOverlappingCoords(bossLocations);
     bossLocations.forEach(function(b,idx){
       var sp=(b.species||'').toUpperCase();
       var confirmed=!!b.m;
@@ -5133,10 +5163,11 @@ function renderEffigyMapNow(){
       // the reasoning (a mapped key means auto-detection works even before verified/found).
       var bStatus=(confirmed&&bGot)?'found':(confirmed||bGot||trackable)?'confirmed':'unconfirmed';
       var clickable=PREFS_ENABLED&&!bAuto&&!!bpGuid;
+      var dp=bountyDisplayPos[idx];
       effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable,function(){
-        return _effDotMode
-          ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual))
-          : buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable);
+        if(_effDotMode) return buildDotMarker(effigyRposToLatLng(dp.x,dp.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual));
+        var bDisp=(dp.x===b.x&&dp.y===b.y)?b:Object.assign({},b,{x:dp.x,y:dp.y});
+        return buildBountyMarker(bDisp,confirmed,bAuto,bManual,bGot,bStatus,clickable);
       });
     });
   }
