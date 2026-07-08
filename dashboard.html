@@ -539,8 +539,10 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         <select id="effigy-player" onchange="effigyPlayerChanged()" class="sel" style="min-width:120px;"></select>
         <span id="effigy-summary" style="color:var(--muted);font-size:12px;"></span>
       </div>
-      <button class="btn btn-primary" onclick="openAddIconModal()" title="Manually add a map pin before scraped/live data confirms it">+ Add Icon</button>
-      <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="openAddIconModal()" title="Manually add a map pin before scraped/live data confirms it">+ Add Icon</button>
+        <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
+      </div>
     </div>
     <div id="eff-map-wrap" style="position:relative;flex:1;min-height:0;">
       <div style="position:absolute;top:8px;right:8px;z-index:1000;display:flex;gap:6px;">
