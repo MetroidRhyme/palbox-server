@@ -2101,6 +2101,78 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/map-add-icon' -and $method -eq 'POST') {
+                    # "Add Icon" header button -> modal (dashboard.html, openAddIconModal/
+                    # saveAddIcon) -- hand-creates a brand-new confirmed_locations.json row
+                    # for one of the 6 live map categories, optionally tied to an already-
+                    # discovered but still-unmapped raw save key (Data Mine tab's Unmapped
+                    # Keys list). Stamped custom:true by Add-CustomMapEntry so it's
+                    # distinguishable from every other creation path; scraped-roster
+                    # re-imports (import_scraped_rosters.ps1) reconcile it for free later via
+                    # the normal identity-matched upsert, no special-casing needed here.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        if (-not $category) { throw "No category provided." }
+                        $key = if ($body.key) { [string]$body.key } else { $null }
+                        $name = if ($body.name) { [string]$body.name } else { $null }
+                        $species = if ($body.species) { [string]$body.species } else { $null }
+                        $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
+                        $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
+                        $newRow = Add-CustomMapEntry $category $key $name $species $gx $gy
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$newRow } -Depth 6 -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/map-custom-edit' -and $method -eq 'POST') {
+                    # Data Mine tab's Custom Icons review list -- edits a custom:true row
+                    # in place. Body: { category, identityKey?, identitySpecies?,
+                    # identityName?, name?, gx?, gy?, key?, species? }. Edit-CustomMapEntry
+                    # refuses to touch anything that isn't custom:true, so this can never be
+                    # pointed at a scraped/live row even via a matching identity.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        if (-not $category) { throw "No category provided." }
+                        $identKey = if ($body.identityKey) { [string]$body.identityKey } else { $null }
+                        $identSpecies = if ($body.identitySpecies) { [string]$body.identitySpecies } else { $null }
+                        $identName = if ($body.identityName) { [string]$body.identityName } else { $null }
+                        $fields = @{}
+                        if ($body.PSObject.Properties['name']) { $fields.name = if ($body.name) { [string]$body.name } else { $null } }
+                        if ($body.PSObject.Properties['gx']) { $fields.gx = if ([string]$body.gx -ne '') { [int]$body.gx } else { $null } }
+                        if ($body.PSObject.Properties['gy']) { $fields.gy = if ([string]$body.gy -ne '') { [int]$body.gy } else { $null } }
+                        if ($body.PSObject.Properties['key']) { $fields.key = if ($body.key) { [string]$body.key } else { $null } }
+                        if ($body.PSObject.Properties['species']) { $fields.species = if ($body.species) { [string]$body.species } else { $null } }
+                        $updated = Edit-CustomMapEntry $category $identKey $identSpecies $identName $fields
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/map-custom-delete' -and $method -eq 'POST') {
+                    # Data Mine tab's Custom Icons review list -- deletes a custom:true row.
+                    # Body: { category, key?, species?, name? }. Same custom:true guard as
+                    # /api/map-custom-edit above.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        if (-not $category) { throw "No category provided." }
+                        $key = if ($body.key) { [string]$body.key } else { $null }
+                        $species = if ($body.species) { [string]$body.species } else { $null }
+                        $name = if ($body.name) { [string]$body.name } else { $null }
+                        Remove-CustomMapEntry $category $key $species $name | Out-Null
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/journals' -and $method -eq 'GET') {
                     # Lore-journal/diary locations (game-world fixed, not per-save). Phase 3's
                     # importer already upserted every journal_locations.json row into the

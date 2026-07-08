@@ -337,6 +337,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <button class="nav-tab" data-tab="datamine" onclick="switchView('datamine')">Data Mine</button>
   </nav>
   <div class="hdr-right">
+    <button class="btn btn-primary" onclick="openAddIconModal()" title="Manually add a map pin before scraped/live data confirms it">+ Add Icon</button>
     <button class="btn btn-green" id="btn-start-hdr" onclick="startServer()" style="display:none">&#9654; Start Server</button>
     <span class="hdr-mid">Updated <b id="last-updated">-</b> &bull; refresh in <b id="countdown">5:00</b> &bull; <span id="sync-pill" class="sync-pill-ok">-</span></span>
     <div class="overflow-toggle-wrap">
@@ -615,6 +616,14 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       <div class="dm-section-body">
         <div class="dm-section-sub">Every key, across all properties below, with no Display Name assigned yet -- kept up top so nothing new slips by unnoticed.</div>
         <div id="dm-unmapped-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
+
+    <div class="dm-section" id="dm-sec-custom">
+      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-custom')"><span class="dm-arrow">&#9660;</span>Custom Icons</div>
+      <div class="dm-section-body">
+        <div class="dm-section-sub">Pins added via the header's "+ Add Icon" button -- review, edit, or delete them here. A future scraped-roster re-import will still reconcile a linked key's coordinates automatically.</div>
+        <div id="dm-custom-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
       </div>
     </div>
 
@@ -3614,6 +3623,14 @@ function dmUnmappedKeysFor(propName){
   return dmAllKeysFor(propName).filter(function(k){ return !dmMappingFor(propName,k).name; });
 }
 
+// Small badge shown on any map pin created via the "+ Add Icon" header button --
+// see the palbox-confirmed-locations skill's `custom` field. Purely informational
+// (a future scraped-roster re-import reconciles it automatically); not gated by
+// EFFIGY_CONFIRM_ENABLED since it's useful context on the public site too.
+function customPinBadge(entry){
+  return entry&&entry.custom ? '<br><span style="color:#a371f7;font-size:11px;font-weight:600;">&#9733; Custom (pending scrape match)</span>' : '';
+}
+
 // Body-only tooltip text (no name header -- effigies have none), shared by the
 // divIcon builder and the low-zoom dot marker so both render identical text.
 function effigyTipBody(pos,got,confirmed,status){
@@ -3622,7 +3639,7 @@ function effigyTipBody(pos,got,confirmed,status){
     : got ? '<b style="color:#e3b341">Found (not yet logged)</b>'
     : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return tipLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  return tipLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(pos);
 }
 function buildEffigyMarker(id,pos,got,confirmed,status){
   var tip=effigyTipBody(pos,got,confirmed,status);
@@ -3651,7 +3668,7 @@ function journalTipBody(j,confirmed,jGot,jStatus,trackable){
     : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
     : trackable ? '<b style="color:#f85149">Unconfirmed</b>'
     : '<span style="color:#8a8f98">Found status unknown</span>';
-  return jStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>';
+  return jStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>'+customPinBadge(j);
 }
 function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
   var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jStatus),interactive:true});
@@ -3687,10 +3704,11 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
 // Body-only tooltip text (no coords for bounty bosses), shared by the divIcon
 // builder and the low-zoom dot marker.
 function bountyTipBody(b,confirmed,bAuto,bManual){
-  return bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
+  var label=bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
     :bManual?'<span style="color:#5a6573">&#10003; Marked defeated by you</span>'
     :confirmed?'<b style="color:#e3b341">Confirmed location (not yet defeated)</b>'
     :'<b style="color:#f85149">Alpha Boss (unconfirmed)</b>';
+  return label+customPinBadge(b);
 }
 function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
   var sp=(b.species||'').toUpperCase();
@@ -3749,7 +3767,7 @@ function fugitiveTipBody(h,confirmed,hGot,hStatus){
     : hGot ? '<b style="color:#e3b341">Defeated (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet defeated)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return hStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  return hStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(h);
 }
 function buildFugitiveMarker(h,confirmed,hGot,hStatus){
   var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hStatus),interactive:true});
@@ -3788,7 +3806,7 @@ function eagleTipBody(es,confirmed,esGot,esStatus){
     : esGot ? '<b style="color:#e3b341">Unlocked (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet unlocked)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return esStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  return esStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(es);
 }
 function buildEagleMarker(es,confirmed,esGot,esStatus){
   var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esStatus),interactive:true});
@@ -3835,7 +3853,7 @@ function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bS
     : '<b style="color:#f85149">Eagle key unverified</b>';
   var tLvl=t.lv?(' <span style="color:var(--muted)">(Lv '+t.lv+')</span>'):'';
   var tBoss=(t.boss||t.bossPal)?('<br><span style="color:#111;">'+esc(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+esc(t.bossPal||'')+'</span>'):'';
-  var tTip=bLabel+'<br>'+esLabel+tBoss+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>';
+  var tTip=bLabel+'<br>'+esLabel+tBoss+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(t);
   return {lvl:tLvl,body:tTip};
 }
 function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus){
@@ -4971,6 +4989,21 @@ async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
   }
 }
 
+// Factored out of renderDataMine so the Add Icon modal's "Unmapped key" dropdown can
+// source from the exact same list the Unmapped Keys table shows, instead of duplicating
+// the dmAllKeysFor/dmMappingFor scan. noName properties (e.g. RelicObtainForInstanceFlag)
+// have no name to assign at all, so they're excluded -- same as the table always did.
+function dmComputeUnmappedRows(){
+  var rows=[];
+  DATAMINE_PROPERTIES.forEach(function(prop){
+    if(prop.noName) return;
+    dmAllKeysFor(prop.name).forEach(function(k){
+      if(!dmMappingFor(prop.name,k).name) rows.push({prop:prop,key:k});
+    });
+  });
+  return rows;
+}
+
 function renderDataMine(){
   var sumEl=document.getElementById('dm-summary');
   var unmappedArea=document.getElementById('dm-unmapped-area');
@@ -4989,17 +5022,10 @@ function renderDataMine(){
   });
   dmRosterCandidatesCache=candidatesCache;
 
-  var totalKeys=0, unmappedRows=[], totalIconRows=0;
+  var totalKeys=0, unmappedRows=dmComputeUnmappedRows(), totalIconRows=0;
   var sectionsHtml=DATAMINE_PROPERTIES.map(function(prop){
     var keys=dmAllKeysFor(prop.name);
     totalKeys+=keys.length;
-    // noName properties (e.g. RelicObtainForInstanceFlag) have no name to assign at all --
-    // they'd otherwise permanently flood this section with keys that can never be "mapped".
-    if(!prop.noName){
-      keys.forEach(function(k){
-        if(!dmMappingFor(prop.name,k).name) unmappedRows.push({prop:prop,key:k});
-      });
-    }
     // Includes any linked map-icon roster entries with no matching key yet (Eagle Statue/
     // Wanted Fugitive/Field Boss/Journal) in the SAME table as this property's raw keys --
     // Anthony asked for these combined since they're the same underlying data, just
@@ -5048,6 +5074,159 @@ function renderDataMine(){
 
   sumEl.textContent=totalKeys+' keys across '+DATAMINE_PROPERTIES.length+' properties, '+unmappedRows.length+' unmapped, '
     +totalIconRows+' unmatched map pins, '+dmFullPlayers.length+' players';
+
+  dmRenderCustomIcons();
+}
+
+// -- Add Icon (manual map-pin creation) ---------------------------------------
+// See openAddIconModal below. Categories match Get-MapCategoryJson's 6 live map
+// categories -- npc/landmark stay retired (map_data_lib.ps1's Get-CategoryForEntry),
+// so they're deliberately not offered here.
+var ADDICON_CATEGORY_LABELS={effigy:'Effigy',journal:'Journal',bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',tower:'Tower'};
+var _aiKeyCandidates=[];
+
+// Unmapped-key candidates relevant to one Add Icon category, drawn from the same
+// dmComputeUnmappedRows() list the Unmapped Keys table shows. Effigy has no linked
+// iconCategories (RelicObtainForInstanceFlag is noName and its 605-entry roster is
+// already fully upserted into confirmed_locations.json), so it never has candidates --
+// expected, not a bug. NormalBossDefeatFlag backs BOTH Field Boss and Wanted Fugitive,
+// so those two are split by key shape client-side, mirroring the server's
+// Test-SyndicateKeyShape (a BOSS_ prefix means Wanted Fugitive/syndicate, not Field Boss).
+function dmUnmappedKeysForCategory(category){
+  var label=ADDICON_CATEGORY_LABELS[category];
+  return dmComputeUnmappedRows().filter(function(r){
+    if(!r.prop.iconCategories||r.prop.iconCategories.indexOf(label)===-1) return false;
+    if(r.prop.name==='NormalBossDefeatFlag'){
+      var isSyndicate=/^BOSS_/.test(r.key);
+      return category==='fugitive'?isSyndicate:!isSyndicate;
+    }
+    return true;
+  });
+}
+
+function openAddIconModal(){
+  document.getElementById('ai-category').value='effigy';
+  document.getElementById('ai-name').value='';
+  document.getElementById('ai-gx').value='';
+  document.getElementById('ai-gy').value='';
+  addIconCategoryChanged();
+  document.getElementById('addicon-modal-overlay').style.display='flex';
+}
+window.closeAddIconModal=function(){
+  document.getElementById('addicon-modal-overlay').style.display='none';
+};
+
+function addIconCategoryChanged(){
+  var category=document.getElementById('ai-category').value;
+  document.getElementById('ai-name-field').style.display=(category==='effigy')?'none':'';
+  var keySel=document.getElementById('ai-key');
+  var keyLabel=document.getElementById('ai-key-label');
+  _aiKeyCandidates=dmUnmappedKeysForCategory(category);
+  var opts=(category==='effigy'?'':'<option value="">No key yet</option>')
+    +_aiKeyCandidates.map(function(r,i){return '<option value="'+i+'">'+esc(r.key)+' ('+esc(r.prop.name)+')</option>';}).join('');
+  keySel.innerHTML=opts||'<option value="">No unmapped keys available</option>';
+  keyLabel.textContent='Unmapped key'+(category==='effigy'?' (required)':' (optional)');
+}
+
+async function saveAddIcon(){
+  var category=document.getElementById('ai-category').value;
+  var name=document.getElementById('ai-name').value.trim();
+  var gx=document.getElementById('ai-gx').value.trim();
+  var gy=document.getElementById('ai-gy').value.trim();
+  var keyIdx=document.getElementById('ai-key').value;
+  var key=(keyIdx!==''&&_aiKeyCandidates[parseInt(keyIdx,10)])?_aiKeyCandidates[parseInt(keyIdx,10)].key:null;
+  if(category!=='effigy'&&!name){ toast('Display name is required.','error'); return; }
+  if(category==='effigy'&&!key){ toast('Effigy pins require a key -- pick one from the dropdown.','error'); return; }
+  if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
+  try{
+    var resp=await api('/api/map-add-icon','POST',{category:category,name:name||null,gx:gx,gy:gy,key:key});
+    dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).concat([resp.entry]);
+    closeAddIconModal();
+    toast('Pin added.','success');
+    renderDataMine();
+    var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
+      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
+    if(typeof refetch==='function') refetch(true);
+  }catch(e){
+    toast('Failed to add icon: '+String(e&&e.message||e),'error');
+  }
+}
+
+// Custom Icons review list (Data Mine tab) -- every confirmed_locations.json row with
+// custom:true, sourced straight from dmMappings.confirmedLocations (already the full
+// array, see /api/datamine-mappings) rather than a dedicated route. Inline-editable,
+// same dm-edit-input convention as the rest of this tab.
+function dmRenderCustomIcons(){
+  var area=document.getElementById('dm-custom-area');
+  if(!area) return;
+  var rows=(dmMappings&&dmMappings.confirmedLocations||[]).filter(function(c){return c.custom===true;});
+  if(!rows.length){ area.innerHTML='<div class="empty-state">No custom icons yet</div>'; return; }
+  area.innerHTML='<table class="syn-table"><thead><tr><th>Category</th><th>Name</th><th>Key</th><th>Coordinates</th><th></th></tr></thead><tbody>'
+    +rows.map(function(c,i){
+      var rowId='dm-custom-'+i;
+      var candidates=dmUnmappedKeysForCategory(c.category);
+      var keySelect=candidates.length
+        ?' <select class="dm-edit-input" style="width:130px;" id="'+rowId+'-keysel" onchange="dmApplyCustomKeySelect(\''+rowId+'\',\''+dmEscJs(c.category)+'\',this.value)">'
+          +'<option value="">Relink key...</option>'
+          +candidates.map(function(cand,ci){return '<option value="'+ci+'">'+esc(cand.key)+'</option>';}).join('')
+          +'</select>'
+        :'';
+      return '<tr><td>'+esc(ADDICON_CATEGORY_LABELS[c.category]||c.category)+'</td>'
+        +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+esc(c.name||'')+'"></td>'
+        +'<td><input class="dm-edit-input" style="width:150px;" type="text" id="'+rowId+'-key" value="'+esc(c.key||'')+'" placeholder="(none)">'+keySelect+'</td>'
+        +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(c.gx==null?'':esc(c.gx))+'" placeholder="gx">'
+          +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(c.gy==null?'':esc(c.gy))+'" placeholder="gy"></td>'
+        +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\',\''+rowId+'\')">Save</button>'
+          +' <button class="btn btn-ghost dm-save-btn" onclick="deleteCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\')">Delete</button></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+// Same pattern as dmApplyRosterMap -- fills the Key text input from a picked
+// candidate, doesn't save by itself, Anthony still reviews and clicks Save.
+function dmApplyCustomKeySelect(rowId,category,idxStr){
+  if(idxStr==='') return;
+  var c=dmUnmappedKeysForCategory(category)[parseInt(idxStr,10)];
+  if(!c) return;
+  var keyEl=document.getElementById(rowId+'-key');
+  if(keyEl) keyEl.value=c.key;
+}
+
+async function saveCustomIcon(category,identKey,identSpecies,identName,rowId){
+  var name=document.getElementById(rowId+'-name').value.trim();
+  var key=document.getElementById(rowId+'-key').value.trim();
+  var gx=document.getElementById(rowId+'-gx').value.trim();
+  var gy=document.getElementById(rowId+'-gy').value.trim();
+  try{
+    var resp=await api('/api/map-custom-edit','POST',{category:category,identityKey:identKey||null,identitySpecies:identSpecies||null,
+      identityName:identName||null,name:name||null,key:key||null,gx:gx===''?null:gx,gy:gy===''?null:gy});
+    dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).map(function(c){
+      return (c.category===category&&((identKey&&c.key===identKey)||(!identKey&&identSpecies&&c.species===identSpecies)||(!identKey&&!identSpecies&&c.name===identName)))?resp.entry:c;
+    });
+    toast('Saved.','success');
+    renderDataMine();
+    var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
+      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
+    if(typeof refetch==='function') refetch(true);
+  }catch(e){
+    toast('Failed to save: '+String(e&&e.message||e),'error');
+  }
+}
+
+async function deleteCustomIcon(category,identKey,identSpecies,identName){
+  if(!confirm('Delete this custom icon? This cannot be undone.')) return;
+  try{
+    await api('/api/map-custom-delete','POST',{category:category,key:identKey||null,species:identSpecies||null,name:identName||null});
+    dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){
+      return !(c.category===category&&((identKey&&c.key===identKey)||(!identKey&&identSpecies&&c.species===identSpecies)||(!identKey&&!identSpecies&&c.name===identName)));
+    });
+    toast('Deleted.','success');
+    renderDataMine();
+    var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
+      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
+    if(typeof refetch==='function') refetch(true);
+  }catch(e){
+    toast('Failed to delete: '+String(e&&e.message||e),'error');
+  }
 }
 
 // Fills the Unmapped Keys row's Name/Coordinates inputs from a picked roster candidate --
@@ -5974,6 +6153,8 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
 .pal-card{cursor:pointer;}
 .pal-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:24px 12px;overflow:auto;}
 .pal-modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;max-width:520px;width:100%;padding:16px;}
+.ai-field{margin-bottom:12px;}
+.ai-field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
 /* Header grid: portrait spans rows 1-3; row1 name, row2 level, row3 element;
    the EXP bar fills the right column across rows 2-3 (beside level + element). */
 .pm-top{display:grid;grid-template-columns:auto auto 1fr;gap:6px 14px;align-items:center;position:relative;}
@@ -6071,6 +6252,41 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
 </style>
 <div id="pal-modal-overlay" class="pal-modal-overlay" onclick="if(event.target===this)closePalModal()"><div class="pal-modal" id="pal-modal-body"></div></div>
 <div id="skill-modal-overlay" class="pal-modal-overlay" style="z-index:700;align-items:center;" onclick="if(event.target===this)closeSkillModal()"><div class="pal-modal" id="skill-modal-body" style="max-width:420px;"></div></div>
+<div id="addicon-modal-overlay" class="pal-modal-overlay" style="align-items:center;" onclick="if(event.target===this)closeAddIconModal()">
+  <div class="pal-modal" id="addicon-modal-body" style="max-width:420px;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Add Icon</div>
+    <div class="ai-field">
+      <label>Category</label>
+      <select id="ai-category" class="sel" style="width:100%;" onchange="addIconCategoryChanged()">
+        <option value="effigy">Effigy</option>
+        <option value="journal">Journal</option>
+        <option value="bounty">Field Boss</option>
+        <option value="fugitive">Wanted Fugitive</option>
+        <option value="eagle">Eagle Statue</option>
+        <option value="tower">Tower</option>
+      </select>
+    </div>
+    <div class="ai-field" id="ai-name-field">
+      <label>Display name</label>
+      <input id="ai-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name">
+    </div>
+    <div class="ai-field">
+      <label>Coordinates (gx / gy)</label>
+      <div style="display:flex;gap:8px;">
+        <input id="ai-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">
+        <input id="ai-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy">
+      </div>
+    </div>
+    <div class="ai-field">
+      <label id="ai-key-label">Unmapped key</label>
+      <select id="ai-key" class="sel" style="width:100%;"></select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="closeAddIconModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAddIcon()">Add Icon</button>
+    </div>
+  </div>
+</div>
 <script>
 (function(){
   function chips(arr){return (arr&&arr.length)?arr.map(function(s){return '<span class="pal-chip">'+esc(s)+'</span>';}).join(''):'<span class="pm-muted">None</span>';}

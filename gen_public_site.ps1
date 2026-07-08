@@ -120,6 +120,20 @@ $before = $html
 $html = $html.Replace('<button class="btn btn-ghost hdr-more-row" onclick="refreshAll();closeAllOverflowMenus();">&#8635; Refresh now</button>', '')
 if ($html -eq $before) { throw "header 'Refresh now' row was not removed" }
 
+# (2a2) Remove the "+ Add Icon" header button and its modal -- admin-only manual map-pin
+# creation (POSTs to /api/map-add-icon, which only exists in the Manager's own
+# HttpListener, not in _worker.js). The modal's own JS (openAddIconModal/saveAddIcon/
+# dmRenderCustomIcons/etc.) already falls inside the "-- Data Mine tab --" JS block
+# removed in step (3c) below, so only the HTML markup needs stripping here.
+$before = $html
+$html = $html.Replace(
+  '<button class="btn btn-primary" onclick="openAddIconModal()" title="Manually add a map pin before scraped/live data confirms it">+ Add Icon</button>', '')
+if ($html -eq $before) { throw "Add Icon header button was not removed" }
+$before = $html
+$html = [System.Text.RegularExpressions.Regex]::Replace(
+  $html, '<div id="addicon-modal-overlay".*?</div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+if ($html -eq $before) { throw "Add Icon modal markup was not removed" }
+
 # (2b) Remove the per-view "Reload" buttons (Pals / Paldeck / Effigies). On the static
 # site they only re-fetch the same generated JSON -- there's no live server to pull
 # fresher data from -- so they appear broken to players. The fetch functions themselves

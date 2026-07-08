@@ -174,6 +174,7 @@ function Get-MapCategoryJson([string]$category) {
             if ($c.category -ne 'effigy' -or -not $c.key) { continue }
             $entry = @{ x = $c.x; y = $c.y; z = $c.z }
             if ($c.verified -eq $true) { $entry.m = $true }
+            if ($c.custom -eq $true) { $entry.custom = $true }
             $result[$c.key] = $entry
         }
         return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)
@@ -186,6 +187,7 @@ function Get-MapCategoryJson([string]$category) {
         $name = if ($c.name) { $c.name } else { $c.key }
         $out = @{ name = $name; x = $xy.x; y = $xy.y; m = ($c.verified -eq $true) }
         if ($c.key) { $out.key = $c.key }
+        if ($c.custom -eq $true) { $out.custom = $true }
         if ($category -eq 'bounty') { $out.species = if ($c.species) { $c.species } else { $c.key } }
         if ($c.PSObject.Properties['lv'] -and $null -ne $c.lv) { $out.lv = $c.lv }
         if ($c.PSObject.Properties['boss'] -and $c.boss) { $out.boss = $c.boss }
@@ -215,20 +217,16 @@ function Get-MapCategoryJson([string]$category) {
     return (ConvertTo-Json -InputObject @($result) -Depth 6)
 }
 
-# The one write path behind every POST .../*-confirm route (and the new consolidated
-# /api/map-confirm) -- resolves a confirmed_locations.json row by the category-appropriate
-# identity the client already displays for that pin (key for effigy/journal, species for
-# bounty, name for tower/fugitive/eagle) and flips
-# its "verified" flag. Since Get-MapCategoryJson above always emits the STORE's own
-# name/species/key (never a blended roster value), whatever identity the client echoes
-# back on toggle is guaranteed to match a row here exactly -- no fuzzy matching needed on
-# the write side at all, unlike the read-side importer.
-function Set-MapConfirmVerified([string]$category, [string]$key, [string]$species, [string]$name, [bool]$verified) {
-    $confirmed = Get-ConfirmedLocations
-    $matched = $null
+# Shared identity resolver used by Set-MapConfirmVerified and the custom-icon
+# edit/delete routes -- resolves a confirmed_locations.json row by the
+# category-appropriate identity the client already displays for that pin (key for
+# effigy/journal, species for bounty, name for tower/fugitive/eagle). $confirmed is the
+# array to search (caller's own Get-ConfirmedLocations() result, so a caller doing a
+# subsequent write reuses the same array instance rather than re-reading).
+function Find-ConfirmedRow($confirmed, [string]$category, [string]$key, [string]$species, [string]$name) {
     if ($key) {
         $keyU = $key.ToUpper()
-        $matched = $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $keyU -and $_.category -eq $category } | Select-Object -First 1
+        return $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $keyU -and $_.category -eq $category } | Select-Object -First 1
     } elseif ($species) {
         $spU = $species.ToUpper()
         $matched = $confirmed | Where-Object { $_.species -and $_.species.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
@@ -247,13 +245,101 @@ function Set-MapConfirmVerified([string]$category, [string]$key, [string]$specie
                 $matched = $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
             }
         }
+        return $matched
     } elseif ($name) {
         $nameU = $name.ToUpper()
-        $matched = $confirmed | Where-Object { $_.name -and $_.name.ToUpper() -eq $nameU -and $_.category -eq $category } | Select-Object -First 1
+        return $confirmed | Where-Object { $_.name -and $_.name.ToUpper() -eq $nameU -and $_.category -eq $category } | Select-Object -First 1
     }
+    return $null
+}
+
+# The one write path behind every POST .../*-confirm route (and the new consolidated
+# /api/map-confirm) -- flips "verified" on the row Find-ConfirmedRow resolves. Since
+# Get-MapCategoryJson above always emits the STORE's own name/species/key (never a
+# blended roster value), whatever identity the client echoes back on toggle is
+# guaranteed to match a row here exactly -- no fuzzy matching needed on the write side
+# at all, unlike the read-side importer.
+function Set-MapConfirmVerified([string]$category, [string]$key, [string]$species, [string]$name, [bool]$verified) {
+    $confirmed = Get-ConfirmedLocations
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
     if (-not $matched) { return $false }
     Set-EntryProp $matched 'verified' $verified
     Save-ConfirmedLocations $confirmed
+    return $true
+}
+
+# The 6 map categories the "Add Icon" manual-creation feature supports -- npc/landmark
+# stay retired (see Get-CategoryForEntry's note below on why), so they're deliberately
+# excluded here rather than silently accepted and then never rendered anywhere.
+$script:CustomIconCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower')
+
+# Creates a brand-new, hand-typed confirmed_locations.json row for the "Add Icon"
+# dashboard feature (see the palbox-confirmed-locations skill) -- stamped custom:true so
+# it's distinguishable later from every other creation path (scraped-roster import,
+# live Desktop-script capture, Data Mine tab key-to-name typing). Effigy requires a real
+# key: Get-MapCategoryJson's effigy branch skips any row with no key entirely, so a
+# keyless "custom" effigy pin would silently never render. Every other category may be
+# keyless (bounty/fugitive/eagle routinely are, per the existing schema) and is
+# identified by name/species instead, same convention Find-ConfirmedRow already uses.
+function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [string]$species, $gx, $gy) {
+    if ($category -notin $script:CustomIconCategories) { throw "Unsupported category: $category" }
+    if ($category -eq 'effigy' -and -not $key) { throw "Effigy pins require a key -- pick one from the Unmapped Keys dropdown." }
+    if ($category -ne 'effigy' -and -not $name) { throw "Display name is required for this category." }
+    if ($null -eq $gx -or $null -eq $gy) { throw "Coordinates (gx/gy) are required." }
+    if ($category -eq 'bounty' -and -not $species) { $species = $name }
+
+    $confirmed = @(Get-ConfirmedLocations)
+    if ($key) {
+        $existing = Find-ConfirmedRow $confirmed $category $key $null $null
+        if ($existing) { throw "A $category pin with that key already exists." }
+    }
+
+    $newEntry = [pscustomobject]@{
+        key = $key; category = $category; name = $name; gx = $gx; gy = $gy
+        x = $null; y = $null; z = $null; species = $species; lv = $null; source = $null
+        origin = 'manual'; verified = $false; custom = $true
+    }
+    $confirmed = $confirmed + $newEntry
+    Save-ConfirmedLocations $confirmed
+
+    # Same parity the existing /api/datamine-mapping route gives a scraped-row key link
+    # (PalWorldServerManager.ps1's NormalBossDefeatFlag branch) -- without this, a custom
+    # bounty pin's defeat state can never resolve to "found" even after the key fires in
+    # a save, since pal_save_reader.py resolves bounty species via anonymous_boss_keys.json,
+    # not confirmed_locations.json.
+    if ($category -eq 'bounty' -and $key -and -not (Test-SyndicateKeyShape $key)) {
+        Add-AnonymousBossKey $key $species
+    }
+    return $newEntry
+}
+
+# Edits a custom-created row in place. Hard-requires custom:true on the matched row --
+# refuses to touch a scraped/live pin even if the supplied identity happens to collide
+# with one, so this route can never be used (accidentally or otherwise) to corrupt real
+# imported/live-captured data. $fields is a hashtable of only the values to change
+# (name/gx/gy/key/species) -- omit a key to leave that field untouched.
+function Edit-CustomMapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields) {
+    $confirmed = @(Get-ConfirmedLocations)
+    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName
+    if (-not $matched) { throw "No matching custom entry found." }
+    if ($matched.custom -ne $true) { throw "Refusing to edit a non-custom entry through this route." }
+    foreach ($k in @('name', 'gx', 'gy', 'key', 'species')) {
+        if ($fields.ContainsKey($k)) { Set-EntryProp $matched $k $fields[$k] }
+    }
+    if ($category -eq 'effigy' -and -not $matched.key) { throw "Effigy pins require a key." }
+    if ($category -ne 'effigy' -and -not $matched.name) { throw "Display name is required for this category." }
+    Save-ConfirmedLocations $confirmed
+    return $matched
+}
+
+# Deletes a custom-created row. Same custom:true guard as Edit-CustomMapEntry above.
+function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species, [string]$name) {
+    $confirmed = @(Get-ConfirmedLocations)
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
+    if (-not $matched) { throw "No matching custom entry found." }
+    if ($matched.custom -ne $true) { throw "Refusing to delete a non-custom entry through this route." }
+    $remaining = @($confirmed | Where-Object { $_ -ne $matched })
+    Save-ConfirmedLocations $remaining
     return $true
 }
 
