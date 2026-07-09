@@ -4743,10 +4743,26 @@ function renderMapCounts(){
     if(!el)return;
     el.textContent=total?(got+' / '+total):'';
   }
-  set('effigy-count', effigyCollected?effigyCollected.length:0, effigyLocations?Object.keys(effigyLocations).length:0);
-  set('fugitive-count', fugitiveCollected?fugitiveCollected.length:0, wantedFugitiveLocations?wantedFugitiveLocations.length:0);
-  set('eagle-count', eagleCollected?eagleCollected.length:0, eagleStatueLocations?eagleStatueLocations.length:0);
-  set('tower-count', towerBossCollected?towerBossCollected.length:0, towerLocations?towerLocations.length:0);
+  // Numerator must be roster markers the player has actually collected (key present in the
+  // save's collected-flag set), NOT the raw collected-flag count: NormalBossDefeatFlag and
+  // FastTravelPointUnlockFlag each hold far more flags than the matching roster (bounty/field
+  // alphas share the fugitive flag; tower/unmapped points share the eagle flag), which made
+  // these read e.g. "95 / 34" and "88 / 85". Count the intersection so it's "found / roster".
+  function foundInRoster(roster, collected, keyField){
+    if(!roster||!collected) return 0;
+    var set=new Set(collected.map(function(s){return String(s).toUpperCase();}));
+    var kf=keyField||'key';
+    var keys = Array.isArray(roster)
+      ? roster.map(function(r){ return r ? r[kf] : null; })
+      : Object.keys(roster); // effigy dict is keyed by its GUID save-flag key
+    var n=0;
+    keys.forEach(function(k){ if(k && set.has(String(k).toUpperCase())) n++; });
+    return n;
+  }
+  set('effigy-count', foundInRoster(effigyLocations,effigyCollected), effigyLocations?Object.keys(effigyLocations).length:0);
+  set('fugitive-count', foundInRoster(wantedFugitiveLocations,fugitiveCollected), wantedFugitiveLocations?wantedFugitiveLocations.length:0);
+  set('eagle-count', foundInRoster(eagleStatueLocations,eagleCollected), eagleStatueLocations?eagleStatueLocations.length:0);
+  set('tower-count', foundInRoster(towerLocations,towerBossCollected,'bossKey'), towerLocations?towerLocations.length:0);
 }
 
 // -- Data Mine tab ------------------------------------------------------------

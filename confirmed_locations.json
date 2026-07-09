@@ -8981,21 +8981,6 @@
         "verified":  true
     },
     {
-        "key":  null,
-        "category":  "journal",
-        "z":  null,
-        "species":  null,
-        "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
-        "gy":  -466,
-        "gx":  -170,
-        "x":  -337782,
-        "y":  79970,
-        "name":  "Castaway\u0027s Journal - Day 12-1"
-    },
-    {
         "key":  "DAY12-2",
         "z":  null,
         "species":  null,
@@ -9234,36 +9219,6 @@
         "verified":  true,
         "category":  "journal",
         "origin":  "manual"
-    },
-    {
-        "key":  null,
-        "category":  "journal",
-        "z":  null,
-        "species":  null,
-        "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
-        "gy":  -258,
-        "gx":  217,
-        "x":  -242310,
-        "y":  257603,
-        "name":  "Lily Everhart\u0027s Diary - 2"
-    },
-    {
-        "key":  null,
-        "category":  "journal",
-        "z":  null,
-        "species":  null,
-        "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
-        "gy":  -266,
-        "gx":  -2,
-        "x":  -245982,
-        "y":  157082,
-        "name":  "Lily Everhart\u0027s Diary - 3"
     },
     {
         "key":  "FORESTBOSS4",
@@ -10316,21 +10271,6 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "fugitive",
-        "z":  null,
-        "species":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
-        "gy":  -622,
-        "gx":  -290,
-        "x":  -409386,
-        "y":  24890,
-        "lv":  15,
-        "name":  "Insurance Fraud Crash"
-    },
-    {
         "key":  "BOSS_FIRECULT_FLAMETHROWER",
         "z":  null,
         "species":  null,
@@ -11081,36 +11021,6 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "eagle",
-        "z":  null,
-        "species":  null,
-        "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
-        "gy":  -551,
-        "gx":  -73,
-        "x":  -376797,
-        "y":  124493,
-        "name":  "Sea Breeze Archipelago Church"
-    },
-    {
-        "key":  null,
-        "category":  "eagle",
-        "z":  null,
-        "species":  null,
-        "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
-        "gy":  -310,
-        "gx":  241,
-        "x":  -266178,
-        "y":  268619,
-        "name":  "Islandhopper Coast"
-    },
-    {
         "key":  "15314BE94E2FB8D018D5749BE9A318F0",
         "z":  null,
         "species":  null,
@@ -11169,21 +11079,6 @@
         "verified":  true,
         "category":  "eagle",
         "origin":  "manual"
-    },
-    {
-        "key":  null,
-        "category":  "eagle",
-        "z":  null,
-        "species":  null,
-        "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "gy":  -441,
-        "gx":  -224,
-        "x":  -326307,
-        "y":  55184,
-        "name":  "Ascetic Falls",
-        "verified":  true
     },
     {
         "key":  "79C561B747335A7A0A8FBF9FAE280E62",
@@ -11283,7 +11178,9 @@
         "source":  "NoteObtainForInstanceFlag",
         "verified":  true,
         "category":  "journal",
-        "origin":  "manual"
+        "origin":  "manual",
+        "x":  -245982,
+        "y":  157082
     },
     {
         "key":  "7170881D44249E90902F728E240493AF",
@@ -11293,7 +11190,9 @@
         "source":  "FastTravelPointUnlockFlag",
         "verified":  true,
         "category":  "eagle",
-        "origin":  "manual"
+        "origin":  "manual",
+        "x":  -266178,
+        "y":  268619
     },
     {
         "key":  "FORESTBOSS2",
@@ -11303,7 +11202,9 @@
         "source":  "NoteObtainForInstanceFlag",
         "verified":  true,
         "category":  "journal",
-        "origin":  "manual"
+        "origin":  "manual",
+        "x":  -242310,
+        "y":  257603
     },
     {
         "key":  "BOSS_MALE_SOLDIER",
@@ -11313,7 +11214,10 @@
         "source":  "NormalBossDefeatFlag",
         "verified":  true,
         "category":  "fugitive",
-        "origin":  "manual"
+        "origin":  "manual",
+        "x":  -409386,
+        "y":  24890,
+        "lv":  15
     },
     {
         "key":  "3E8E504B4A3975FD3862E1BC85A5D4F6",
@@ -11323,7 +11227,9 @@
         "source":  "FastTravelPointUnlockFlag",
         "verified":  true,
         "category":  "eagle",
-        "origin":  "manual"
+        "origin":  "manual",
+        "x":  -376797,
+        "y":  124493
     },
     {
         "key":  "DAY12-1",
@@ -11333,7 +11239,9 @@
         "source":  "NoteObtainForInstanceFlag",
         "verified":  true,
         "category":  "journal",
-        "origin":  "manual"
+        "origin":  "manual",
+        "x":  -337782,
+        "y":  79970
     },
     {
         "key":  "23B9E99C4A454B99220AF7B4A58FD8DE",
@@ -11343,6 +11251,8 @@
         "source":  "FastTravelPointUnlockFlag",
         "verified":  true,
         "category":  "eagle",
-        "origin":  "manual"
+        "origin":  "manual",
+        "x":  -326307,
+        "y":  55184
     }
 ]
