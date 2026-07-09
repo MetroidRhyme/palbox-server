@@ -246,7 +246,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
   #toasts{left:10px;right:10px;bottom:10px;}
   .toast{max-width:none;}
 
-  /* Map "Layers" panel: taller touch rows than the ~20px mouse-sized default */
+  /* Map "Filters" panel: taller touch rows than the ~20px mouse-sized default */
   #eff-filter-body button{padding:8px!important;}
 }
 
@@ -552,11 +552,14 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       </div>
       <div id="eff-filter-panel" style="position:absolute;top:8px;left:8px;z-index:1000;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;flex-direction:column;gap:5px;box-shadow:0 4px 16px rgba(0,0,0,.35);">
         <div id="eff-filter-hdr" onclick="toggleFilterPanel()" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-weight:600;">
-          <span id="eff-filter-arrow" style="display:inline-block;font-size:10px;color:var(--muted);transition:transform .15s;">&#9660;</span> Layers
+          <span id="eff-filter-arrow" style="display:inline-block;font-size:10px;color:var(--muted);transition:transform .15s;">&#9660;</span> Filters
         </div>
         <div id="eff-filter-body" style="display:flex;flex-direction:column;gap:5px;">
-        <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide Lifmunk Effigy locations (yellow = manually logged, red = unconfirmed; combine with Found to also hide the ones you've already picked up)"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:conic-gradient(#e3b341 0 50%, #f85149 50% 100%);vertical-align:-1px;"></span> Lifmunk Effigies</button>
         <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have already found"><span style="color:#3fb950;">&#9679;</span> Found</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide Lifmunk Effigy locations (yellow = manually logged, red = unconfirmed; combine with Found to also hide the ones you've already picked up)"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:conic-gradient(#e3b341 0 50%, #f85149 50% 100%);vertical-align:-1px;"></span> Lifmunk Effigies</button>
+          <span id="effigy-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Lifmunk Effigies you've picked up, out of the full roster"></span>
+        </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <button id="eff-filt-journal" onclick="toggleEffigyFilter('journal')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide journal / diary note locations"><span style="color:#3399ff;">&#9679;</span> Journals</button>
           <span id="journal-summary" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Journal / diary notes collected, from the save (individual notes on the map aren't matched to specific locations yet)"></span>
@@ -565,9 +568,18 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
           <button id="eff-filt-bounty" onclick="toggleEffigyFilter('bounty')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide named Alpha boss (Bounty Token) locations"><span style="color:#e3b341;">&#9679;</span> Field Boss</button>
           <span id="bounty-summary" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Named legendary Alpha bosses defeated, from the save"></span>
         </div>
-        <button id="eff-filt-fugitive" onclick="toggleEffigyFilter('fugitive')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide human/Syndicate boss (Wanted Fugitive) locations"><span style="color:#f85149;">&#9679;</span> Wanted Fugitive</button>
-        <button id="eff-filt-eagle" onclick="toggleEffigyFilter('eagle')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide fast-travel point (Eagle Statue) locations"><span style="color:#e8b339;">&#9679;</span> Eagle Statues</button>
-        <button id="eff-filt-tower" onclick="toggleEffigyFilter('tower')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide raid Tower locations"><span style="color:#e8b339;">&#9679;</span> Towers</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-fugitive" onclick="toggleEffigyFilter('fugitive')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide human/Syndicate boss (Wanted Fugitive) locations"><span style="color:#f85149;">&#9679;</span> Wanted Fugitive</button>
+          <span id="fugitive-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Wanted Fugitives defeated, out of the full roster"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-eagle" onclick="toggleEffigyFilter('eagle')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide fast-travel point (Eagle Statue) locations"><span style="color:#e8b339;">&#9679;</span> Eagle Statues</button>
+          <span id="eagle-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Eagle Statues (fast-travel points) unlocked, out of the full roster"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-tower" onclick="toggleEffigyFilter('tower')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide raid Tower locations"><span style="color:#e8b339;">&#9679;</span> Towers</button>
+          <span id="tower-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Tower raid bosses defeated, out of the full roster"></span>
+        </div>
         <button id="eff-filt-players" onclick="toggleEffigyFilter('players')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide every player's live position (from their own save's Translation/Rotation)"><span style="color:#58a6ff;">&#9679;</span> Players</button>
         </div>
       </div>
@@ -3576,6 +3588,66 @@ function buildDotMarker(ll,cat,status,tip){
   return m;
 }
 
+// Cave-entrance sub-pins (2026-07-08): some map icons sit underground, so a pin can carry
+// an "entrances" array of surface access points. Each renders as a cave-mouth glyph ringed
+// in the PARENT pin's status color, joined to the parent by a line of the same color, so a
+// glance shows which surface opening leads to which buried icon. buildCaveMarker/
+// caveMarkerIcon/desireEntrances all live OUTSIDE the Data Mine strip zone (they must run on
+// the public site too -- the cave + line are map data); only the admin add/remove controls
+// (openEntranceModal etc., near saveAddIcon) are stripped/gated behind EFFIGY_CONFIRM_ENABLED.
+function caveMarkerIcon(color){
+  var k='cave|'+color;
+  if(_iconMemo[k]) return _iconMemo[k];
+  // Cave-mouth arch (ASCII-only inline SVG -- no emoji, per the global encoding rule).
+  var svg='<svg viewBox="0 0 24 24" width="15" height="15" style="display:block;margin:auto;">'
+    +'<path fill="'+color+'" d="M12 4C7.6 4 4 7.6 4 12v8h4v-6a4 4 0 0 1 8 0v6h4v-8c0-4.4-3.6-8-8-8z"></path></svg>';
+  var html='<div class="status-ring" style="border:2px solid '+color+';background:#0d1117;display:flex;align-items:center;justify-content:center;">'+svg+'</div>';
+  return _iconMemo[k]=L.divIcon({className:'eff-map-marker',html:html,iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]});
+}
+function buildCaveMarker(ll,color,ident,en,idx){
+  var cm=L.marker(ll,{icon:caveMarkerIcon(color),interactive:true});
+  var label=ident.label||'this location';
+  var tip='<b style="color:#111;">Cave entrance</b><br><span style="color:#333;">to '+esc(label)+'</span>'
+    +'<br><span style="color:#111;font-weight:600">X: '+en.gx+', Y: '+en.gy+'</span>';
+  cm.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+  cm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  // Admin-only remove control. On the public build EFFIGY_CONFIRM_ENABLED is false, so the
+  // cave stays view-only and never references removeEntrance (stripped there with the rest
+  // of the admin JS).
+  if(EFFIGY_CONFIRM_ENABLED){
+    cm.bindPopup(tip+'<br><button type="button" class="btn btn-ghost eff-cave-del-btn" style="margin-top:6px;font-size:12px;">Remove entrance</button>',{className:'eff-tip'});
+    cm.on('popupopen',function(e){
+      var el=e.popup.getElement(); if(!el) return;
+      var db=el.querySelector('.eff-cave-del-btn');
+      if(db) db.onclick=function(){ removeEntrance(ident,idx,cm); };
+    });
+  }
+  return cm;
+}
+// Registers a parent pin's cave entrances into the shared marker cache/diff engine: one
+// line + one cave icon per entrance, both keyed off `baseKey` (the parent's own effDesire
+// namespace) so they cull/rebuild alongside it. `ident` carries the parent's category +
+// resolution identity for the admin add/remove routes. Colored by the parent's live status,
+// so the sig includes the color -- a parent going found/confirmed/unconfirmed recolors its
+// caves and line on the next render.
+function desireEntrances(baseKey,ident,pin,parentLL,status){
+  var ents=pin&&pin.entrances;
+  if(!ents) return;
+  if(!Array.isArray(ents)) ents=[ents];   // PS ConvertTo-Json unwraps a 1-element array to a bare object
+  if(!ents.length) return;
+  var color=STATUS_RING_COLOR[status]||STATUS_RING_COLOR.unconfirmed;
+  ents.forEach(function(en,i){
+    var ll=effigyRposToLatLng(en.x,en.y);
+    var sig=color+'|'+en.x+'|'+en.y+'|'+parentLL.lat+'|'+parentLL.lng;
+    effDesire('caveln:'+baseKey+':'+i,sig,function(){
+      return L.polyline([ll,parentLL],{color:color,weight:2,opacity:0.85,interactive:false,renderer:effCanvasRenderer()});
+    });
+    effDesire('cave:'+baseKey+':'+i,sig+'|'+EFFIGY_CONFIRM_ENABLED,function(){
+      return buildCaveMarker(ll,color,ident,en,i);
+    });
+  });
+}
+
 // Shared hover handlers (used via `this`), replacing the ~1500 identical per-marker
 // closures the old renderEffigyMap allocated fresh on every single render.
 function _effMarkerOver(){ var el=this.getElement(); if(el) el.classList.add('eff-map-hover'); this.setZIndexOffset(1000); }
@@ -3592,7 +3664,9 @@ function effDesire(key,sig,build){
   var e=_effCache.get(mkey);
   if(!e||e.sig!==sig){
     var m=build();
-    e={m:m,sig:sig,ll:m.getLatLng()};
+    // Cave-entrance LINES are L.polylines, which have no getLatLng() -- store a null cull
+    // point for those; syncEffigyLayer treats null as "never viewport-cull" (lines are few).
+    e={m:m,sig:sig,ll:(m.getLatLng?m.getLatLng():null)};
     _effCache.set(mkey,e);
   }
   _effDesired.set(mkey,e);
@@ -3732,12 +3806,13 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
   if(EFFIGY_CONFIRM_ENABLED){
     var chkId='eff-confirm-'+id;
     m.bindPopup(tip+saveKeyRow(id)+'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>',
+      +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>'+caveAddButtonHtml(),
       {className:'eff-tip'});
     m.on('popupopen',function(e){
-      var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+chkId);
-      if(!box) return;
-      box.onchange=function(){ toggleMapConfirm('effigy',id,box.checked); };
+      var el=e.popup.getElement(); if(!el) return;
+      var box=el.querySelector('#'+chkId);
+      if(box) box.onchange=function(){ toggleMapConfirm('effigy',id,box.checked); };
+      wireCaveAdd(el,{category:'effigy',key:id,label:id});
     });
   }
   return m;
@@ -3769,6 +3844,7 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
     } else {
       jPopup+=mapKeyButtonHtml(jMapBtnId);
     }
+    jPopup+=caveAddButtonHtml();
     jm.bindPopup(jPopup,effPopupOpts(!trackable,{className:'eff-tip'}));
     jm.on('popupopen',function(e){
       var el=e.popup.getElement();
@@ -3779,6 +3855,7 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
       } else {
         wireMapKeyButton(el,jMapBtnId,'Journal',j.name,j.gx,j.gy,jm);
       }
+      wireCaveAdd(el,{category:'journal',key:j.key,name:j.name,label:j.name});
     });
   }
   return jm;
@@ -3816,6 +3893,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
       } else {
         bPopup+=mapKeyButtonHtml(bMapBtnId);
       }
+      bPopup+=caveAddButtonHtml();
     }
     bm.bindPopup(bPopup,effPopupOpts(EFFIGY_CONFIRM_ENABLED&&!b.key));
     bm.on('popupopen',function(e){
@@ -3837,6 +3915,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
         var g=worldToGrid(b.x,b.y);
         wireMapKeyButton(el,bMapBtnId,'Field Boss',b.name,g.cx,g.cy,bm);
       }
+      wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
     });
     if(clickable) bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
   }
@@ -3866,6 +3945,7 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
       ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+hChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
       :mapKeyButtonHtml(hMapBtnId);
+    hPopup+=caveAddButtonHtml();
     hm.bindPopup(hPopup,effPopupOpts(!h.key,{className:'eff-tip'}));
     hm.on('popupopen',function(e){
       var el=e.popup.getElement();
@@ -3877,6 +3957,7 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
         var g=worldToGrid(h.x,h.y);
         wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
       }
+      wireCaveAdd(el,{category:'fugitive',name:h.name,label:h.name});
     });
   }
   return hm;
@@ -3905,6 +3986,7 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
       ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+esChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
       :mapKeyButtonHtml(esMapBtnId);
+    esPopup+=caveAddButtonHtml();
     esm.bindPopup(esPopup,effPopupOpts(!es.key,{className:'eff-tip'}));
     esm.on('popupopen',function(e){
       var el=e.popup.getElement();
@@ -3916,6 +3998,7 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
         var g=worldToGrid(es.x,es.y);
         wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm);
       }
+      wireCaveAdd(el,{category:'eagle',name:es.name,label:es.name});
     });
   }
   return esm;
@@ -3958,7 +4041,7 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
       +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
       +'<input type="checkbox" id="'+esChkId+'"'+(esVerified?' checked':'')+'> Verify Eagle Statue key</label>'
       +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>',
+      +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'+caveAddButtonHtml(),
       {className:'eff-tip'});
     tm.on('popupopen',function(e){
       var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+tChkId);
@@ -3967,6 +4050,8 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
       if(esBox) esBox.onchange=function(){ toggleTowerKeyVerified(t.name,'eagleVerified',esBox.checked); };
       var bBox=e.popup.getElement()&&e.popup.getElement().querySelector('#'+bChkId);
       if(bBox) bBox.onchange=function(){ toggleTowerKeyVerified(t.name,'bossVerified',bBox.checked); };
+      var _tel=e.popup.getElement();
+      if(_tel) wireCaveAdd(_tel,{category:'tower',name:t.name,label:t.name});
     });
   }
   return tm;
@@ -4000,14 +4085,14 @@ function syncEffigyLayer(){
       _effShown.delete(key);
       return;
     }
-    if(bounds&&!bounds.contains(d.ll)){
+    if(bounds&&d.ll&&!bounds.contains(d.ll)){
       effigyMarkerLayer.removeLayer(m);
       _effShown.delete(key);
     }
   });
   _effDesired.forEach(function(d,key){
     if(_effShown.has(key)) return;
-    if(bounds&&!bounds.contains(d.ll)) return;
+    if(bounds&&d.ll&&!bounds.contains(d.ll)) return;
     effigyMarkerLayer.addLayer(d.m);
     _effShown.set(key,d.m);
   });
@@ -4648,6 +4733,22 @@ function renderBountySummary(){
   el.textContent=total?(bossCollected.length+' / '+total+' defeated'):'';
 }
 
+// "X / Y" collected-of-total counts shown beside the Filters-panel category buttons that
+// don't already have their own summary span (Journals/Field Boss handle those above; Found
+// and Players are intentionally count-less). Each roster/collected global loads on its own
+// fetch, so guard every line independently and blank the span until its total is known.
+function renderMapCounts(){
+  function set(id,got,total){
+    var el=document.getElementById(id);
+    if(!el)return;
+    el.textContent=total?(got+' / '+total):'';
+  }
+  set('effigy-count', effigyCollected?effigyCollected.length:0, effigyLocations?Object.keys(effigyLocations).length:0);
+  set('fugitive-count', fugitiveCollected?fugitiveCollected.length:0, wantedFugitiveLocations?wantedFugitiveLocations.length:0);
+  set('eagle-count', eagleCollected?eagleCollected.length:0, eagleStatueLocations?eagleStatueLocations.length:0);
+  set('tower-count', towerBossCollected?towerBossCollected.length:0, towerLocations?towerLocations.length:0);
+}
+
 // -- Data Mine tab ------------------------------------------------------------
 // Generic browser over every enumerable per-key save property, across every player -- lets
 // Anthony assign a Display Name / Coordinates to a raw key directly from the dashboard,
@@ -5228,6 +5329,66 @@ async function saveAddIcon(){
   }
 }
 
+// -- Cave entrances (surface access points for underground pins) ------------------
+// Admin-only add/remove for the cave sub-pins that desireEntrances/buildCaveMarker render
+// (those two live OUTSIDE this strip zone, since the cave + line are map data shown on the
+// public site too). Everything here lives INSIDE the "-- Data Mine tab --" JS block so
+// gen_public_site.ps1 removes it from the public build, same as the Add Icon controls above;
+// the modal's own HTML gets a dedicated strip step. caveAddButtonHtml/wireCaveAdd are only
+// ever called from a popup built under EFFIGY_CONFIRM_ENABLED, so stripping them is safe.
+var _entranceTarget=null;   // parent-pin identity the entrance modal is currently adding to
+function caveAddButtonHtml(){
+  return '<br><button type="button" class="btn btn-ghost eff-cave-add-btn" style="margin-top:6px;font-size:12px;">+ Cave entrance</button>';
+}
+function wireCaveAdd(popupEl,ident){
+  var b=popupEl.querySelector('.eff-cave-add-btn');
+  if(b) b.onclick=function(){ openEntranceModal(ident); };
+}
+function openEntranceModal(ident){
+  _entranceTarget=ident;
+  document.getElementById('entrance-parent-label').textContent=ident.label||ident.name||ident.key||'this pin';
+  document.getElementById('entrance-gx').value='';
+  document.getElementById('entrance-gy').value='';
+  document.getElementById('entrance-modal-overlay').style.display='flex';
+}
+window.closeEntranceModal=function(){
+  document.getElementById('entrance-modal-overlay').style.display='none';
+  _entranceTarget=null;
+};
+// Force-refetch the one roster a category is served from, then re-render on change -- same
+// convention as saveAddIcon (never null-then-fetch, see /palbox-map-performance).
+function refetchMapCategory(category){
+  var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
+    fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
+  if(typeof refetch==='function') refetch(true);
+}
+async function saveEntrance(){
+  if(!_entranceTarget){ closeEntranceModal(); return; }
+  var t=_entranceTarget;
+  var gx=document.getElementById('entrance-gx').value.trim();
+  var gy=document.getElementById('entrance-gy').value.trim();
+  if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
+  try{
+    await api('/api/map-add-entrance','POST',{category:t.category,key:t.key||null,species:t.species||null,name:t.name||null,gx:gx,gy:gy});
+    closeEntranceModal();
+    toast('Cave entrance added.','success');
+    refetchMapCategory(t.category);
+  }catch(e){
+    toast('Failed to add entrance: '+String(e&&e.message||e),'error');
+  }
+}
+async function removeEntrance(ident,index,marker){
+  if(!confirm('Remove this cave entrance?')) return;
+  try{
+    await api('/api/map-remove-entrance','POST',{category:ident.category,key:ident.key||null,species:ident.species||null,name:ident.name||null,index:index});
+    if(marker&&marker.closePopup) marker.closePopup();
+    toast('Cave entrance removed.','success');
+    refetchMapCategory(ident.category);
+  }catch(e){
+    toast('Failed to remove entrance: '+String(e&&e.message||e),'error');
+  }
+}
+
 // Custom Icons review list (Data Mine tab) -- every confirmed_locations.json row with
 // custom:true, sourced straight from dmMappings.confirmedLocations (already the full
 // array, see /api/datamine-mappings) rather than a dedicated route. Inline-editable,
@@ -5421,6 +5582,9 @@ async function dmAutoFillFromRosters(){
 // clearLayers()+rebuild. The queued flag is cleared INSIDE the rAF callback (not before
 // scheduling it) so a frame that never fires can't wedge rendering forever.
 function renderEffigyMap(){
+  // Counts are cheap text updates and must stay live even when a map render is already
+  // queued (or bails early for a not-yet-loaded roster), so refresh them before the guard.
+  renderMapCounts();
   if(_effRenderQueued) return;
   _effRenderQueued=true;
   requestAnimationFrame(function(){
@@ -5461,6 +5625,7 @@ function renderEffigyMapNow(){
         ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(pos,got,confirmed,status))
         : buildEffigyMarker(id,pos,got,confirmed,status);
     });
+    if(pos.entrances) desireEntrances('e:'+id,{category:'effigy',key:id,label:id},pos,effigyRposToLatLng(pos.x,pos.y),status);
   });
 
   // Journal / diary note locations -- static, game-world-fixed, OVERLAYING the full
@@ -5490,6 +5655,7 @@ function renderEffigyMapNow(){
           ? buildDotMarker(effigyRposToLatLng(j.x,j.y),'journal',jStatus,'<b style="color:#1673d1">'+j.name+'</b><br>'+journalTipBody(j,confirmed,jGot,jStatus,trackable))
           : buildJournalMarker(j,confirmed,jGot,jStatus,trackable);
       });
+      if(j.entrances) desireEntrances('j:'+(j.key||idx),{category:'journal',key:j.key,name:j.name,label:j.name},j,effigyRposToLatLng(j.x,j.y),jStatus);
     });
   }
 
@@ -5522,6 +5688,7 @@ function renderEffigyMapNow(){
           ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual))
           : buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable);
       });
+      if(b.entrances) desireEntrances('b:'+idx,{category:'bounty',species:b.species,name:b.name,label:b.name},b,effigyRposToLatLng(b.x,b.y),bStatus);
     });
   }
 
@@ -5544,6 +5711,7 @@ function renderEffigyMapNow(){
           ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b><br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
           : buildFugitiveMarker(h,confirmed,hGot,hStatus);
       });
+      if(h.entrances) desireEntrances('h:'+(h.key||h.name||idx),{category:'fugitive',name:h.name,label:h.name},h,effigyRposToLatLng(h.x,h.y),hStatus);
     });
   }
   // Eagle Statue (fast-travel points) -- OVERLAYS the full paldb-scraped
@@ -5563,6 +5731,7 @@ function renderEffigyMapNow(){
           ? buildDotMarker(effigyRposToLatLng(es.x,es.y),'eagle',esStatus,'<b style="color:#111;">'+es.name+'</b><br>'+eagleTipBody(es,confirmed,esGot,esStatus))
           : buildEagleMarker(es,confirmed,esGot,esStatus);
       });
+      if(es.entrances) desireEntrances('es:'+(es.key||es.name||idx),{category:'eagle',name:es.name,label:es.name},es,effigyRposToLatLng(es.x,es.y),esStatus);
     });
   }
   // Tower (raid bosses) -- OVERLAYS the 7-entry paldb-scraped towers.json roster (added
@@ -5598,6 +5767,7 @@ function renderEffigyMapNow(){
         }
         return buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus);
       });
+      if(t.entrances) desireEntrances('tw:'+(t.name||idx),{category:'tower',name:t.name,label:t.name},t,effigyRposToLatLng(t.x,t.y),bStatus);
     });
   }
   syncEffigyLayer();
@@ -6358,6 +6528,23 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
       <button class="btn btn-ghost" onclick="closeAddIconModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveAddIcon()">Add Icon</button>
+    </div>
+  </div>
+</div>
+<div id="entrance-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:2000;" onclick="if(event.target===this)closeEntranceModal()">
+  <div class="pal-modal" id="entrance-modal-body" style="max-width:420px;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Add cave entrance</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Surface access point for <b id="entrance-parent-label"></b></div>
+    <div class="ai-field">
+      <label>Coordinates (gx / gy)</label>
+      <div style="display:flex;gap:8px;">
+        <input id="entrance-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">
+        <input id="entrance-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="closeEntranceModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEntrance()">Add entrance</button>
     </div>
   </div>
 </div>
