@@ -243,31 +243,81 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
         if (Test-Path $OffMachineConfig) { . $OffMachineConfig; if ($R2Bucket) { $bucket = $R2Bucket } }
 
         $stamp = Get-Date -Format 'yyyy-MM-dd'
-        $zipPath = Join-Path $env:TEMP "palbox-offmachine-backup-$stamp.zip"
-        if (Test-Path $zipPath) { Remove-Item $zipPath -Force -EA SilentlyContinue }
 
-        Log "Off-machine backup: zipping SaveLibrary..."
-        try {
-            Compress-Archive -Path (Join-Path $SaveLibraryRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal -EA Stop
-        } catch {
-            Log "Off-machine backup FAILED (zip): $($_.Exception.Message)"
-            return
+        # Wrangler rejects any single R2 upload over 300 MiB. SaveLibrary grows over time
+        # (confirmed 2026-07-09: a single whole-folder zip hit 344 MiB and failed outright),
+        # so bin-pack the top-level slot folders into <=250MB groups (margin below the cap,
+        # since zip gives these already-compressed .sav files ~1:1) and upload one part per bin.
+        $maxBinMB = 250
+        $entries = Get-ChildItem $SaveLibraryRoot -Directory -EA SilentlyContinue | ForEach-Object {
+            $sz = (Get-ChildItem $_.FullName -Recurse -File -EA SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+            [PSCustomObject]@{ Name = $_.Name; MB = $sz / 1MB }
+        } | Sort-Object MB -Descending
+
+        $bins = New-Object System.Collections.ArrayList
+        foreach ($e in $entries) {
+            $placed = $false
+            foreach ($b in $bins) {
+                if (($b.TotalMB + $e.MB) -le $maxBinMB) {
+                    [void]$b.Items.Add($e.Name)
+                    $b.TotalMB += $e.MB
+                    $placed = $true
+                    break
+                }
+            }
+            if (-not $placed) {
+                $newBin = [PSCustomObject]@{ Items = (New-Object System.Collections.ArrayList); TotalMB = 0 }
+                [void]$newBin.Items.Add($e.Name)
+                $newBin.TotalMB = $e.MB
+                [void]$bins.Add($newBin)
+            }
         }
 
-        $key = "backups/offmachine-backup-$stamp.zip"
-        $sizeMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
-        Log "Off-machine backup: uploading $key (${sizeMB}MB)..."
-        $wranglerCmd = Get-Command wrangler -ErrorAction SilentlyContinue
-        if ($wranglerCmd) { & wrangler r2 object put "$bucket/$key" --file $zipPath --content-type application/zip --remote | Out-Null }
-        else { & npx wrangler r2 object put "$bucket/$key" --file $zipPath --content-type application/zip --remote | Out-Null }
-        $code = $LASTEXITCODE
-        Remove-Item $zipPath -Force -EA SilentlyContinue
+        if ($bins.Count -eq 0) { Log "Off-machine backup: SaveLibrary is empty, nothing to upload."; return }
 
-        if ($code -ne 0) { Log "Off-machine backup FAILED (wrangler put exit $code)."; return }
+        Log "Off-machine backup: zipping SaveLibrary into $($bins.Count) part(s)..."
+        $zipPaths = New-Object System.Collections.ArrayList
+        $allOk = $true
+        for ($i = 0; $i -lt $bins.Count; $i++) {
+            $partNum = $i + 1
+            $zipPath = Join-Path $env:TEMP "palbox-offmachine-backup-$stamp-part$partNum.zip"
+            if (Test-Path $zipPath) { Remove-Item $zipPath -Force -EA SilentlyContinue }
+            $paths = $bins[$i].Items | ForEach-Object { Join-Path $SaveLibraryRoot $_ }
+            try {
+                Compress-Archive -Path $paths -DestinationPath $zipPath -CompressionLevel Optimal -EA Stop
+                [void]$zipPaths.Add($zipPath)
+            } catch {
+                Log "Off-machine backup FAILED (zip part $partNum): $($_.Exception.Message)"
+                $allOk = $false
+                break
+            }
+        }
+
+        if ($allOk) {
+            $wranglerCmd = Get-Command wrangler -ErrorAction SilentlyContinue
+            for ($i = 0; $i -lt $zipPaths.Count; $i++) {
+                $partNum = $i + 1
+                $zipPath = $zipPaths[$i]
+                $key = "backups/offmachine-backup-$stamp-part$partNum.zip"
+                $sizeMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
+                Log "Off-machine backup: uploading $key (${sizeMB}MB)..."
+                if ($wranglerCmd) { & wrangler r2 object put "$bucket/$key" --file $zipPath --content-type application/zip --remote | Out-Null }
+                else { & npx wrangler r2 object put "$bucket/$key" --file $zipPath --content-type application/zip --remote | Out-Null }
+                if ($LASTEXITCODE -ne 0) {
+                    Log "Off-machine backup FAILED (wrangler put exit $LASTEXITCODE, part $partNum)."
+                    $allOk = $false
+                    break
+                }
+            }
+        }
+
+        foreach ($zipPath in $zipPaths) { Remove-Item $zipPath -Force -EA SilentlyContinue }
+
+        if (-not $allOk) { return }
 
         ([ordered]@{ lastBackup = (Get-Date -Format o) } | ConvertTo-Json) |
             Set-Content $OffMachineStateFile -Encoding UTF8
-        Log "Off-machine backup uploaded: $key (${sizeMB}MB)"
+        Log "Off-machine backup uploaded: $($zipPaths.Count) part(s)"
     }
 
     # Deploys the public site's STATIC shell (dashboard.html-derived index.html, map

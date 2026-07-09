@@ -41,7 +41,10 @@ a disk failure. About once every 7 days (gated on a timestamp in
 `.palbox_offmachine_backup_state.json`, not a fixed weekday, so a down day doesn't skip a
 cycle entirely), the maintenance job zips `SaveLibrary\` -- which by that point already holds
 a fresh `Backup-LiveWorld` snapshot -- and uploads it to the same R2 bucket the public site
-uses, under `backups/offmachine-backup-<date>.zip`. Needs `CLOUDFLARE_API_TOKEN` +
+uses. Wrangler rejects any single R2 upload over 300 MiB, and `SaveLibrary\` has grown past
+that as a single zip, so it's bin-packed by top-level slot folder into <=250MB parts and
+uploaded as `backups/offmachine-backup-<date>-part<N>.zip` (1-indexed, count varies with
+`SaveLibrary\`'s current size). Needs `CLOUDFLARE_API_TOKEN` +
 `CLOUDFLARE_ACCOUNT_ID` in the environment (same credentials `sync_public_data.ps1` uses);
 skipped with a log line if they're not set. Retention is a native R2 lifecycle rule on the
 `backups/` prefix (expire after 32 days, i.e. roughly the last 4 weekly backups) rather than
