@@ -190,5 +190,65 @@
     {
         "key":  "81_4_SAKURAJIMA_FBOSS_1",
         "species":  "DarkScorpion_Ground"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_4",
+        "species":  "ThunderBird"
+    },
+    {
+        "key":  "81_3_VOLCANO_FBOSS_2",
+        "species":  "BlackMetalDragon"
+    },
+    {
+        "key":  "81_6_OCEAN_FBOSS_2",
+        "species":  "IceNarwhal_Fire"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_10",
+        "species":  "NightBlueHorse"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_13",
+        "species":  "GoldenHorse"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_14",
+        "species":  "MysteryMask"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_21",
+        "species":  "WhiteTiger_Ground"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_22",
+        "species":  "BerryGoat_Dark"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_17",
+        "species":  "PinkRabbit_Grass"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_3",
+        "species":  "BlueThunderHorse"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_6",
+        "species":  "AmaterasuWolf_Dark"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_7",
+        "species":  "WhiteDeer"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_19",
+        "species":  "Kitsunebi_Ice"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_2",
+        "species":  "GrimGirl"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_1",
+        "species":  "WhiteShieldDragon"
     }
 ]
