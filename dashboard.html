@@ -57,6 +57,12 @@ html.map-locked,body.map-locked{overflow:hidden;overscroll-behavior:none;height:
    the physical screen outside normal page layout, so it needs its own explicit size/bg
    rather than relying on the flex:1 it gets from its normal parent. */
 #eff-map-wrap:fullscreen,#eff-map-wrap:-webkit-full-screen{width:100vw;height:100vh;background:var(--surface2);}
+/* iPhone WebKit (all iOS browsers, incl. Chrome) has no element Fullscreen API, so
+   toggleEffigyFullscreen() falls back to this class: a fixed overlay that fills the
+   viewport. dvh keeps the height correct as the iOS browser chrome shows/hides. The
+   in-map Fullscreen/Follow/Filter controls are children of #eff-map-wrap, so they ride
+   along and the Exit button stays tappable. */
+#eff-map-wrap.eff-pseudo-fs{position:fixed;inset:0;z-index:10000;width:100vw;height:100vh;height:100dvh;background:var(--surface2);}
 
 /* Header */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
@@ -6417,18 +6423,27 @@ window.addEventListener('resize',function(){clearTimeout(_rszT2);_rszT2=setTimeo
 function toggleEffigyFullscreen(){
   var el=document.getElementById('eff-map-wrap');
   if(!el) return;
+  // iPhone WebKit (all iOS browsers, incl. Chrome) exposes no element Fullscreen API --
+  // requestFullscreen/webkitRequestFullscreen are both undefined -- so the native call
+  // silently no-ops there. Detect that and fall back to a CSS fixed-overlay instead.
+  var req=el.requestFullscreen||el.webkitRequestFullscreen;
+  if(!req){
+    el.classList.toggle('eff-pseudo-fs');
+    onEffigyFullscreenChange();
+    return;
+  }
   var fsEl=document.fullscreenElement||document.webkitFullscreenElement;
   if(!fsEl){
-    var req=el.requestFullscreen||el.webkitRequestFullscreen;
-    if(req) req.call(el);
+    req.call(el);
   } else {
     var exit=document.exitFullscreen||document.webkitExitFullscreen;
     if(exit) exit.call(document);
   }
 }
 function onEffigyFullscreenChange(){
+  var el=document.getElementById('eff-map-wrap');
   var btn=document.getElementById('eff-fullscreen-btn');
-  var active=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  var active=!!(document.fullscreenElement||document.webkitFullscreenElement)||(el&&el.classList.contains('eff-pseudo-fs'));
   if(btn) btn.innerHTML=active?'&#9974; Exit Fullscreen':'&#9974; Fullscreen';
   // Leaflet sizes its canvas/tiles from the container's box at init time -- the container
   // just jumped from the panel's flex size to the full screen (or back), so it needs to
