@@ -218,6 +218,16 @@ $before = $html
 $html = $html.Replace('var EFFIGY_CONFIRM_ENABLED=true;', 'var EFFIGY_CONFIRM_ENABLED=false;')
 if ($html -eq $before) { throw "effigy confirm: EFFIGY_CONFIRM_ENABLED flag not found to disable" }
 
+# (4e-2) Collapse the map's red/yellow/green status scheme to plain red/green (PUBLIC ONLY,
+# Anthony 2026-07-09). Admin needs the tri-state (yellow = confirmed-but-not-found or
+# found-but-not-yet-verified) to know what still needs manual review; players don't -- a pin
+# is green iff their own save data (or a self-report, e.g. bounty's Mark Defeated) shows they
+# found it, or, for keyless pins with no such signal, iff Anthony has verified it on the
+# backend. See mapStatus()/MAP_STATUS_TWO_STATE in dashboard.html for the full formula.
+$before = $html
+$html = $html.Replace('var MAP_STATUS_TWO_STATE=false;', 'var MAP_STATUS_TWO_STATE=true;')
+if ($html -eq $before) { throw "map status: MAP_STATUS_TWO_STATE flag not found to enable" }
+
 # toggleMapConfirm itself is dead code on the public site (its own EFFIGY_CONFIRM_ENABLED
 # check above already no-ops it) but its fetch('/api/map-confirm') literal would still
 # trip the generic leaked-route scan further down, so remove the whole function rather than
