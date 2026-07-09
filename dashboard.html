@@ -3902,19 +3902,24 @@ function syncEffigyLayer(){
     bounds=effigyLeaflet.getBounds().pad(EFF_CULL_PAD);
   }
   _effShown.forEach(function(m,key){
+    // Never touch a marker whose popup is currently open -- not for culling (a pan/zoom,
+    // including the popup's own autoPan-into-view on open, pushing it outside the padded
+    // viewport) and not for a rebuild (the underlying entry's cache key/sig changing, e.g.
+    // dmAutoFillFromRosters silently linking a fallback-guessed key to the very roster
+    // entry Anthony is mid-way through mapping by hand via "Map to key..."). Either path
+    // removing the marker force-closes the popup with no way to reopen it, which was
+    // silently killing that dropdown mid-pick (2026-07-08). The stale entry is left in
+    // _effShown under its old key; once the popup closes, the next render's _effDesired
+    // no longer has anything at that old key (or has a fresh one, if the entry got a new
+    // cache key from the same rebuild), so a normal pass cleans it up then.
+    if(m.isPopupOpen&&m.isPopupOpen()) return;
     var d=_effDesired.get(key);
     if(!d||d.m!==m){
       effigyMarkerLayer.removeLayer(m);
       _effShown.delete(key);
       return;
     }
-    // Never cull a marker whose popup is open, even if a pan/zoom (including the
-    // popup's own autoPan-into-view on open) has since pushed it outside the padded
-    // viewport -- removing it from the layer force-closes the popup with no way to
-    // reopen it, which was silently killing the "Map to key..." dropdown mid-pick
-    // (2026-07-08, see the wireMapKeyButton flow: it's the one popup interaction long
-    // enough to reliably straddle a moveend/zoomend tick).
-    if(bounds&&!bounds.contains(d.ll)&&!(m.isPopupOpen&&m.isPopupOpen())){
+    if(bounds&&!bounds.contains(d.ll)){
       effigyMarkerLayer.removeLayer(m);
       _effShown.delete(key);
     }
