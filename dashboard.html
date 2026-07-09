@@ -6059,14 +6059,25 @@ async function saveWorld(){
   try{await api('/api/save','POST');toast('World saved.','success');}
   catch(e){toast('Save failed: '+e.message,'error');}
 }
+// Read a countdown-seconds input, clamp to the field's intended [10,600] range, and write
+// the clamped value back so the confirm dialog and the visible field always agree. Typing
+// (unlike the spinner arrows) bypasses the HTML min/max, so without this a negative value
+// would send waittime:-5 to the countdown job and a huge one a multi-hour countdown.
+function readWaitSecs(id){
+  var el=document.getElementById(id), n=parseInt(el.value);
+  if(isNaN(n)) n=60;
+  n=Math.min(600,Math.max(10,n));
+  el.value=n;
+  return n;
+}
 async function rebootServer(){
-  var secs=parseInt(document.getElementById('reboot-secs').value)||60;
+  var secs=readWaitSecs('reboot-secs');
   if(!confirm('Reboot with a '+secs+'s in-game warning?')) return;
   try{await api('/api/reboot','POST',{waittime:secs});toast('Reboot initiated - '+secs+'s countdown.','warn',7000);}
   catch(e){toast('Reboot failed: '+e.message,'error');}
 }
 async function shutdownServer(){
-  var secs=parseInt(document.getElementById('shutdown-secs').value)||60;
+  var secs=readWaitSecs('shutdown-secs');
   if(!confirm('Shut down the server with a '+secs+'s in-game warning?\nIt will stay offline until you start it again.')) return;
   try{await api('/api/shutdown-graceful','POST',{waittime:secs});toast('Shutdown initiated - '+secs+'s countdown. Server will stay offline.','warn',8000);}
   catch(e){toast('Shutdown failed: '+e.message,'error');}
