@@ -62,7 +62,10 @@ html.map-locked,body.map-locked{overflow:hidden;overscroll-behavior:none;height:
    viewport. dvh keeps the height correct as the iOS browser chrome shows/hides. The
    in-map Fullscreen/Follow/Filter controls are children of #eff-map-wrap, so they ride
    along and the Exit button stays tappable. */
-#eff-map-wrap.eff-pseudo-fs{position:fixed;inset:0;z-index:10000;width:100vw;height:100vh;height:100dvh;background:var(--surface2);}
+/* !important is required: #eff-map-wrap carries an inline style="position:relative;flex:1;..."
+   and inline styles beat a plain stylesheet rule, so without it position stays relative and
+   only width:100vw takes effect (element overflows to the right instead of going fullscreen). */
+#eff-map-wrap.eff-pseudo-fs{position:fixed !important;inset:0 !important;z-index:10000 !important;width:100vw !important;height:100vh !important;height:100dvh !important;background:var(--surface2) !important;}
 
 /* Header */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
