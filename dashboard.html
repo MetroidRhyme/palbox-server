@@ -3620,6 +3620,22 @@ function saveKeyRow(key){
 function mapKeyButtonHtml(btnId){
   return '<br><span id="'+btnId+'-wrap"><button type="button" class="btn btn-ghost eff-map-key-btn" id="'+btnId+'" style="margin-top:6px;font-size:12px;">Map to key...</button></span>';
 }
+// Popup options for the effigy-family markers. A KEYLESS pin carries the async "Map to
+// key..." flow (wireMapKeyButton): loading keys + picking from the dropdown takes several
+// seconds, during which Leaflet's DEFAULT auto-close behaviour will tear the popup down --
+// `autoClose` closes it the instant any other popup opens, and `closeOnClick` closes it on
+// any map click (including the map's own autoPan settling). Either one killed the half-built
+// dropdown ("flashes then closes"). Disabling both for keyless pins makes the popup persist
+// until the user (or a successful Map) closes it. Keyed pins keep the browse-friendly
+// defaults -- their only control is an instant "Confirm location" checkbox, no async window.
+function effPopupOpts(keyless,extra){
+  var o=extra?Object.assign({},extra):{};
+  if(keyless){ o.autoClose=false; o.closeOnClick=false; }
+  return o;
+}
+// Set true only for the brief window around mapMarkerToKey's own marker.closePopup() so the
+// TEMP popupclose diagnostic below doesn't fire for that intended close. See wireMapKeyButton.
+var _mapKeyMapping=false;
 function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
   var btn=popupEl.querySelector('#'+btnId);
   if(!btn) return;
@@ -3647,8 +3663,18 @@ function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
       if(goBtn) goBtn.onclick=function(){
         var sel=document.getElementById(selId);
         if(!sel||!sel.value){ toast('Pick a key first.','error'); return; }
+        _mapKeyMapping=true;                 // suppress the diagnostic for the intended close
         mapMarkerToKey(catLabel,name,gx,gy,sel.value,marker);
       };
+      // TEMP DIAGNOSTIC (2026-07-08): the popup has been reported closing on its own right
+      // after this dropdown appears, and static analysis can't pin which teardown path does
+      // it. Log the close stack ONCE (unless it was our own post-Map closePopup) so the real
+      // cause is captured the next time it happens. Remove once the culprit is confirmed.
+      _mapKeyMapping=false;
+      if(marker&&marker.once) marker.once('popupclose',function(){
+        if(_mapKeyMapping) return;
+        console.warn('[mapkey] popup closed unexpectedly during key pick:\n'+((new Error()).stack||'(no stack)'));
+      });
     }).catch(function(e){
       toast('Failed to load keys: '+String(e&&e.message||e),'error');
       btn.disabled=false; btn.textContent='Map to key...';
@@ -3743,7 +3769,7 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
     } else {
       jPopup+=mapKeyButtonHtml(jMapBtnId);
     }
-    jm.bindPopup(jPopup,{className:'eff-tip'});
+    jm.bindPopup(jPopup,effPopupOpts(!trackable,{className:'eff-tip'}));
     jm.on('popupopen',function(e){
       var el=e.popup.getElement();
       if(!el) return;
@@ -3791,7 +3817,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
         bPopup+=mapKeyButtonHtml(bMapBtnId);
       }
     }
-    bm.bindPopup(bPopup);
+    bm.bindPopup(bPopup,effPopupOpts(EFFIGY_CONFIRM_ENABLED&&!b.key));
     bm.on('popupopen',function(e){
       var el=e.popup.getElement();
       if(!el) return;
@@ -3840,7 +3866,7 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
       ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+hChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
       :mapKeyButtonHtml(hMapBtnId);
-    hm.bindPopup(hPopup,{className:'eff-tip'});
+    hm.bindPopup(hPopup,effPopupOpts(!h.key,{className:'eff-tip'}));
     hm.on('popupopen',function(e){
       var el=e.popup.getElement();
       if(!el) return;
@@ -3879,7 +3905,7 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
       ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+esChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
       :mapKeyButtonHtml(esMapBtnId);
-    esm.bindPopup(esPopup,{className:'eff-tip'});
+    esm.bindPopup(esPopup,effPopupOpts(!es.key,{className:'eff-tip'}));
     esm.on('popupopen',function(e){
       var el=e.popup.getElement();
       if(!el) return;
