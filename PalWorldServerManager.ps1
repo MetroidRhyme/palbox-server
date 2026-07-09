@@ -519,7 +519,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         $pairs = foreach ($k in $settings.Keys) { "$k=$($settings[$k])" }
         $body  = "OptionSettings=($($pairs -join ','))"
         $tmp   = "$path.tmp"
-        Set-Content -Path $tmp -Encoding UTF8 -Value "[/Script/Pal.PalGameWorldSettings]`r`n$body`r`n"
+        # No-BOM UTF-8 (WriteAllText, matching Set-ActiveGuid's GameUserSettings write just
+        # below). Set-Content -Encoding UTF8 under Windows PowerShell 5.1 prepends a UTF-8 BOM
+        # before the "[/Script/Pal.PalGameWorldSettings]" header; the server itself always
+        # rewrites this file WITHOUT a BOM on shutdown, so a no-BOM write is exactly the shape
+        # the game already round-trips, and keeps a BOM from ever preceding the section header.
+        [System.IO.File]::WriteAllText($tmp, "[/Script/Pal.PalGameWorldSettings]`r`n$body`r`n", (New-Object System.Text.UTF8Encoding($false)))
         Move-Item -Path $tmp -Destination $path -Force
     }
 
