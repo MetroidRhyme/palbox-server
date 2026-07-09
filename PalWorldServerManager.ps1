@@ -2697,17 +2697,11 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $newEntry | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
                                 $arr = $arr + $newEntry
                             }
-                            # No-BOM UTF8, atomic temp-file + Move-Item swap -- confirmed_locations.json
-                            # is also read by the Desktop dataminer script via plain Python
-                            # json.load(encoding="utf-8") (chokes on a BOM) and is re-read by this
-                            # Manager's own request handlers on every poll (Get-ConfirmedLocations'
-                            # mtime check), so a direct in-place WriteAllText risks a concurrent
-                            # reader seeing a truncated file mid-write -- confirmed to have crashed
-                            # the listener once already (2026-07-07).
-                            $json = ConvertTo-Json -InputObject @($arr) -Depth 6
-                            $tmp = "$f.tmp"
-                            [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
-                            Move-Item -LiteralPath $tmp -Destination $f -Force
+                            # Funnel through the canonical Save-ConfirmedLocations writer, which
+                            # does the no-BOM, atomic temp-file + Move-Item swap for us (and keeps
+                            # the in-memory cache in sync). See its definition in map_data_lib.ps1
+                            # for why the atomic write matters (concurrent poll/Python readers).
+                            Save-ConfirmedLocations $arr
                             # Bounty (Field Boss) keys resolve to a species via
                             # anonymous_boss_keys.json, NOT confirmed_locations.json -- that's what
                             # pal_save_reader.py's extract_bounty_data/extract_datamine_data (and
@@ -2765,7 +2759,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             $existing | Add-Member -MemberType NoteProperty -Name verified -Value $verifiedFlag -Force
                             # Same origin convention as /api/datamine-mapping above.
                             $existing | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
-                            [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject @($arr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
+                            # Atomic no-BOM write via the canonical helper (was a direct in-place
+                            # WriteAllText -- same concurrent-reader truncation risk as the mapping
+                            # route it mirrors).
+                            Save-ConfirmedLocations $arr
                         } else {
                             $f = "$ServerDir\datamine_labels.json"
                             $arr = @(Get-DatamineLabels)
@@ -2843,9 +2840,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             }
                         }
 
-                        # No-BOM UTF8 -- see /api/datamine-mapping above for why.
+                        # No-BOM atomic write via the canonical helper -- this batch can touch
+                        # 100+ entries, the single largest confirmed_locations.json write there is,
+                        # so it was the MOST likely of the three datamine routes to be caught
+                        # mid-write by a concurrent poll/Python reader, yet it was the one still
+                        # doing an unsafe in-place WriteAllText. See Save-ConfirmedLocations.
                         if ($confirmedDirty) {
-                            [System.IO.File]::WriteAllText("$ServerDir\confirmed_locations.json", (ConvertTo-Json -InputObject @($confirmedArr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
+                            Save-ConfirmedLocations $confirmedArr
                         }
                         if ($labelsDirty) {
                             [System.IO.File]::WriteAllText("$ServerDir\datamine_labels.json", (ConvertTo-Json -InputObject @($labelsArr) -Depth 6), (New-Object System.Text.UTF8Encoding($false)))

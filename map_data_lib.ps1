@@ -49,14 +49,44 @@ function Get-ConfirmedLocations {
     return $script:confirmedLocations
 }
 
-# BOM-free canonical writer, added for the schema-migration/importer phases that follow
-# Phase 1 -- not yet called by anything in this commit. [System.IO.File]::WriteAllText
-# with a no-BOM UTF8Encoding matches the fix applied to confirmed_locations.json writes
-# elsewhere (commit a16801c) so a BOM never creeps back into this file.
+# BOM-free canonical writer for confirmed_locations.json -- the single writer that every
+# map-confirm/add-icon/import/datamine route should funnel through, so the atomic-write
+# guarantee below is applied uniformly no matter who is saving.
+#
+# Atomic temp-file + Move-Item swap (NOT a direct in-place WriteAllText): this file is
+# re-read on every dashboard poll (Get-ConfirmedLocations' mtime check) AND by the Desktop
+# palworld-dataminer script via plain Python json.load, so a concurrent reader must never
+# see a half-written/truncated file. A direct WriteAllText here crashed the listener once
+# already (2026-07-07); the singular /api/datamine-mapping route was hardened to temp+move
+# at the time but this canonical helper (used by far more callers, incl. the batch auto-fill
+# that writes 100+ entries) was left doing the unsafe in-place write. Move-Item -Force is an
+# atomic rename on the same volume, so a reader sees either the whole old file or the whole
+# new one. No-BOM UTF8Encoding keeps a BOM from creeping back in (Python json.load chokes
+# on one).
 function Save-ConfirmedLocations($arr) {
     $f = "$script:MapDataRoot\confirmed_locations.json"
     $json = ConvertTo-Json -InputObject @($arr) -Depth 6
-    [System.IO.File]::WriteAllText($f, $json, (New-Object System.Text.UTF8Encoding($false)))
+    $tmp = "$f.tmp"
+    [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
+    # Atomic swap with brief retry. A same-volume rename means a concurrent reader always
+    # sees the whole old OR whole new file, never a truncated one -- that is the property
+    # we need (a truncate-in-place WriteAllText crashed the listener on 2026-07-07). But the
+    # rename ITSELF fails (non-terminating: "Cannot create a file when that file already
+    # exists") if a reader is holding the destination open at that instant, which would
+    # otherwise leak the .tmp and, worse, let the cache below advance to data that never
+    # reached disk. Readers here (dashboard polls, the Desktop Python dataminer, the sync
+    # scripts) open/close in microseconds, so a few quick retries clear any collision.
+    $moved = $false
+    for ($i = 0; $i -lt 12 -and -not $moved; $i++) {
+        try { Move-Item -LiteralPath $tmp -Destination $f -Force -ErrorAction Stop; $moved = $true }
+        catch { Start-Sleep -Milliseconds 40 }
+    }
+    if (-not $moved) {
+        Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        throw "Save-ConfirmedLocations: could not replace $f after retries (held open by a reader)."
+    }
+    # Only advance the in-memory cache once the new data is actually on disk, so a failed
+    # swap can never leave the cache describing a file that was never written.
     $script:confirmedLocations = $arr
     $script:confirmedLocationsMtime = (Get-Item -LiteralPath $f).LastWriteTimeUtc
 }
