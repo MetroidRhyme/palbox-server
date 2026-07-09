@@ -601,7 +601,7 @@ $settingsBlock = @'
   }
   loadDataAge();
   setInterval(renderDataAge,60000);
-  setInterval(autoRefresh,30000);
+  setInterval(autoRefresh,15000); // halved from 30s 2026-07-09; one small meta.json GET per poll, far under CF free tier
 })();
 </script>
 '@
