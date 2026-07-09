@@ -166,6 +166,24 @@ function ConvertTo-GridXY([double]$x, [double]$y) {
 # signals: "key" (Eagle Statue / FastTravelPointUnlockFlag, drives the small badge
 # icon) and "bossKey" (TowerBossDefeatFlag, drives the main tower icon) -- see
 # dashboard.html's Tower render block and the palbox-confirmed-locations skill.
+
+# Cave-entrance sub-pins (2026-07-08): an optional "entrances" array on any row, each a
+# hand-typed {gx,gy} that dashboard.html renders as a cave icon joined to the parent pin
+# by a line in the parent's status color (some map icons sit underground -- this marks the
+# real surface access point). Emits each as world x/y (derived the same way the parent's
+# own coords are, via ConvertTo-WorldXY) plus the raw gx/gy for tooltip display. Returns
+# $null when the row has no entrances so Get-MapCategoryJson only adds the field where it
+# actually exists.
+function ConvertTo-EntranceList($c) {
+    if (-not $c.PSObject.Properties['entrances'] -or -not $c.entrances) { return $null }
+    $out = @()
+    foreach ($e in @($c.entrances)) {
+        if ($null -ne $e.x -and $null -ne $e.y) { $wx = $e.x; $wy = $e.y }
+        else { $w = ConvertTo-WorldXY $e.gx $e.gy; $wx = $w.x; $wy = $w.y }
+        $out += @{ x = $wx; y = $wy; gx = $e.gx; gy = $e.gy }
+    }
+    return $out
+}
 function Get-MapCategoryJson([string]$category) {
     $confirmed = Get-ConfirmedLocations
     if ($category -eq 'effigy') {
@@ -175,6 +193,8 @@ function Get-MapCategoryJson([string]$category) {
             $entry = @{ x = $c.x; y = $c.y; z = $c.z }
             if ($c.verified -eq $true) { $entry.m = $true }
             if ($c.custom -eq $true) { $entry.custom = $true }
+            $ents = ConvertTo-EntranceList $c
+            if ($ents) { $entry.entrances = @($ents) }
             $result[$c.key] = $entry
         }
         return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)
@@ -212,6 +232,8 @@ function Get-MapCategoryJson([string]$category) {
             if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
             else { $grid = ConvertTo-GridXY $xy.x $xy.y; $out.gx = $grid.gx; $out.gy = $grid.gy }
         }
+        $ents = ConvertTo-EntranceList $c
+        if ($ents) { $out.entrances = @($ents) }
         $result += $out
     }
     return (ConvertTo-Json -InputObject @($result) -Depth 6)
@@ -341,6 +363,42 @@ function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species
     $remaining = @($confirmed | Where-Object { $_ -ne $matched })
     Save-ConfirmedLocations $remaining
     return $true
+}
+
+# Cave-entrance sub-pins (2026-07-08): attaches a hand-typed {gx,gy} to an existing map
+# pin (resolved by the same category-appropriate identity Find-ConfirmedRow uses for every
+# other write). Purely additive location metadata -- unlike Edit/Remove-CustomMapEntry there
+# is deliberately NO custom:true guard, because adding an entrance never mutates the parent
+# row's own identity/data, and any pin (scraped, live, or custom) can legitimately sit
+# underground and need a surface entrance marked. See dashboard.html desireEntrances/
+# buildCaveMarker and the ConvertTo-EntranceList read path above.
+function Add-MapEntrance([string]$category, [string]$key, [string]$species, [string]$name, $gx, $gy) {
+    if ($null -eq $gx -or $null -eq $gy) { throw "Coordinates (gx/gy) are required." }
+    $confirmed = @(Get-ConfirmedLocations)
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
+    if (-not $matched) { throw "No matching pin found to attach an entrance to." }
+    $ents = @()
+    if ($matched.PSObject.Properties['entrances'] -and $matched.entrances) { $ents = @($matched.entrances) }
+    $ents += [pscustomobject]@{ gx = [int]$gx; gy = [int]$gy }
+    Set-EntryProp $matched 'entrances' @($ents)
+    Save-ConfirmedLocations $confirmed
+    return $matched
+}
+
+# Removes one entrance from a parent pin by its 0-based index (the client renders entrances
+# in stored array order, so the index it echoes back lines up). Same identity resolution as
+# Add-MapEntrance; no custom:true guard for the same reason.
+function Remove-MapEntrance([string]$category, [string]$key, [string]$species, [string]$name, [int]$index) {
+    $confirmed = @(Get-ConfirmedLocations)
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
+    if (-not $matched) { throw "No matching pin found." }
+    $ents = @()
+    if ($matched.PSObject.Properties['entrances'] -and $matched.entrances) { $ents = @($matched.entrances) }
+    if ($index -lt 0 -or $index -ge $ents.Count) { throw "Entrance index out of range." }
+    $remaining = @(for ($i = 0; $i -lt $ents.Count; $i++) { if ($i -ne $index) { $ents[$i] } })
+    Set-EntryProp $matched 'entrances' $remaining
+    Save-ConfirmedLocations $confirmed
+    return $matched
 }
 
 # Flips Tower's per-key verification flags (added 2026-07-07) -- independent of

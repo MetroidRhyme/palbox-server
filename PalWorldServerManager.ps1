@@ -2173,6 +2173,48 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/map-add-entrance' -and $method -eq 'POST') {
+                    # Cave-entrance sub-pin -> attaches a hand-typed grid coordinate to an
+                    # existing pin (any category/origin), rendered client-side as a cave icon
+                    # linked to the parent by a line in the parent's status-ring color. Body:
+                    # { category, key?, species?, name?, gx, gy }. See map_data_lib.ps1
+                    # Add-MapEntrance and dashboard.html openEntranceModal/desireEntrances.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        if (-not $category) { throw "No category provided." }
+                        $key = if ($body.key) { [string]$body.key } else { $null }
+                        $species = if ($body.species) { [string]$body.species } else { $null }
+                        $name = if ($body.name) { [string]$body.name } else { $null }
+                        $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
+                        $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
+                        $updated = Add-MapEntrance $category $key $species $name $gx $gy
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/map-remove-entrance' -and $method -eq 'POST') {
+                    # Removes one cave-entrance sub-pin by 0-based index. Body:
+                    # { category, key?, species?, name?, index }. See Remove-MapEntrance.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        if (-not $category) { throw "No category provided." }
+                        $key = if ($body.key) { [string]$body.key } else { $null }
+                        $species = if ($body.species) { [string]$body.species } else { $null }
+                        $name = if ($body.name) { [string]$body.name } else { $null }
+                        $index = [int]$body.index
+                        Remove-MapEntrance $category $key $species $name $index | Out-Null
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/journals' -and $method -eq 'GET') {
                     # Lore-journal/diary locations (game-world fixed, not per-save). Phase 3's
                     # importer already upserted every journal_locations.json row into the

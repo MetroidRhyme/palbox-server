@@ -138,6 +138,16 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
   $html, '<div id="addicon-modal-overlay".*?</div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
 if ($html -eq $before) { throw "Add Icon modal markup was not removed" }
 
+# (2a3) Remove the "Add cave entrance" modal -- admin-only sub-pin creation (POSTs to
+# /api/map-add-entrance). Its JS (openEntranceModal/saveEntrance/removeEntrance/wireCaveAdd/
+# caveAddButtonHtml) also lives inside the "-- Data Mine tab --" block stripped in (3c), and
+# the cave RENDERING (desireEntrances/buildCaveMarker) is deliberately NOT stripped -- the
+# cave icons + lines are map data players should see; only these admin controls come out.
+$before = $html
+$html = [System.Text.RegularExpressions.Regex]::Replace(
+  $html, '<div id="entrance-modal-overlay".*?</div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+if ($html -eq $before) { throw "Add entrance modal markup was not removed" }
+
 # (2b) Remove the per-view "Reload" buttons (Pals / Paldeck / Effigies). On the static
 # site they only re-fetch the same generated JSON -- there's no live server to pull
 # fresher data from -- so they appear broken to players. The fetch functions themselves
