@@ -120,11 +120,15 @@ $before = $html
 $html = $html.Replace('<button class="btn btn-ghost hdr-more-row" onclick="refreshAll();closeAllOverflowMenus();">&#8635; Refresh now</button>', '')
 if ($html -eq $before) { throw "header 'Refresh now' row was not removed" }
 
-# (2a2) Remove the "+ Add Icon" header button and its modal -- admin-only manual map-pin
-# creation (POSTs to /api/map-add-icon, which only exists in the Manager's own
-# HttpListener, not in _worker.js). The modal's own JS (openAddIconModal/saveAddIcon/
-# dmRenderCustomIcons/etc.) already falls inside the "-- Data Mine tab --" JS block
-# removed in step (3c) below, so only the HTML markup needs stripping here.
+# (2a2) Remove the "+ Add Icon" header button, its "Key Available" badge, and the modal --
+# admin-only manual map-pin creation (POSTs to /api/map-add-icon, which only exists in the
+# Manager's own HttpListener, not in _worker.js). The modal's own JS (openAddIconModal/
+# saveAddIcon/dmRenderCustomIcons/etc.) already falls inside the "-- Data Mine tab --" JS
+# block removed in step (3c) below, so only the HTML markup needs stripping here.
+$before = $html
+$html = $html.Replace(
+  '<span id="eff-key-available-badge" class="btn btn-ghost" style="display:none;cursor:pointer;" onclick="openAddIconModal()" title="An unmapped save-flag key is available to link to a new map pin -- open Add Icon and pick it from the Unmapped Key dropdown">&#128273; Key Available</span>', '')
+if ($html -eq $before) { throw "Key Available badge was not removed" }
 $before = $html
 $html = $html.Replace(
   '<button class="btn btn-primary" onclick="openAddIconModal()" title="Manually add a map pin before scraped/live data confirms it">+ Add Icon</button>', '')

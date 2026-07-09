@@ -126,5 +126,69 @@
     {
         "key":  "1_10_PLAIN_F_BOSS_BLUEDRAGON",
         "species":  "BlueDragon"
+    },
+    {
+        "key":  "81_1_FOREST_FBOSS_6",
+        "species":  "QueenBee"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_26",
+        "species":  "GrassPanda_Electric"
+    },
+    {
+        "key":  "81_2_DESSERT_FBOSS_1",
+        "species":  "Suzaku"
+    },
+    {
+        "key":  "81_2_DESSERT_FBOSS_4",
+        "species":  "FlowerDinosaur_Electric"
+    },
+    {
+        "key":  "81_2_DESSERT_FBOSS_2",
+        "species":  "SaintCentaur"
+    },
+    {
+        "key":  "5_2_ISLAND_ICEBLOCK_FBOSS_1",
+        "species":  "PoseidonOrca"
+    },
+    {
+        "key":  "81_6_OCEAN_FBOSS_1",
+        "species":  "IceNarwhal"
+    },
+    {
+        "key":  "81_3_SNOW_FBOSS_2",
+        "species":  "KingAlpaca_Ice"
+    },
+    {
+        "key":  "81_3_SNOW_FBOSS_1",
+        "species":  "IceHorse"
+    },
+    {
+        "key":  "81_3_SNOW_FBOSS_3",
+        "species":  "LilyQueen_Dark"
+    },
+    {
+        "key":  "81_1_FOREST_FBOSS_5",
+        "species":  "WhiteMoth"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_14",
+        "species":  "Anubis"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_22",
+        "species":  "HawkBird"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_27",
+        "species":  "LazyCatfish"
+    },
+    {
+        "key":  "81_4_SAKURAJIMA_FBOSS_2",
+        "species":  "WingGolem"
+    },
+    {
+        "key":  "81_4_SAKURAJIMA_FBOSS_1",
+        "species":  "DarkScorpion_Ground"
     }
 ]

@@ -540,6 +540,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         <span id="effigy-summary" style="color:var(--muted);font-size:12px;"></span>
       </div>
       <div style="display:flex;gap:8px;">
+        <span id="eff-key-available-badge" class="btn btn-ghost" style="display:none;cursor:pointer;" onclick="openAddIconModal()" title="An unmapped save-flag key is available to link to a new map pin -- open Add Icon and pick it from the Unmapped Key dropdown">&#128273; Key Available</span>
         <button class="btn btn-primary" onclick="openAddIconModal()" title="Manually add a map pin before scraped/live data confirms it">+ Add Icon</button>
         <button class="btn btn-ghost" onclick="reloadEffigyView()">&#8635; Reload</button>
       </div>
@@ -1247,6 +1248,7 @@ function switchView(name){
   // lookup, not a fresh Python/reader spawn.
   if(_mapLivePollTimer){clearInterval(_mapLivePollTimer);_mapLivePollTimer=null;}
   if(_mapRosterPollTimer){clearInterval(_mapRosterPollTimer);_mapRosterPollTimer=null;}
+  if(_mapDataminePollTimer){clearInterval(_mapDataminePollTimer);_mapDataminePollTimer=null;}
   if(name==='effigies'){
     _mapLivePollTimer=setInterval(function(){fetchPlayerLocations();fetchEffigyPlayer();},5000);
     // Static roster pins (Eagle Statue/Journal/Field Boss/Wanted Fugitive/etc) are cached
@@ -1257,10 +1259,58 @@ function switchView(name){
     // set rather than one player's small collected-list.
     refetchEffigyMapRosters();
     _mapRosterPollTimer=setInterval(refetchEffigyMapRosters,15000);
+    // Keeps dmFullPlayers/dmMappings (the Unmapped Keys data, normally only ever fetched by
+    // the Data Mine tab) fresh while the Map tab is on screen, so the "+ Add Icon" modal's
+    // Unmapped Key dropdown and the "Key Available" badge both reflect a key picked up
+    // in-game without Anthony having to switch to the Data Mine tab or reload the page.
+    mapDataminePollTick();
+    _mapDataminePollTimer=setInterval(mapDataminePollTick,15000);
   }
 }
 var _mapLivePollTimer=null;
 var _mapRosterPollTimer=null;
+var _mapDataminePollTimer=null;
+// Same data fetch the Data Mine tab's own dmLivePollTick uses, but scoped to the Map tab:
+// refreshes dmFullPlayers/dmMappings so dmComputeUnmappedRows() (the shared source for both
+// the Add Icon modal's key dropdown and the Key Available badge) is never stale just because
+// Anthony hasn't visited the Data Mine tab this session. Doesn't call renderDataMine -- that
+// tab isn't on screen -- only refreshes what's actually visible here: an already-open Add
+// Icon modal's dropdown (skipped while that dropdown itself is focused, so a poll tick can't
+// yank a selection out from under a click) and the badge.
+async function mapDataminePollTick(){
+  // dmFetchAndApply/addIconCategoryChanged live inside the "-- Data Mine tab --" JS block
+  // that gen_public_site.ps1 strips entirely for the public build (admin-only feature) --
+  // typeof-guard rather than calling directly, same idiom switchView already uses for
+  // fetchDataMine, so this is a silent no-op on the public site instead of a ReferenceError.
+  if(typeof dmFetchAndApply!=='function') return;
+  try{
+    await dmFetchAndApply();
+  }catch(e){
+    return;
+  }
+  var overlay=document.getElementById('addicon-modal-overlay');
+  var keySel=document.getElementById('ai-key');
+  // Only re-populate the open modal's key dropdown while it's still on its default/blank
+  // selection -- once Anthony has actually picked a key, a poll tick must never yank that
+  // choice out from under him (rebuilding the <select>'s options resets it to index 0).
+  if(overlay && overlay.style.display==='flex' && keySel && document.activeElement!==keySel && keySel.value===''){
+    addIconCategoryChanged();
+  }
+  updateKeyAvailableBadge();
+}
+// Lights up the "Key Available" badge next to + Add Icon whenever at least one unmapped
+// save-flag key is linkable to one of the 6 Add-Icon categories (same subset
+// dmUnmappedKeysForCategory draws from -- iconCategories is the whitelist of properties an
+// Add Icon dropdown can ever show a real key for; effigy's RelicObtainForInstanceFlag has none,
+// by design, see dmUnmappedKeysForCategory's comment).
+function updateKeyAvailableBadge(){
+  var badge=document.getElementById('eff-key-available-badge');
+  // badge is stripped from the DOM entirely on the public build, and dmComputeUnmappedRows
+  // with it (see the mapDataminePollTick comment above) -- both admin-only, both no-ops here.
+  if(!badge || typeof dmComputeUnmappedRows!=='function') return;
+  var has=dmComputeUnmappedRows().some(function(r){return r.prop.iconCategories&&r.prop.iconCategories.length;});
+  badge.style.display=has?'':'none';
+}
 // Forces a fresh reload of every static map-icon roster, bypassing each fetchX's own
 // "already loaded, do nothing" cache guard via a `force` param instead of nulling the
 // backing globals first (the old approach): nulling made every marker in that category
@@ -3568,7 +3618,7 @@ function saveKeyRow(key){
 // effigies always have a key by construction, and Tower keys are read-only here (matched
 // against towers.json, not written from either UI -- see DATAMINE_PROPERTIES' TowerBossDefeatFlag).
 function mapKeyButtonHtml(btnId){
-  return '<br><button type="button" class="btn btn-ghost eff-map-key-btn" id="'+btnId+'" style="margin-top:6px;font-size:12px;">Map to key...</button>';
+  return '<br><span id="'+btnId+'-wrap"><button type="button" class="btn btn-ghost eff-map-key-btn" id="'+btnId+'" style="margin-top:6px;font-size:12px;">Map to key...</button></span>';
 }
 function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
   var btn=popupEl.querySelector('#'+btnId);
@@ -3583,7 +3633,12 @@ function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
         btn.disabled=false; btn.textContent='Map to key...';
         return;
       }
-      var wrap=btn.parentElement;
+      // Scope the swap to the button's own wrapper span, NOT btn.parentElement --
+      // that used to be the whole .leaflet-popup-content node (the button HTML has no
+      // wrapper of its own), so this wiped the entire popup (name/status/coords) down to
+      // just the dropdown, leaving Leaflet's cached popup height/position stale -- the
+      // popup would render collapsed/mispositioned and look like it vanished (2026-07-08).
+      var wrap=popupEl.querySelector('#'+btnId+'-wrap')||btn.parentElement;
       var selId=btnId+'-sel';
       wrap.innerHTML='<select id="'+selId+'" class="dm-edit-input" style="width:170px;"><option value="">Select key...</option>'
         +keys.map(function(k){return '<option value="'+esc(k)+'">'+esc(k)+'</option>';}).join('')
@@ -4221,32 +4276,6 @@ function effigyRposToLatLng(x,y){
   var sx=(x-cfg.realMin.X)/(cfg.realMax.X-cfg.realMin.X);
   var sy=(y-cfg.realMin.Y)/(cfg.realMax.Y-cfg.realMin.Y);
   return effigyLeaflet.unproject([sy*cfg.blockSize,(1-sx)*cfg.blockSize],8);
-}
-
-// Some scraped roster entries share the exact same real-world spawn coordinate (e.g. the
-// Necromus/Paladius duo boss fight) -- the underlying x/y is genuinely correct for both, so
-// rather than falsify the data, nudge exact-duplicate points apart in world-space (in a
-// circle around the shared spot) purely for marker placement. Offset is in world units, so
-// it scales with zoom just like any other map distance -- separated enough to click
-// independently at the lowest icon-mode zoom, negligible next to the map's overall scale.
-function dedupeOverlappingCoords(arr){
-  var groups={};
-  arr.forEach(function(item,idx){
-    var k=item.x+','+item.y;
-    (groups[k]=groups[k]||[]).push(idx);
-  });
-  var out=arr.map(function(item){return {x:item.x,y:item.y};});
-  Object.keys(groups).forEach(function(k){
-    var idxs=groups[k];
-    if(idxs.length<2) return;
-    var n=idxs.length,offset=6000;
-    idxs.forEach(function(idx,i){
-      var angle=(2*Math.PI*i)/n;
-      out[idx].x+=Math.cos(angle)*offset;
-      out[idx].y+=Math.sin(angle)*offset;
-    });
-  });
-  return out;
 }
 
 // Last raw JSON text per roster, keyed by short name -- lets the 15s roster poll
@@ -5162,6 +5191,9 @@ async function saveAddIcon(){
     closeAddIconModal();
     toast('Pin added.','success');
     renderDataMine();
+    // dmMappings.confirmedLocations already reflects the newly-linked key above, so the
+    // badge can update immediately rather than waiting for the next 15s mapDataminePollTick.
+    updateKeyAvailableBadge();
     var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
       fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
     if(typeof refetch==='function') refetch(true);
@@ -5447,7 +5479,6 @@ function renderEffigyMapNow(){
     var bpSel=document.getElementById('effigy-player');
     var bpGuid=bpSel?bpSel.value:'';
     var manualSet=bountyManualSetFor(bpGuid);
-    var bountyDisplayPos=dedupeOverlappingCoords(bossLocations);
     bossLocations.forEach(function(b,idx){
       var sp=(b.species||'').toUpperCase();
       var confirmed=!!b.m;
@@ -5460,11 +5491,10 @@ function renderEffigyMapNow(){
       // the reasoning (a mapped key means auto-detection works even before verified/found).
       var bStatus=(confirmed&&bGot)?'found':(confirmed||bGot||trackable)?'confirmed':'unconfirmed';
       var clickable=PREFS_ENABLED&&!bAuto&&!!bpGuid;
-      var dp=bountyDisplayPos[idx];
       effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable,function(){
-        if(_effDotMode) return buildDotMarker(effigyRposToLatLng(dp.x,dp.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual));
-        var bDisp=(dp.x===b.x&&dp.y===b.y)?b:Object.assign({},b,{x:dp.x,y:dp.y});
-        return buildBountyMarker(bDisp,confirmed,bAuto,bManual,bGot,bStatus,clickable);
+        return _effDotMode
+          ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual))
+          : buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable);
       });
     });
   }
