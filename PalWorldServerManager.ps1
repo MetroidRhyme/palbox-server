@@ -462,10 +462,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
 
     $LogFile      = "$ServerDir\metrics-log.jsonl"
     $PollInterval = 300   # metrics-collection cadence (also the history-chart granularity)
-    $SyncInterval = 30    # public-data R2 sync cadence -- how fresh the dashboards' data is
-                          # (halved from 60s 2026-07-09; self-gates on Level.sav so no-op
-                          #  cycles cost nothing, and ~3 R2 puts/change stays far under the
-                          #  1M/mo Class A free tier -- see /palbox-public cadence notes)
+    $SyncInterval = 20    # public-data R2 sync cadence -- how fresh the dashboards' data is
+                          # (60->30->20s on 2026-07-09; Level.sav is genuinely rewritten
+                          #  every ~5s (AutoSaveSpan=5, measured), so 20s is a real freshness
+                          #  gain, not just faster no-op polling. Each changed cycle is ~2 R2
+                          #  puts + a ~16s build; 20s > that run time so no mutex backlog, and
+                          #  ~260k puts/mo stays well under the 1M/mo Class A free tier.
+                          #  Don't go below ~18s or runs start hitting the single-flight skip.)
     $EggCheckInterval = 30   # egg-ready check cadence (re-parses only when Level.sav changed)
 
     # Per-player in-game "egg ready to hatch" alerts. egg_notify.json is the admin-set
