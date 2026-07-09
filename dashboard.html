@@ -3903,7 +3903,18 @@ function syncEffigyLayer(){
   }
   _effShown.forEach(function(m,key){
     var d=_effDesired.get(key);
-    if(!d||d.m!==m||(bounds&&!bounds.contains(d.ll))){
+    if(!d||d.m!==m){
+      effigyMarkerLayer.removeLayer(m);
+      _effShown.delete(key);
+      return;
+    }
+    // Never cull a marker whose popup is open, even if a pan/zoom (including the
+    // popup's own autoPan-into-view on open) has since pushed it outside the padded
+    // viewport -- removing it from the layer force-closes the popup with no way to
+    // reopen it, which was silently killing the "Map to key..." dropdown mid-pick
+    // (2026-07-08, see the wireMapKeyButton flow: it's the one popup interaction long
+    // enough to reliably straddle a moveend/zoomend tick).
+    if(bounds&&!bounds.contains(d.ll)&&!(m.isPopupOpen&&m.isPopupOpen())){
       effigyMarkerLayer.removeLayer(m);
       _effShown.delete(key);
     }
