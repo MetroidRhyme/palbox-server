@@ -589,6 +589,10 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
           <button id="eff-filt-tower" onclick="toggleEffigyFilter('tower')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide raid Tower locations"><span style="color:#e8b339;">&#9679;</span> Towers</button>
           <span id="tower-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Tower raid bosses defeated, out of the full roster"></span>
         </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-sam" onclick="toggleEffigyFilter('sam')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide Feybreak SAM Site (anti-air turret) locations"><span style="color:#ff7b54;">&#9679;</span> SAM Sites</button>
+          <span id="sam-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="SAM Sites destroyed, out of the full roster (only counts pins already mapped to a save key -- use a pin's 'Map to key...' button to link one)"></span>
+        </div>
         <button id="eff-filt-players" onclick="toggleEffigyFilter('players')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide every player's live position (from their own save's Translation/Rotation)"><span style="color:#58a6ff;">&#9679;</span> Players</button>
         </div>
       </div>
@@ -1342,7 +1346,7 @@ function updateKeyAvailableBadge(){
 async function refetchEffigyMapRosters(){
   await Promise.all([
     fetchEffigyLocations(true),fetchJournalLocations(true),fetchBossLocations(true),fetchWantedFugitives(true),
-    fetchEagleStatues(true),fetchTowerLocations(true)
+    fetchEagleStatues(true),fetchTowerLocations(true),fetchSamSites(true),fetchDestroyedWeapons(true)
   ]);
 }
 // "New content" pulse dot on a nav tab -- lit when a watch match (or other tracked
@@ -3310,12 +3314,31 @@ function journalBookIcon(status){
 // each bounty boss IS a different Pal. Grayscale-washed once defeated (status 'found'), same
 // as before, just driven by inline style now instead of a CSS eff-map-found rule.
 var BOUNTY_ICON_SZ=EFF_ACORN_SZ*1.6;
-function bountyBossIcon(name,status){
-  var k='bb:'+name+'|'+status;
+// Field Boss prerequisite lock overlay (2026-07-09): a big red padlock covering most of the
+// marker, shown whenever the boss has one or more prereqs and at least one isn't defeated
+// yet -- stays up regardless of which pin is selected (Anthony: "Leave the lock all the time
+// until unlocked"), unlike the connecting lines below which only show while a linked boss's
+// popup is open. ASCII-only inline SVG (no emoji), same convention as caveMarkerIcon.
+var BOUNTY_LOCK_SVG='<svg viewBox="0 0 24 24" width="100%" height="100%" style="display:block;">'
+  +'<rect x="5" y="11" width="14" height="10" rx="2" fill="#f85149" stroke="#3d0a08" stroke-width="1"></rect>'
+  +'<path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="#f85149" stroke-width="2.6"></path>'
+  +'<circle cx="12" cy="16" r="1.6" fill="#3d0a08"></circle></svg>';
+function bountyLockOverlayHtml(sizePx){
+  var lsz=Math.round(sizePx*0.9);
+  return '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:'+lsz+'px;height:'+lsz+'px;filter:drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);">'+BOUNTY_LOCK_SVG+'</div>';
+}
+function bountyBossIcon(name,status,locked){
+  var k='bb:'+name+'|'+status+'|'+(locked?1:0);
   if(_iconMemo[k]) return _iconMemo[k];
-  var wash=status==='found'?'filter:grayscale(1) brightness(.65);':'';
+  var wash=(status==='found'||locked)?'filter:grayscale(1) brightness(.65);':'';
   var img='<img src="'+palPortrait(name)+'" alt="" onerror="this.style.visibility=\'hidden\'" style="'+wash+'">';
-  return _iconMemo[k]=statusRingIcon(img,status,BOUNTY_ICON_SZ);
+  if(!locked) return _iconMemo[k]=statusRingIcon(img,status,BOUNTY_ICON_SZ);
+  var color=STATUS_RING_COLOR[status]||STATUS_RING_COLOR.unconfirmed;
+  var html='<div style="position:relative;width:'+BOUNTY_ICON_SZ+'px;height:'+BOUNTY_ICON_SZ+'px;">'
+    +'<div class="status-ring" style="border:2px solid '+color+';">'+img+'</div>'
+    +bountyLockOverlayHtml(BOUNTY_ICON_SZ)
+    +'</div>';
+  return _iconMemo[k]=L.divIcon({className:'eff-map-marker',html:html,iconSize:[BOUNTY_ICON_SZ,BOUNTY_ICON_SZ],iconAnchor:[BOUNTY_ICON_SZ/2,BOUNTY_ICON_SZ/2]});
 }
 // Wanted Fugitive (human/Syndicate bosses), Eagle Statue (fast-travel points), and Tower
 // (raid bosses) now OVERLAY real paldb-scraped rosters (added 2026-07-06, see
@@ -3344,8 +3367,8 @@ function eagleStatueIcon(status){
 // "slightly overlapping the edge" look this is going for.
 var TOWER_BADGE_SZ=Math.round(EFF_ACORN_SZ*0.58);
 var TOWER_BADGE_OFFSET=Math.round(TOWER_BADGE_SZ*0.3);
-function towerIcon(bossStatus,eagleStatus){
-  var k='tw:'+bossStatus+'|'+eagleStatus;
+function towerIcon(bossStatus,eagleStatus,locked){
+  var k='tw:'+bossStatus+'|'+eagleStatus+'|'+(locked?1:0);
   if(_iconMemo[k]) return _iconMemo[k];
   var bossColor=STATUS_RING_COLOR[bossStatus]||STATUS_RING_COLOR.unconfirmed;
   var eagleColor=STATUS_RING_COLOR[eagleStatus]||STATUS_RING_COLOR.unconfirmed;
@@ -3353,8 +3376,29 @@ function towerIcon(bossStatus,eagleStatus){
   var html='<div style="position:relative;width:'+EFF_ACORN_SZ+'px;height:'+EFF_ACORN_SZ+'px;">'
     +'<div class="status-ring" style="border:2px solid '+bossColor+';">'+bossImg+'</div>'
     +'<div class="status-ring" style="position:absolute;top:-'+TOWER_BADGE_OFFSET+'px;right:-'+TOWER_BADGE_OFFSET+'px;width:'+TOWER_BADGE_SZ+'px;height:'+TOWER_BADGE_SZ+'px;border:2px solid '+eagleColor+';">'+EAGLE_STATUE_IMG+'</div>'
+    // Required-boss lock overlay (2026-07-10), same convention as bountyBossIcon's --
+    // stays up regardless of selection until every prereq is defeated.
+    +(locked?bountyLockOverlayHtml(EFF_ACORN_SZ):'')
     +'</div>';
   return _iconMemo[k]=L.divIcon({className:'eff-map-marker',html:html,iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]});
+}
+// SAM Site (Feybreak anti-air missile turret) marker (added 2026-07-09): no paldb compass
+// icon exists for this, so it's a hand-drawn ASCII-only inline SVG (per the global encoding
+// rule -- no emoji), same technique as caveMarkerIcon's cave-mouth glyph below. Ringed the
+// same red/yellow/green status convention as every other category via statusRingIcon; the
+// rocket body itself stays a fixed silver/gray regardless of status, same as how the eagle/
+// tower compass images don't change color themselves.
+var ROCKET_IMG='<svg viewBox="0 0 24 24" width="15" height="15" style="display:block;margin:auto;">'
+  +'<path fill="#cfd6e0" d="M12 2c-2.2 2.6-3.4 6-3.4 9.6 0 2.1 1 4.3 3.4 5.6 2.4-1.3 3.4-3.5 3.4-5.6C15.4 8 14.2 4.6 12 2z"></path>'
+  +'<circle cx="12" cy="9.4" r="1.5" fill="#0d1117"></circle>'
+  +'<path fill="#8a94a6" d="M8.6 11.4l-2.6 4.2 3.4-1.2z"></path>'
+  +'<path fill="#8a94a6" d="M15.4 11.4l2.6 4.2-3.4-1.2z"></path>'
+  +'<path fill="#ff8a3d" d="M10.7 16.6l1.3 4 1.3-4z"></path>'
+  +'</svg>';
+function samSiteIcon(status){
+  var k='sam:'+status;
+  if(_iconMemo[k]) return _iconMemo[k];
+  return _iconMemo[k]=statusRingIcon(ROCKET_IMG,status,EFF_ACORN_SZ);
 }
 // Live player position marker: a colored dot, plus (if the save has a current Rotation --
 // it's briefly absent right after a teleport/spawn, see /palworld-dataminer) a small
@@ -3471,6 +3515,9 @@ function toggleMapConfirm(category,ident,checked){
       } else if(category==='eagle'){
         var ee=eagleStatueLocations&&eagleStatueLocations.find(function(es){return es.name&&es.name.toUpperCase()===ident.toUpperCase();});
         if(ee) ee.m=checked;
+      } else if(category==='sam'){
+        var sse=samSiteLocations&&samSiteLocations.find(function(s){return s.name&&s.name.toUpperCase()===ident.toUpperCase();});
+        if(sse) sse.m=checked;
       }
       renderEffigyMap();
       toast(checked?'Location confirmed.':'Location unconfirmed.','success');
@@ -3501,7 +3548,7 @@ function toggleTowerKeyVerified(towerName,field,checked){
 // hid unfound effigies, leaving found ones visible via effigyShowFound alone, which was
 // inconsistent with every other category's toggle). This is a VIEW filter only -- it never
 // changes a Pal's actual found state (which comes solely from the save). Both default on.
-var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowPlayers=true;
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowSam=true, effigyShowPlayers=true;
 // Layer filter toggles are remembered per-browser via localStorage (independent of the
 // server-side /api/prefs sync above, which is public-site-only) so admin AND public both
 // keep a hidden category hidden across refreshes. Loaded once at script parse time, same
@@ -3516,12 +3563,13 @@ try{
     if(_savedMapFilters.fugitive!==undefined)effigyShowFugitive=!!_savedMapFilters.fugitive;
     if(_savedMapFilters.eagle!==undefined)effigyShowEagle=!!_savedMapFilters.eagle;
     if(_savedMapFilters.tower!==undefined)effigyShowTower=!!_savedMapFilters.tower;
+    if(_savedMapFilters.sam!==undefined)effigyShowSam=!!_savedMapFilters.sam;
     if(_savedMapFilters.players!==undefined)effigyShowPlayers=!!_savedMapFilters.players;
   }
 }catch(e){}
 function saveMapFilters(){
   try{
-    localStorage.setItem('palbox_map_filters',JSON.stringify({found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,tower:effigyShowTower,players:effigyShowPlayers}));
+    localStorage.setItem('palbox_map_filters',JSON.stringify({found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,tower:effigyShowTower,sam:effigyShowSam,players:effigyShowPlayers}));
   }catch(e){}
 }
 
@@ -3540,7 +3588,7 @@ function initFilterPanelCollapse(){
 }
 
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bpl=document.getElementById('eff-filt-players');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bs=document.getElementById('eff-filt-sam'), bpl=document.getElementById('eff-filt-players');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
   if(bj) bj.style.opacity=effigyShowJournal?'1':'0.4';
@@ -3548,6 +3596,7 @@ function setEffigyFilterBtns(){
   if(bh) bh.style.opacity=effigyShowFugitive?'1':'0.4';
   if(be) be.style.opacity=effigyShowEagle?'1':'0.4';
   if(bt) bt.style.opacity=effigyShowTower?'1':'0.4';
+  if(bs) bs.style.opacity=effigyShowSam?'1':'0.4';
   if(bpl) bpl.style.opacity=effigyShowPlayers?'1':'0.4';
 }
 function toggleEffigyFilter(which){
@@ -3558,6 +3607,7 @@ function toggleEffigyFilter(which){
   else if(which==='fugitive') effigyShowFugitive=!effigyShowFugitive;
   else if(which==='eagle') effigyShowEagle=!effigyShowEagle;
   else if(which==='tower') effigyShowTower=!effigyShowTower;
+  else if(which==='sam') effigyShowSam=!effigyShowSam;
   else effigyShowNew=!effigyShowNew;
   setEffigyFilterBtns();
   saveMapFilters();
@@ -3664,10 +3714,52 @@ function desireEntrances(baseKey,ident,pin,parentLL,status){
     var ll=effigyRposToLatLng(en.x,en.y);
     var sig=color+'|'+en.x+'|'+en.y+'|'+parentLL.lat+'|'+parentLL.lng;
     effDesire('caveln:'+baseKey+':'+i,sig,function(){
-      return L.polyline([ll,parentLL],{color:color,weight:2,opacity:0.85,interactive:false,renderer:effCanvasRenderer()});
+      // Dashed, matching the Field Boss prereq-chain lines (desireBossPrereqLines) -- same
+      // "connects two related pins" visual language across both line types.
+      return L.polyline([ll,parentLL],{color:color,weight:2,opacity:0.85,dashArray:'6,5',interactive:false,renderer:effCanvasRenderer()});
     });
     effDesire('cave:'+baseKey+':'+i,sig+'|'+EFFIGY_CONFIRM_ENABLED,function(){
       return buildCaveMarker(ll,color,ident,en,i);
+    });
+  });
+}
+
+// Field Boss prerequisites (2026-07-09): an optional "prereqs" array of species codes on a
+// bounty row (see Add-BossPrereq in map_data_lib.ps1) -- normalizes the same PS
+// bare-object-for-1-element-array quirk desireEntrances handles above.
+function bossPrereqArr(b){
+  var pr=b&&b.prereqs;
+  if(!pr) return [];
+  if(!Array.isArray(pr)) pr=[pr];
+  return pr;
+}
+// Species (uppercase) of the Field Boss currently hovered or popup-open, or null. Set/cleared
+// from buildBountyMarker's mouseover/mouseout and popupopen/popupclose handlers below.
+// Connecting lines only draw while one of the two linked bosses is this active pin (Anthony:
+// "only show the lines... when one of the linked bosses are selected", later extended to
+// hover too) -- the lock badge itself has no such gating.
+var _bossPrereqActive=null;
+// Registers one prerequisite-chain line per (pin, prereq boss) pair into the shared marker
+// cache/diff engine, same convention as desireEntrances above -- but only actually calls
+// effDesire (making the line "desired" for this render) when _bossPrereqActive matches
+// either end; otherwise it's simply omitted from _effDesired and syncEffigyLayer removes any
+// previously-shown line for it. Green once that specific prerequisite is defeated, red
+// otherwise, so the chain itself shows unlock progress. fromIdent is whatever identity
+// _bossPrereqActive uses for the locked pin -- a bounty species (see the bounty call site) or
+// a "tw:NAME" tower identity (see the tower call site, extended 2026-07-10) -- prereqs are
+// always bounty species regardless of which category is locked.
+function desireBossPrereqLines(fromIdent,fromLL,prereqs,bossLLBySpecies,bossGotMap){
+  if(!prereqs.length||!fromLL) return;
+  prereqs.forEach(function(preSp,i){
+    var preU=(preSp||'').toUpperCase();
+    var key='prereqln:'+fromIdent+':'+preU;
+    var toLL=bossLLBySpecies[preU];
+    if(!toLL) return;
+    if(_bossPrereqActive!==fromIdent&&_bossPrereqActive!==preU) return;
+    var color=bossGotMap[preU]?STATUS_RING_COLOR.found:STATUS_RING_COLOR.unconfirmed;
+    var sig=color+'|'+fromLL.lat+'|'+fromLL.lng+'|'+toLL.lat+'|'+toLL.lng;
+    effDesire(key,sig,function(){
+      return L.polyline([fromLL,toLL],{color:color,weight:2,opacity:0.85,dashArray:'6,5',interactive:false,renderer:effCanvasRenderer()});
     });
   });
 }
@@ -3891,23 +3983,47 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
 
 // Body-only tooltip text (no coords for bounty bosses), shared by the divIcon
 // builder and the low-zoom dot marker.
-function bountyTipBody(b,confirmed,bAuto,bManual){
+function bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails){
   var label=bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
     :bManual?'<span style="color:#5a6573">&#10003; Marked defeated by you</span>'
     :MAP_STATUS_TWO_STATE?'<b style="color:#f85149">Not yet defeated</b>'
     :confirmed?'<b style="color:#e3b341">Confirmed location (not yet defeated)</b>'
     :'<b style="color:#f85149">Alpha Boss (unconfirmed)</b>';
-  return label+customPinBadge(b);
+  var lockLine='';
+  if(bLocked&&prereqDetails&&prereqDetails.length){
+    var reqList=prereqDetails.map(function(pd){
+      return '<span style="color:'+(pd.got?'#3fb950':'#f85149')+';">'+(pd.got?'&#10003; ':'')+esc(pd.name)+'</span>';
+    }).join(', ');
+    lockLine='<br><b style="color:#f85149;">Locked</b> <span style="color:#333;font-size:11px;">- requires '+reqList+'</span>';
+  }
+  return label+lockLine+customPinBadge(b);
 }
-function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
+function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLocked,prereqDetails){
   var sp=(b.species||'').toUpperCase();
-  var bm=L.marker(effigyRposToLatLng(b.x,b.y),{icon:bountyBossIcon(b.name,bStatus),interactive:true});
-  var bStatusLabel=bountyTipBody(b,confirmed,bAuto,bManual);
+  var bm=L.marker(effigyRposToLatLng(b.x,b.y),{icon:bountyBossIcon(b.name,bStatus,bLocked),interactive:true});
+  var bStatusLabel=bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails);
   bm.bindTooltip('<b style="color:#111;">'+b.name+'</b><br>'+bStatusLabel,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   bm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  // Hovering also reveals this boss's prereq-chain lines (see desireBossPrereqLines) --
+  // a separate listener pair from _effMarkerOver/_effMarkerOut above so the shared
+  // hover-highlight behavior stays untouched. Works even for a boss with no popup at all
+  // (e.g. a plain unlocked root boss that only exists as someone else's prerequisite),
+  // unlike the click-to-select path below which needs a popup to hang off of. Mouseout
+  // leaves the popup-open case alone -- closing the popup (not just moving the mouse) is
+  // what clears selection then, so a popup being read stays connected while the cursor
+  // wanders off it.
+  bm.on('mouseover',function(){ _bossPrereqActive=sp; renderEffigyMap(); });
+  bm.on('mouseout',function(){
+    if(_bossPrereqActive===sp&&!(bm.isPopupOpen&&bm.isPopupOpen())){ _bossPrereqActive=null; renderEffigyMap(); }
+  });
   var bChkId='bounty-confirm-'+sp;
-  if(clickable||EFFIGY_CONFIRM_ENABLED){
+  // A boss also needs a popup purely to let it be SELECTED-via-click (see _bossPrereqActive)
+  // whenever it's locked or lists its own prereqs -- clicking a locked boss (or one of the
+  // prereq bosses it names) is how the connecting lines get revealed on touch devices with
+  // no hover. Hover above already covers this for every boss regardless of this flag.
+  var selectable=bLocked||bossPrereqArr(b).length>0;
+  if(clickable||EFFIGY_CONFIRM_ENABLED||selectable){
     var bPopup='<b style="color:#111;">'+esc(b.name)+'</b><br>'+bStatusLabel;
     if(clickable){
       bPopup+='<br><button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="margin-top:6px;font-size:12px;">'
@@ -3923,9 +4039,15 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
         bPopup+=mapKeyButtonHtml(bMapBtnId);
       }
       bPopup+=caveAddButtonHtml();
+      bPopup+=prereqAddButtonHtml();
     }
     bm.bindPopup(bPopup,effPopupOpts(EFFIGY_CONFIRM_ENABLED&&!b.key));
     bm.on('popupopen',function(e){
+      // Selecting this boss reveals its prereq-chain lines (see desireBossPrereqLines) --
+      // done here rather than a plain 'click' handler so it stays in sync with whatever
+      // marker/state the popup itself is bound to.
+      _bossPrereqActive=sp;
+      renderEffigyMap();
       var el=e.popup.getElement();
       if(!el) return;
       var btn=el.querySelector('.eff-bounty-mark-btn');
@@ -3944,7 +4066,13 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable){
         var g=worldToGrid(b.x,b.y);
         wireMapKeyButton(el,bMapBtnId,'Field Boss',b.name,g.cx,g.cy,bm);
       }
-      wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
+      if(EFFIGY_CONFIRM_ENABLED){
+        wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
+        wirePrereqAdd(el,b,'bounty');
+      }
+    });
+    bm.on('popupclose',function(){
+      if(_bossPrereqActive===sp){ _bossPrereqActive=null; renderEffigyMap(); }
     });
     if(clickable) bm.on('add',function(){var el=this.getElement();if(el)el.style.cursor='pointer';});
   }
@@ -4037,10 +4165,56 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
   return esm;
 }
 
+// Body-only tooltip text for SAM Sites. Updated 2026-07-09 once FixedWeaponDestroySaveData
+// was reverse-engineered (see /palbox-confirmed-locations' SAM Site section) -- now a real
+// three-state status like eagleTipBody/fugitiveTipBody, instead of the original always-
+// keyless "no save key linked yet" text (which predates knowing this flag existed at all).
+function samTipBody(s,confirmed,sGot,sStatus){
+  var _g=worldToGrid(s.x,s.y), cx=_g.cx, cy=_g.cy;
+  var sLabel=sStatus==='found'
+    ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Destroyed</span>' : '<span style="color:#3fb950">&#10003; Destroyed & confirmed</span>')
+    : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet destroyed</b>'
+    : sGot ? '<b style="color:#e3b341">Destroyed (not yet confirmed)</b>'
+    : confirmed ? '<b style="color:#e3b341">Confirmed (not yet destroyed)</b>'
+    : '<b style="color:#f85149">Unconfirmed</b>';
+  return sLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(s);
+}
+function buildSamMarker(s,confirmed,sGot,sStatus){
+  var sm=L.marker(effigyRposToLatLng(s.x,s.y),{icon:samSiteIcon(sStatus),interactive:true});
+  var sTip=samTipBody(s,confirmed,sGot,sStatus);
+  sm.bindTooltip('<b style="color:#111;">'+s.name+'</b><br>'+sTip,
+    {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+  sm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  if(EFFIGY_CONFIRM_ENABLED){
+    var sChkId='sam-confirm-'+s.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var sMapBtnId='sam-mapkey-'+s.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var sPopup='<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+saveKeyRow(s.key);
+    sPopup+=s.key
+      ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
+        +'<input type="checkbox" id="'+sChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
+      :mapKeyButtonHtml(sMapBtnId);
+    sPopup+=caveAddButtonHtml();
+    sm.bindPopup(sPopup,effPopupOpts(!s.key,{className:'eff-tip'}));
+    sm.on('popupopen',function(e){
+      var el=e.popup.getElement();
+      if(!el) return;
+      if(s.key){
+        var box=el.querySelector('#'+sChkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('sam',s.name,box.checked); };
+      } else {
+        var g=worldToGrid(s.x,s.y);
+        wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm);
+      }
+      wireCaveAdd(el,{category:'sam',name:s.name,label:s.name});
+    });
+  }
+  return sm;
+}
+
 // Body + level-suffix tooltip pieces, shared by the divIcon builder and the
 // low-zoom dot marker. Returns both since the level suffix sits between the
 // name header and the body in the composed tooltip string.
-function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus){
+function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails){
   var _g=worldToGrid(t.x,t.y), cx=_g.cx, cy=_g.cy;
   var bLabel=bStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Boss cleared</span>' : '<span style="color:#3fb950">&#10003; Boss cleared & key verified</span>')
@@ -4056,16 +4230,31 @@ function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bS
     : '<b style="color:#f85149">Eagle key unverified</b>';
   var tLvl=t.lv?(' <span style="color:var(--muted)">(Lv '+t.lv+')</span>'):'';
   var tBoss=(t.boss||t.bossPal)?('<br><span style="color:#111;">'+esc(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+esc(t.bossPal||'')+'</span>'):'';
-  var tTip=bLabel+'<br>'+esLabel+tBoss+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(t);
+  var lockLine='';
+  if(tLocked&&prereqDetails&&prereqDetails.length){
+    var reqList=prereqDetails.map(function(pd){
+      return '<span style="color:'+(pd.got?'#3fb950':'#f85149')+';">'+(pd.got?'&#10003; ':'')+esc(pd.name)+'</span>';
+    }).join(', ');
+    lockLine='<br><b style="color:#f85149;">Locked</b> <span style="color:#333;font-size:11px;">- requires '+reqList+'</span>';
+  }
+  var tTip=bLabel+'<br>'+esLabel+tBoss+lockLine+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(t);
   return {lvl:tLvl,body:tTip};
 }
-function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus){
-  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(bStatus,esStatus),interactive:true});
-  var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus);
+function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails){
+  var twIdent='tw:'+(t.name||'').toUpperCase();
+  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(bStatus,esStatus,tLocked),interactive:true});
+  var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails);
   var tLvl=_tt.lvl, tTip=_tt.body;
   tm.bindTooltip('<b style="color:#111;">'+t.name+'</b>'+tLvl+'<br>'+tTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   tm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  // Hovering reveals this tower's required-boss chain lines (see desireBossPrereqLines),
+  // same convention as buildBountyMarker -- works even when the popup below is disabled
+  // (public site, EFFIGY_CONFIRM_ENABLED false).
+  tm.on('mouseover',function(){ _bossPrereqActive=twIdent; renderEffigyMap(); });
+  tm.on('mouseout',function(){
+    if(_bossPrereqActive===twIdent&&!(tm.isPopupOpen&&tm.isPopupOpen())){ _bossPrereqActive=null; renderEffigyMap(); }
+  });
   if(EFFIGY_CONFIRM_ENABLED){
     var tChkId='tower-confirm-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
     var esChkId='tower-eagle-verify-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
@@ -4078,9 +4267,11 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
       +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
       +'<input type="checkbox" id="'+esChkId+'"'+(esVerified?' checked':'')+'> Verify Eagle Statue key</label>'
       +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'+caveAddButtonHtml(),
+      +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'+caveAddButtonHtml()+prereqAddButtonHtml(),
       {className:'eff-tip'});
     tm.on('popupopen',function(e){
+      _bossPrereqActive=twIdent;
+      renderEffigyMap();
       var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+tChkId);
       if(box) box.onchange=function(){ toggleMapConfirm('tower',t.name,box.checked); };
       var esBox=e.popup.getElement()&&e.popup.getElement().querySelector('#'+esChkId);
@@ -4088,7 +4279,13 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
       var bBox=e.popup.getElement()&&e.popup.getElement().querySelector('#'+bChkId);
       if(bBox) bBox.onchange=function(){ toggleTowerKeyVerified(t.name,'bossVerified',bBox.checked); };
       var _tel=e.popup.getElement();
-      if(_tel) wireCaveAdd(_tel,{category:'tower',name:t.name,label:t.name});
+      if(_tel){
+        wireCaveAdd(_tel,{category:'tower',name:t.name,label:t.name});
+        wirePrereqAdd(_tel,{name:t.name},'tower');
+      }
+    });
+    tm.on('popupclose',function(){
+      if(_bossPrereqActive===twIdent){ _bossPrereqActive=null; renderEffigyMap(); }
     });
   }
   return tm;
@@ -4404,6 +4601,8 @@ function initEffigyView(){
       fetchWantedFugitives();
       fetchEagleStatues();
       fetchTowerLocations();
+      fetchSamSites();
+      fetchDestroyedWeapons();
       fetchPlayerLocations();
     });
   });
@@ -4618,6 +4817,46 @@ async function fetchTowerLocations(force){
     if(!towerLocations) towerLocations=[];
   }
 }
+// "SAM Sites" (Feybreak anti-air missile turrets) -- static, same loading convention as
+// above. No save-flag key identified yet (see the palbox-confirmed-locations skill), so
+// there is no matching fetchSamPlayer/player-collected route -- these markers can only ever
+// reach 'confirmed' (yellow, once Anthony ticks the popup checkbox), never 'found' (green),
+// until a save key is discovered and wired in the same way eagle/tower/fugitive were.
+var samSiteLocations=null;
+async function fetchSamSites(force){
+  if(samSiteLocations&&!force)return;
+  try{
+    var r=await fetch('/api/sam-sites');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.sam){ if(!samSiteLocations){samSiteLocations=JSON.parse(txt);if(effigyLeaflet)renderEffigyMap();} return; }
+    _effRosterText.sam=txt;
+    samSiteLocations=JSON.parse(txt);
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    if(!samSiteLocations) samSiteLocations=[];
+  }
+}
+// Which SAM Sites have actually been destroyed (added 2026-07-09, once
+// FixedWeaponDestroySaveData was reverse-engineered) -- world-scoped (Level.sav), same for
+// every player, so unlike every other collected-flag fetch this one takes no guid and isn't
+// re-fetched on player switch. Keys are uppercase hex (no dashes), matching how a SAM pin's
+// own .key gets stored once mapped via "Map to key..." (see wireMapKeyButton/applyIconKeyMapping).
+var destroyedWeaponKeys=null;
+async function fetchDestroyedWeapons(force){
+  if(destroyedWeaponKeys&&!force)return;
+  try{
+    var r=await fetch('/api/destroyed-weapons');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.destroyedWeapons){ if(!destroyedWeaponKeys){destroyedWeaponKeys=(JSON.parse(txt).keys||[]);if(effigyLeaflet)renderEffigyMap();} return; }
+    _effRosterText.destroyedWeapons=txt;
+    destroyedWeaponKeys=(JSON.parse(txt).keys||[]);
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    if(!destroyedWeaponKeys) destroyedWeaponKeys=[];
+  }
+}
 function populateEffigyPlayerDropdown(){
   var sel=document.getElementById('effigy-player');
   var prev=sel.value;
@@ -4800,6 +5039,10 @@ function renderMapCounts(){
   set('fugitive-count', foundInRoster(wantedFugitiveLocations,fugitiveCollected), wantedFugitiveLocations?wantedFugitiveLocations.length:0);
   set('eagle-count', foundInRoster(eagleStatueLocations,eagleCollected), eagleStatueLocations?eagleStatueLocations.length:0);
   set('tower-count', foundInRoster(towerLocations,towerBossCollected,'bossKey'), towerLocations?towerLocations.length:0);
+  // SAM Site: destroyed/total, same shape as every other found-tracked category, now that
+  // FixedWeaponDestroySaveData gives a real signal (2026-07-09) -- once a pin is mapped to a
+  // key. Falls back to counting nothing destroyed for any still-keyless pin.
+  set('sam-count', foundInRoster(samSiteLocations, destroyedWeaponKeys), samSiteLocations?samSiteLocations.length:0);
 }
 
 // -- Data Mine tab ------------------------------------------------------------
@@ -4812,6 +5055,9 @@ function renderMapCounts(){
 // confirmed_locations.json itself (source-stamped), same file the Desktop script writes --
 // Anthony explicitly opted into treating the dashboard as a second trusted writer for this
 // feature. Everything else persists into the separate datamine_labels.json.
+// "noCoords" properties (PaldeckUnlockFlag/PalCaptureBonusCount) are species-keyed, not
+// location-keyed -- there is no coordinate concept for them at all, so the gx/gy columns/
+// inputs are hidden entirely instead of just being optional (2026-07-10).
 var DATAMINE_PROPERTIES=[
   {name:'NormalBossDefeatFlag',kind:'bool_map',spatial:true,iconCategories:['Wanted Fugitive','Field Boss'],desc:'Boss / field-alpha defeat flags (Field Boss + Wanted Fugitive map categories).'},
   {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,noName:true,
@@ -4820,8 +5066,9 @@ var DATAMINE_PROPERTIES=[
   {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Journal'],desc:'Journal / diary note pickups.'},
   {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,iconCategories:['Eagle Statue'],desc:'Eagle Statue (fast travel) unlocks.'},
   {name:'TowerBossDefeatFlag',kind:'bool_map',spatial:false,iconCategories:['Tower'],desc:'Tower raid-boss defeats (normal difficulty; hard-mode key not yet re-identified). Keys are matched against towers.json\'s own "bossKey" field, not written here -- shown read-only for visibility into any newly-discovered key (e.g. Feybreak Tower\'s, not yet known).'},
-  {name:'PaldeckUnlockFlag',kind:'bool_map',spatial:false,desc:'Paldeck species unlocks.'},
-  {name:'PalCaptureBonusCount',kind:'int_map',spatial:false,desc:'Lifetime per-species bonus-capture counts.'}
+  {name:'PaldeckUnlockFlag',kind:'bool_map',spatial:false,noCoords:true,desc:'Paldeck species unlocks.'},
+  {name:'PalCaptureBonusCount',kind:'int_map',spatial:false,noCoords:true,desc:'Lifetime per-species bonus-capture counts.'},
+  {name:'DestroyedWeapon',kind:'name_array',spatial:true,iconCategories:['SAM Site'],desc:'Destroyed Feybreak SAM Site (fixed weapon) keys -- world-scoped (Level.sav), not per-player; same key list for every player.'}
 ];
 var DATAMINE_KIND_LABEL={bool_map:'Bool',int_map:'Int',name_array:'Name'};
 
@@ -4975,8 +5222,8 @@ function dmKeyRowHtml(prop,key,players){
   var pJs=dmEscJs(prop.name), kJs=dmEscJs(key);
   return '<tr><td class="syn-key">'+esc(key)+'</td>'
     +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span></td>'
-    +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
-      +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>'
+    +(prop.noCoords?'':'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
+      +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>')
     +(prop.noName?'':'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)">'
       +(m.fallback?' <span class="dm-kind-badge" title="Not yet in confirmed_locations.json -- shown from the existing scraped roster (effigies.json/journal_locations.json). Click Save to promote it.">roster</span>':'')+'</td>')
     +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td>'
@@ -5059,7 +5306,8 @@ function dmRosterCandidatesFor(propName){
 
 function dmTableHtml(prop,rows,players){
   if(!rows.length) return '<div class="empty-state">None found</div>';
-  return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th><th>Coordinates</th>'
+  return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th>'
+    +(prop.noCoords?'':'<th>Coordinates</th>')
     +(prop.noName?'':'<th>Display Name</th>')+'<th></th><th>Verified</th>'
     +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
     +'</tr></thead><tbody>'
@@ -5093,13 +5341,34 @@ async function dmFetchAndApply(){
   await dmAutoFillFromRosters();
 }
 
+// Refetches just the 5 rosters DM_ICON_CATEGORIES' "Map Icon Categories" section reads
+// (Eagle Statue/Wanted Fugitive/Field Boss/Journal/Tower) -- effigies are excluded from
+// that feature by construction (see DM_ICON_CATEGORIES' own comment: they always have a
+// key), so there's no reason to also pull the much larger ~750-entry effigy roster here.
+async function refetchDmIconRosters(){
+  await Promise.all([
+    fetchJournalLocations(true),fetchBossLocations(true),fetchWantedFugitives(true),
+    fetchEagleStatues(true),fetchTowerLocations(true)
+  ]);
+}
+// Snapshot key for dmLivePollTick's staleness check below -- players/mappings (Unmapped
+// Keys table) PLUS the 5 rosters feeding "Map Icon Categories" (2026-07-10 fix: those
+// rosters previously only ever refreshed while the Map tab was the active view -- see
+// switchView's _mapRosterPollTimer, which is cleared the instant you leave that tab -- so
+// a key that got mapped elsewhere while sitting on the Data Mine tab, e.g. a Tower's
+// bossKey being set by the Desktop dataminer script mid-session, never showed up here
+// until a full page reload).
+function dmSnapshotKey(){
+  return JSON.stringify({p:dmFullPlayers,m:dmMappings,
+    j:journalLocations,b:bossLocations,f:wantedFugitiveLocations,e:eagleStatueLocations,t:towerLocations});
+}
 async function fetchDataMine(){
   document.getElementById('dm-unmapped-area').innerHTML='<div class="empty-state">Loading...</div>';
   document.getElementById('dm-property-sections').innerHTML='<div class="empty-state">Loading...</div>';
   try{
-    await dmFetchAndApply();
+    await Promise.all([dmFetchAndApply(),refetchDmIconRosters()]);
     renderDataMine();
-    _dmLastSnapshot=JSON.stringify({p:dmFullPlayers,m:dmMappings});
+    _dmLastSnapshot=dmSnapshotKey();
   }catch(e){
     var msg='<div class="empty-state">Failed to load: '+esc(String(e&&e.message||e))+'</div>';
     document.getElementById('dm-unmapped-area').innerHTML=msg;
@@ -5108,15 +5377,16 @@ async function fetchDataMine(){
 }
 
 // Background poll while the Data Mine tab is on screen (see switchView) -- re-fetches
-// everything fetchDataMine does, but only touches the DOM (renderDataMine) if the fetched
-// data actually differs from what's already showing, and defers even that if Anthony is
+// everything fetchDataMine does (players/mappings AND the 5 icon-category rosters, see
+// dmSnapshotKey above), but only touches the DOM (renderDataMine) if the fetched data
+// actually differs from what's already showing, and defers even that if Anthony is
 // mid-edit in one of this tab's own inputs (so a poll tick can't wipe out an in-progress
 // typed value). A skipped render doesn't advance _dmLastSnapshot, so the next tick (once
 // focus has moved on) still picks up the change.
 async function dmLivePollTick(){
   try{
-    await dmFetchAndApply();
-    var snap=JSON.stringify({p:dmFullPlayers,m:dmMappings});
+    await Promise.all([dmFetchAndApply(),refetchDmIconRosters()]);
+    var snap=dmSnapshotKey();
     if(snap===_dmLastSnapshot) return;
     var active=document.activeElement;
     var editing=active&&(active.tagName==='INPUT'||active.tagName==='SELECT')
@@ -5160,7 +5430,8 @@ var DM_ICON_CATEGORIES=[
     return (towerLocations||[]).map(function(t){
       return {name:t.name+((t.boss||t.bossPal)?(' -- '+(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+(t.bossPal||'')):''),x:t.x,y:t.y,key:t.bossKey};
     });
-  },getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchTowerLocations(true);}}
+  },getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchTowerLocations(true);}},
+  {label:'SAM Site',property:'DestroyedWeapon',getRoster:function(){return samSiteLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchSamSites(true);}}
 ];
 
 function dmIconCatByLabel(label){
@@ -5290,10 +5561,15 @@ function renderDataMine(){
             +candidates.map(function(c,i){return '<option value="'+i+'">'+esc(c.name)+' ('+esc(c.catLabel)+')</option>';}).join('')
             +'</select>'
           :'';
+        // noCoords properties (PaldeckUnlockFlag/PalCaptureBonusCount) are species-keyed --
+        // no coordinate concept, so no gx/gy inputs (this table's Coordinates column is
+        // shared across every property, unlike dmTableHtml's per-property one, so the
+        // header itself stays; only this row's cell is replaced with an em-dash).
         return '<tr><td>'+esc(r.prop.name)+'</td><td class="syn-key">'+esc(r.key)+'</td>'
           +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[r.prop.kind]+'</span></td>'
-          +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
-            +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>'
+          +(r.prop.noCoords?'<td style="color:var(--muted);text-align:center;">&#8212;</td>'
+            :'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
+            +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>')
           +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" placeholder="(unmapped)">'+mapSelect+'</td>'
           +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\',\'um\')">Save</button></td></tr>';
       }).join('')+'</tbody></table>'
@@ -5442,6 +5718,104 @@ async function removeEntrance(ident,index,marker){
   }
 }
 
+// -- Required-boss prerequisites (locked bosses/towers) ----------------------------
+// Admin-only add/remove for the "prereqs" links that bountyBossIcon's/towerIcon's lock
+// overlay and desireBossPrereqLines render (those two, plus bossPrereqArr/_bossPrereqActive,
+// live OUTSIDE this strip zone, since the lock + lines are map data shown on the public site
+// too). Everything here lives INSIDE the "-- Data Mine tab --" JS block so
+// gen_public_site.ps1 removes it from the public build, same as the cave-entrance controls
+// above. prereqAddButtonHtml/wirePrereqAdd are only ever called from a popup built under
+// EFFIGY_CONFIRM_ENABLED (see buildBountyMarker/buildTowerMarker), so stripping them is safe.
+// Originally Field-Boss-only (2026-07-09); extended 2026-07-10 so a Tower can also require a
+// Field Boss be cleared first -- the LOCKED pin can be either category (bounty by species,
+// tower by name), but the prerequisite itself is always a Field Boss (bossLocations/species).
+var _prereqTarget=null;   // {category,species,name} of the pin the modal is currently editing
+function prereqAddButtonHtml(){
+  return '<br><button type="button" class="btn btn-ghost eff-prereq-add-btn" style="margin-top:6px;font-size:12px;">+ Prerequisite boss</button>';
+}
+function wirePrereqAdd(popupEl,entity,category){
+  var btn=popupEl.querySelector('.eff-prereq-add-btn');
+  if(btn) btn.onclick=function(){ openPrereqModal(entity,category); };
+}
+function openPrereqModal(entity,category){
+  _prereqTarget={category:category,species:entity.species||null,name:entity.name||null};
+  document.getElementById('prereq-boss-label').textContent=entity.name||entity.species;
+  renderPrereqModalList();
+  document.getElementById('prereq-modal-overlay').style.display='flex';
+}
+window.closePrereqModal=function(){
+  document.getElementById('prereq-modal-overlay').style.display='none';
+  _prereqTarget=null;
+};
+// Finds the locked pin's own live roster row for _prereqTarget -- bounty by species,
+// tower by name (same identity convention as everywhere else in this file).
+function _prereqTargetRow(){
+  if(!_prereqTarget) return null;
+  if(_prereqTarget.category==='tower'){
+    var nameU=(_prereqTarget.name||'').toUpperCase();
+    return (towerLocations||[]).find(function(x){return (x.name||'').toUpperCase()===nameU;});
+  }
+  var sp=(_prereqTarget.species||'').toUpperCase();
+  return (bossLocations||[]).find(function(x){return (x.species||'').toUpperCase()===sp;});
+}
+// Rebuilds the modal's "currently linked" chip list + the "add another" dropdown, reading
+// live off bossLocations (already the full roster this admin session has loaded) rather than
+// a dedicated fetch -- called on open and again after every add/remove so both stay current
+// without closing the modal. The "add another" candidates are always drawn from
+// bossLocations -- prerequisites are always Field Bosses, regardless of what's locked.
+function renderPrereqModalList(){
+  if(!_prereqTarget||!bossLocations) return;
+  var selfSp=_prereqTarget.category==='bounty'?(_prereqTarget.species||'').toUpperCase():null;
+  var cur=_prereqTargetRow();
+  var linked=bossPrereqArr(cur).map(function(s){return (s||'').toUpperCase();});
+  var listEl=document.getElementById('prereq-current-list');
+  if(!linked.length){
+    listEl.innerHTML='<span class="pm-muted">None yet</span>';
+  } else {
+    listEl.innerHTML=linked.map(function(preU){
+      var pb=bossLocations.find(function(x){return (x.species||'').toUpperCase()===preU;});
+      var label=pb?pb.name:preU;
+      return '<span class="pal-chip" style="display:inline-flex;align-items:center;gap:5px;margin:2px;">'+esc(label)
+        +'<button type="button" class="btn btn-ghost" style="padding:0 5px;font-size:11px;" onclick="removePrereqLink(\''+dmEscJs(preU)+'\')">&times;</button></span>';
+    }).join('');
+  }
+  var sel=document.getElementById('prereq-add-select');
+  var candidates=bossLocations.filter(function(x){
+    var xsp=(x.species||'').toUpperCase();
+    return xsp&&xsp!==selfSp&&linked.indexOf(xsp)===-1;
+  }).sort(function(a,b2){return (a.name||'').localeCompare(b2.name||'');});
+  sel.innerHTML=candidates.map(function(x){return '<option value="'+esc(x.species)+'">'+esc(x.name)+'</option>';}).join('');
+}
+async function savePrereqLink(){
+  if(!_prereqTarget) return;
+  var sel=document.getElementById('prereq-add-select');
+  var preSpecies=sel&&sel.value;
+  if(!preSpecies){ toast('Pick a prerequisite boss first.','error'); return; }
+  try{
+    await api('/api/map-add-boss-prereq','POST',{category:_prereqTarget.category,species:_prereqTarget.species,name:_prereqTarget.name,prereqSpecies:preSpecies});
+    var cur=_prereqTargetRow();
+    if(cur){ var arr=bossPrereqArr(cur).slice(); arr.push(preSpecies); cur.prereqs=arr; }
+    renderPrereqModalList();
+    toast('Prerequisite added.','success');
+    refetchMapCategory(_prereqTarget.category);
+  }catch(e){
+    toast('Failed to add prerequisite: '+String(e&&e.message||e),'error');
+  }
+}
+async function removePrereqLink(preSpecies){
+  if(!_prereqTarget) return;
+  try{
+    await api('/api/map-remove-boss-prereq','POST',{category:_prereqTarget.category,species:_prereqTarget.species,name:_prereqTarget.name,prereqSpecies:preSpecies});
+    var cur=_prereqTargetRow();
+    if(cur) cur.prereqs=bossPrereqArr(cur).filter(function(s){return (s||'').toUpperCase()!==preSpecies.toUpperCase();});
+    renderPrereqModalList();
+    toast('Prerequisite removed.','success');
+    refetchMapCategory(_prereqTarget.category);
+  }catch(e){
+    toast('Failed to remove prerequisite: '+String(e&&e.message||e),'error');
+  }
+}
+
 // Custom Icons review list (Data Mine tab) -- every confirmed_locations.json row with
 // custom:true, sourced straight from dmMappings.confirmedLocations (already the full
 // array, see /api/datamine-mappings) rather than a dedicated route. Inline-editable,
@@ -5541,12 +5915,13 @@ async function saveDatamineMapping(propName,key,scope){
   var nameEl=document.getElementById(rowId+'-name');
   var gxEl=document.getElementById(rowId+'-gx');
   var gyEl=document.getElementById(rowId+'-gy');
-  if(!gxEl||!gyEl){ toast('Could not find that row -- try reloading.','error'); return; }
-  // nameEl is absent for noName properties (e.g. RelicObtainForInstanceFlag -- no per-key
-  // name exists to assign, coordinates only), not an error.
+  // gxEl/gyEl are absent for noCoords properties (PaldeckUnlockFlag/PalCaptureBonusCount --
+  // species-keyed, no coordinate concept), not an error -- treat as null same as an empty
+  // field. nameEl is absent for noName properties (e.g. RelicObtainForInstanceFlag -- no
+  // per-key name exists to assign, coordinates only), also not an error.
   var name=nameEl?(nameEl.value.trim()||null):null;
-  var gx=gxEl.value.trim()===''?null:gxEl.value.trim();
-  var gy=gyEl.value.trim()===''?null:gyEl.value.trim();
+  var gx=gxEl?(gxEl.value.trim()===''?null:gxEl.value.trim()):null;
+  var gy=gyEl?(gyEl.value.trim()===''?null:gyEl.value.trim()):null;
   try{
     // verified:true -- Anthony typed this in himself via the editable Name/Coordinates
     // fields, so it's his own confirmation, not an auto-filled scrape suggestion.
@@ -5721,11 +6096,25 @@ function renderEffigyMapNow(){
   // (bountyManual, PREFS-backed) for the anonymous zone-numbered spawns the save can't name.
   // Same green/yellow/red status formula as effigies/journals. effigyShowFound still governs
   // whether a defeated boss stays visible (grayscale-washed) or disappears.
-  if(effigyShowBounty&&bossLocations&&bossLocations.length){
+  // Boss prerequisite lookup (2026-07-09, extended to Tower 2026-07-10): a locked pin's state
+  // depends on OTHER Field Bosses' defeat state, which can point in any order regardless of
+  // array position -- one pass to build species->{gotten,latlng} lookups before either the
+  // bounty or the tower per-marker pass below uses them. Independent of effigyShowBounty (a
+  // display toggle only) since a Tower's lock state must resolve even with Field Boss markers
+  // hidden.
+  var bossGotMap={}, bossLLBySpecies={};
+  if(bossLocations&&bossLocations.length){
     var bossCollectedSet=new Set(bossCollected.map(function(s){return s.toUpperCase();}));
     var bpSel=document.getElementById('effigy-player');
     var bpGuid=bpSel?bpSel.value:'';
     var manualSet=bountyManualSetFor(bpGuid);
+    bossLocations.forEach(function(b){
+      var s=(b.species||'').toUpperCase();
+      bossGotMap[s]=bossCollectedSet.has(s)||manualSet.has(s);
+      bossLLBySpecies[s]=effigyRposToLatLng(b.x,b.y);
+    });
+  }
+  if(effigyShowBounty&&bossLocations&&bossLocations.length){
     bossLocations.forEach(function(b,idx){
       var sp=(b.species||'').toUpperCase();
       var confirmed=!!b.m;
@@ -5738,12 +6127,20 @@ function renderEffigyMapNow(){
       // for the reasoning. Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var bStatus=mapStatus(confirmed,bGot,trackable);
       var clickable=PREFS_ENABLED&&!bAuto&&!!bpGuid;
-      effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable,function(){
+      var prereqSpecies=bossPrereqArr(b);
+      var bLocked=prereqSpecies.length>0&&prereqSpecies.some(function(p){return !bossGotMap[(p||'').toUpperCase()];});
+      var prereqDetails=prereqSpecies.map(function(p){
+        var pu=(p||'').toUpperCase();
+        var pb=bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
+        return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
+      });
+      effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable+'|'+bLocked,function(){
         return _effDotMode
-          ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual))
-          : buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable);
+          ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails))
+          : buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLocked,prereqDetails);
       });
       if(b.entrances) desireEntrances('b:'+idx,{category:'bounty',species:b.species,name:b.name,label:b.name},b,effigyRposToLatLng(b.x,b.y),bStatus);
+      desireBossPrereqLines(sp,bossLLBySpecies[sp],bossPrereqArr(b),bossLLBySpecies,bossGotMap);
     });
   }
 
@@ -5820,14 +6217,44 @@ function renderEffigyMapNow(){
       var esStatus=mapStatus(esVerified,esGot,true);
       var bStatus=mapStatus(bossVerified,bGot,true);
       if(bStatus==='found'&&!effigyShowFound) return;
-      effDesire('tw:'+(t.name||idx),bStatus+'|'+esStatus+'|'+confirmed,function(){
+      // Required-boss lock (2026-07-10, same convention as Field Boss -- see the shared
+      // bossGotMap/bossLLBySpecies lookup built above).
+      var twIdent='tw:'+(t.name||'').toUpperCase();
+      var prereqSpecies=bossPrereqArr(t);
+      var tLocked=prereqSpecies.length>0&&prereqSpecies.some(function(p){return !bossGotMap[(p||'').toUpperCase()];});
+      var prereqDetails=prereqSpecies.map(function(p){
+        var pu=(p||'').toUpperCase();
+        var pb=bossLocations&&bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
+        return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
+      });
+      effDesire('tw:'+(t.name||idx),bStatus+'|'+esStatus+'|'+confirmed+'|'+tLocked,function(){
         if(_effDotMode){
-          var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus);
+          var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails);
           return buildDotMarker(effigyRposToLatLng(t.x,t.y),'tower',bStatus,'<b style="color:#111;">'+t.name+'</b>'+_tt.lvl+'<br>'+_tt.body);
         }
-        return buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus);
+        return buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails);
       });
       if(t.entrances) desireEntrances('tw:'+(t.name||idx),{category:'tower',name:t.name,label:t.name},t,effigyRposToLatLng(t.x,t.y),bStatus);
+      desireBossPrereqLines(twIdent,effigyRposToLatLng(t.x,t.y),prereqSpecies,bossLLBySpecies,bossGotMap);
+    });
+  }
+  // SAM Site (Feybreak anti-air missile turrets) -- scraped from a community location guide
+  // (2026-07-09). FixedWeaponDestroySaveData (reverse-engineered the same day, see
+  // /palbox-confirmed-locations) gives a real "got" signal once a pin has a key, so this now
+  // reaches true 'found' (green) the same way eagle/tower/fugitive do -- a keyless pin still
+  // caps at 'confirmed'/'unconfirmed' until linked via the popup's "Map to key..." button.
+  if(effigyShowSam&&samSiteLocations&&samSiteLocations.length){
+    var samDestroyedSet=new Set((destroyedWeaponKeys||[]).map(function(s){return s.toUpperCase();}));
+    samSiteLocations.forEach(function(s,idx){
+      var confirmed=!!s.m;
+      var sGot=!!(s.key&&samDestroyedSet.has(s.key.toUpperCase()));
+      var sStatus=mapStatus(confirmed,sGot,!!s.key);
+      effDesire('sam:'+(s.name||idx),sStatus+'|'+confirmed,function(){
+        return _effDotMode
+          ? buildDotMarker(effigyRposToLatLng(s.x,s.y),'sam',sStatus,'<b style="color:#111;">'+s.name+'</b><br>'+samTipBody(s,confirmed,sGot,sStatus))
+          : buildSamMarker(s,confirmed,sGot,sStatus);
+      });
+      if(s.entrances) desireEntrances('sam:'+(s.name||idx),{category:'sam',name:s.name,label:s.name},s,effigyRposToLatLng(s.x,s.y),sStatus);
     });
   }
   syncEffigyLayer();
@@ -6625,6 +7052,24 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
       <button class="btn btn-ghost" onclick="closeEntranceModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveEntrance()">Add entrance</button>
+    </div>
+  </div>
+</div>
+<div id="prereq-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:2000;" onclick="if(event.target===this)closePrereqModal()">
+  <div class="pal-modal" id="prereq-modal-body" style="max-width:420px;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Prerequisite bosses</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px;"><b id="prereq-boss-label"></b> stays locked (a big red lock on the map) until every boss listed here is defeated.</div>
+    <div class="ai-field">
+      <label>Currently required</label>
+      <div id="prereq-current-list"></div>
+    </div>
+    <div class="ai-field">
+      <label>Add a required boss</label>
+      <select id="prereq-add-select" class="sel" style="width:100%;"></select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="closePrereqModal()">Close</button>
+      <button class="btn btn-primary" onclick="savePrereqLink()">Add</button>
     </div>
   </div>
 </div>

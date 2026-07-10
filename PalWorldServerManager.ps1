@@ -638,7 +638,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # separate datamine_labels.json instead.
     $script:DatamineSpatialProperties = @(
         'NormalBossDefeatFlag', 'RelicObtainForInstanceFlag', 'NoteObtainForInstanceFlag',
-        'FastTravelPointUnlockFlag'
+        'FastTravelPointUnlockFlag', 'DestroyedWeapon'
     )
 
     # datamine_labels.json holds {property,key,name,gx,gy} for non-spatial properties --
@@ -2293,6 +2293,43 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/map-add-boss-prereq' -and $method -eq 'POST') {
+                    # Boss prerequisite link, on a Field Boss OR a Tower -- see Add-BossPrereq
+                    # in map_data_lib.ps1 and dashboard.html openPrereqModal/savePrereqLink.
+                    # Body: { category, species, name, prereqSpecies }. species is the locked
+                    # boss (category "bounty"); name is the locked tower (category "tower").
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        $species = [string]$body.species
+                        $name = [string]$body.name
+                        $preSpecies = [string]$body.prereqSpecies
+                        $updated = Add-BossPrereq $category $species $name $preSpecies
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/map-remove-boss-prereq' -and $method -eq 'POST') {
+                    # Removes one boss prerequisite link. Body:
+                    # { category, species, name, prereqSpecies }. See Remove-BossPrereq in
+                    # map_data_lib.ps1.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        $species = [string]$body.species
+                        $name = [string]$body.name
+                        $preSpecies = [string]$body.prereqSpecies
+                        Remove-BossPrereq $category $species $name $preSpecies | Out-Null
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/journals' -and $method -eq 'GET') {
                     # Lore-journal/diary locations (game-world fixed, not per-save). Phase 3's
                     # importer already upserted every journal_locations.json row into the
@@ -2337,6 +2374,21 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     try {
                         $script:eagleStatueData = Get-MapCategoryJson 'eagle'
                         Send-Response $res 200 "application/json" $script:eagleStatueData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/sam-sites' -and $method -eq 'GET') {
+                    # Feybreak SAM Site (anti-air missile turret) locations -- scraped from a
+                    # community location guide (2026-07-09), no save-flag key identified yet
+                    # (see the palbox-confirmed-locations skill). Same generic read path as
+                    # every other category; will pick up per-player "found" tracking for free
+                    # once a save key is discovered and confirmed_locations.json rows get a key.
+                    try {
+                        $script:samSiteData = Get-MapCategoryJson 'sam'
+                        Send-Response $res 200 "application/json" $script:samSiteData
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }
@@ -2618,14 +2670,43 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     # Every DATAMINE_PROPERTIES entry (see pal_save_reader.py) for one player --
                     # backs the generic Data Mine key/property browser (all keys, all parent
                     # properties, not just NormalBossDefeatFlag like /api/player-datamine above).
+                    # Cache depends on Level.sav too (not just the player's own .sav) because
+                    # this response also carries DestroyedWeapon (SAM Site), which is world-
+                    # scoped -- without it, a newly-destroyed SAM Site wouldn't show up here
+                    # until the player's own save happened to change for an unrelated reason.
                     try {
                         $guid = $req.QueryString['guid']
                         if (-not $guid) { throw "Missing guid parameter" }
                         $activeGuid = Get-ActiveGuid
                         if (-not $activeGuid) { throw "No active world loaded" }
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
-                        $rawJson = Get-CachedReaderOutput "datamine-full:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                        $rawJson = Get-CachedReaderOutput "datamine-full:$guid" @(
+                            (Join-Path $saveDir "Players\$guid.sav"),
+                            (Join-Path $saveDir "Level.sav")
+                        ) {
                             $j = & python "$ServerDir\pal_save_reader.py" $saveDir datamine-full $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/destroyed-weapons' -and $method -eq 'GET') {
+                    # Currently-destroyed SAM Site (fixed weapon) save keys -- world-scoped
+                    # (Level.sav), same generic read path used by the Map tab's other collected-
+                    # flag fetches (fetchEagleStatues etc.), independent of the heavier per-
+                    # player Data Mine machinery above. See /palbox-confirmed-locations' SAM
+                    # Site section for how FixedWeaponDestroySaveData was reverse-engineered.
+                    try {
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = Get-CachedReaderOutput "destroyed-weapons" (Join-Path $saveDir "Level.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir destroyed-weapons 2>$null
                             if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                             ($j -join '')
                         }

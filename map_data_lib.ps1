@@ -238,7 +238,15 @@ function Get-MapCategoryJson([string]$category) {
         $out = @{ name = $name; x = $xy.x; y = $xy.y; m = ($c.verified -eq $true) }
         if ($c.key) { $out.key = $c.key }
         if ($c.custom -eq $true) { $out.custom = $true }
-        if ($category -eq 'bounty') { $out.species = if ($c.species) { $c.species } else { $c.key } }
+        if ($category -eq 'bounty') {
+            $out.species = if ($c.species) { $c.species } else { $c.key }
+        }
+        # Boss prerequisites (2026-07-09, extended to Tower 2026-07-10): see Add-BossPrereq
+        # below -- dashboard.html draws a line to each listed species and locks this pin's
+        # marker until every one of them is defeated. Originally bounty-only; Towers can
+        # also require a Field Boss be cleared first, so this is emitted for any category
+        # whose row happens to carry a "prereqs" array rather than gated to one category.
+        if ($c.PSObject.Properties['prereqs'] -and $c.prereqs) { $out.prereqs = @($c.prereqs) }
         if ($c.PSObject.Properties['lv'] -and $null -ne $c.lv) { $out.lv = $c.lv }
         if ($c.PSObject.Properties['boss'] -and $c.boss) { $out.boss = $c.boss }
         if ($c.PSObject.Properties['bossPal'] -and $c.bossPal) { $out.bossPal = $c.bossPal }
@@ -431,6 +439,51 @@ function Remove-MapEntrance([string]$category, [string]$key, [string]$species, [
     return $matched
 }
 
+# Boss prerequisites (2026-07-09, extended to Tower 2026-07-10): an optional "prereqs" array
+# of bounty species codes on a bounty OR tower row -- dashboard.html draws a line from each
+# listed prerequisite boss to this one and shows a big red lock over this pin's marker until
+# every prerequisite is defeated (see desireBossPrereqLines/bountyBossIcon/towerIcon). The
+# LOCKED row can be either category (bounty, identified by $species; tower, identified by
+# $name -- same convention Find-ConfirmedRow already uses for each), but the prerequisite
+# itself is always resolved as a bounty species, since "required bosses" only ever means
+# Field Bosses. Purely additive like Add/Remove-MapEntrance above -- no custom:true guard,
+# since linking two existing pins never mutates either one's own identity/location data.
+function Add-BossPrereq([string]$category, [string]$species, [string]$name, [string]$preSpecies) {
+    if ($category -notin @('bounty', 'tower')) { throw "Unsupported category for prerequisites: $category" }
+    if (-not $preSpecies) { throw "A prerequisite boss is required." }
+    if ($category -eq 'bounty' -and -not $species) { throw "The boss is required." }
+    if ($category -eq 'tower' -and -not $name) { throw "The tower name is required." }
+    if ($category -eq 'bounty' -and $species.ToUpper() -eq $preSpecies.ToUpper()) { throw "A boss cannot require itself." }
+    $confirmed = @(Get-ConfirmedLocations)
+    $matched = Find-ConfirmedRow $confirmed $category $null $species $name
+    if (-not $matched) { throw "No matching $category found." }
+    $preMatched = Find-ConfirmedRow $confirmed 'bounty' $null $preSpecies $null
+    if (-not $preMatched) { throw "No matching Field Boss found for $preSpecies." }
+    $preqs = @()
+    if ($matched.PSObject.Properties['prereqs'] -and $matched.prereqs) { $preqs = @($matched.prereqs) }
+    if ($preqs | Where-Object { $_.ToUpper() -eq $preSpecies.ToUpper() }) { throw "That prerequisite is already linked." }
+    $preqs += $preSpecies
+    Set-EntryProp $matched 'prereqs' @($preqs)
+    Save-ConfirmedLocations $confirmed
+    return $matched
+}
+
+# Removes one prerequisite link by species (order doesn't matter -- unlike entrances there is
+# no index to line up, since each prereq is already uniquely identified by its own species).
+function Remove-BossPrereq([string]$category, [string]$species, [string]$name, [string]$preSpecies) {
+    if ($category -notin @('bounty', 'tower')) { throw "Unsupported category for prerequisites: $category" }
+    if (-not $preSpecies) { throw "A prerequisite boss is required." }
+    $confirmed = @(Get-ConfirmedLocations)
+    $matched = Find-ConfirmedRow $confirmed $category $null $species $name
+    if (-not $matched) { throw "No matching $category found." }
+    $preqs = @()
+    if ($matched.PSObject.Properties['prereqs'] -and $matched.prereqs) { $preqs = @($matched.prereqs) }
+    $remaining = @($preqs | Where-Object { $_.ToUpper() -ne $preSpecies.ToUpper() })
+    Set-EntryProp $matched 'prereqs' $remaining
+    Save-ConfirmedLocations $confirmed
+    return $matched
+}
+
 # Flips Tower's per-key verification flags (added 2026-07-07) -- independent of
 # Set-MapConfirmVerified's "verified" (the pin's own location) above. $field is
 # whitelisted, not passed straight through to Set-EntryProp, since it arrives from a
@@ -579,6 +632,7 @@ function Get-CategoryForEntry($c) {
         'NoteObtainForInstanceFlag' { return 'journal' }
         'FastTravelPointUnlockFlag' { return 'eagle' }
         'NormalBossDefeatFlag' { if ($c.key -and (Test-SyndicateKeyShape $c.key)) { return 'fugitive' } else { return 'bounty' } }
+        'DestroyedWeapon' { return 'sam' }
     }
     if ($c.key) {
         $k = $c.key.ToUpper()

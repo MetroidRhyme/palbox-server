@@ -41,7 +41,8 @@
         "lv":  60,
         "boss":  "Bjorn",
         "bossPal":  "Bastigor",
-        "bossKey":  null
+        "bossKey":  "BOSS_BATTLE_NAME_VIKINGBOSS",
+        "bossVerified":  true
     },
     {
         "key":  "11BA233D4DF76C83A529DF83EAFDF23A",
@@ -9386,19 +9387,19 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "journal",
+        "key":  "SAKURAJIMABOSS5",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  230,
         "gx":  -675,
         "x":  -18318,
         "y":  -151825,
-        "name":  "Saya Kurosaki\u0027s Diary - 5"
+        "name":  "Saya Kurosaki\u0027s Diary - 5",
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "VIKINGBOSS1",
@@ -9686,19 +9687,19 @@
         "source":  "NormalBossDefeatFlag"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_5_YAMIJIMA_FBOSS_5",
+        "gx":  -834,
+        "gy":  -1116,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "FengyunDeeper_Electric",
         "x":  -635928.44,
         "y":  -224786.02,
         "z":  -849.03,
-        "name":  "Fenglope Lux"
+        "name":  "Fenglope Lux",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_19",
@@ -9731,19 +9732,25 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_5_YAMIJIMA_FBOSS_16",
+        "gx":  -1082,
+        "gy":  -1320,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "IceHorse_Dark",
         "x":  -729768,
         "y":  -338638,
         "z":  0,
-        "name":  "Frostallion Noct"
+        "name":  "Frostallion Noct",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual",
+        "prereqs":  [
+                        "WhiteDeer",
+                        "WhiteShieldDragon",
+                        "BlueThunderHorse",
+                        "GrimGirl"
+                    ]
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_13",
@@ -9821,19 +9828,19 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_5_YAMIJIMA_FBOSS_23",
+        "gx":  -946,
+        "gy":  -824,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "Werewolf_Ice",
         "x":  -502070,
         "y":  -276210,
         "z":  -440,
-        "name":  "Loupmoon Cryst"
+        "name":  "Loupmoon Cryst",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_1_GRASS_FBOSS_28",
@@ -9911,19 +9918,25 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_5_YAMIJIMA_FBOSS_9",
+        "gx":  -923,
+        "gy":  -1014,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "GhostRabbit",
         "x":  -589314,
         "y":  -265657,
         "z":  0,
-        "name":  "Nitemary"
+        "name":  "Nitemary",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual",
+        "prereqs":  [
+                        "Werewolf_Ice",
+                        "Horus_Water",
+                        "NightBlueHorse",
+                        "FengyunDeeper_Electric"
+                    ]
     },
     {
         "key":  "81_1_GRASS_FBOSS_22",
@@ -9941,19 +9954,19 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_5_YAMIJIMA_FBOSS_12",
+        "gx":  -1114,
+        "gy":  -940,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "BadCatgirl",
         "x":  -555394.56,
         "y":  -353314.03,
         "z":  22322.26,
-        "name":  "Nyafia"
+        "name":  "Nyafia",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_14",
@@ -9986,19 +9999,24 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_5_YAMIJIMA_FBOSS_11",
+        "gx":  -1355,
+        "gy":  -968,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "BlueberryFairy",
         "x":  -568200,
         "y":  -463945,
         "z":  0,
-        "name":  "Prunelia"
+        "name":  "Prunelia",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual",
+        "prereqs":  [
+                        "Kitsunebi_Ice",
+                        "PinkRabbit_Grass",
+                        "BadCatgirl"
+                    ]
     },
     {
         "key":  "81_1_GRASS_FBOSS_10",
@@ -10073,22 +10091,33 @@
         "source":  "NormalBossDefeatFlag",
         "verified":  true,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "entrances":  [
+                          {
+                              "gx":  -962,
+                              "gy":  -979
+                          }
+                      ]
     },
     {
-        "key":  null,
-        "category":  "bounty",
-        "gx":  null,
-        "gy":  null,
+        "key":  "81_5_YAMIJIMA_FBOSS_8",
+        "gx":  -879,
+        "gy":  -1467,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "species":  "BlackPuppy",
         "x":  -797241,
         "y":  -245461,
         "z":  0,
-        "name":  "Smokie"
+        "name":  "Smokie",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual",
+        "prereqs":  [
+                        "HerculesBeetle_Ground",
+                        "GoldenHorse",
+                        "AmaterasuWolf_Dark"
+                    ]
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_2",
@@ -10103,7 +10132,13 @@
         "source":  "NormalBossDefeatFlag",
         "verified":  true,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "entrances":  [
+                          {
+                              "gx":  -1203,
+                              "gy":  -1386
+                          }
+                      ]
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_10",
@@ -10208,22 +10243,28 @@
         "source":  "NormalBossDefeatFlag",
         "verified":  true,
         "category":  "fugitive",
-        "origin":  "manual"
+        "origin":  "manual",
+        "entrances":  [
+                          {
+                              "gx":  -1211,
+                              "gy":  -1101
+                          }
+                      ]
     },
     {
-        "key":  null,
-        "category":  "fugitive",
+        "key":  "BOSS_MALE_TRADER03",
         "z":  null,
         "species":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -904,
         "gx":  -1080,
         "x":  -538824,
         "y":  -337720,
         "lv":  57,
-        "name":  "Horse Rustler Billy"
+        "name":  "Horse Rustler Billy",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_FEMALE_SOLDIER02",
@@ -10736,19 +10777,19 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "category":  "eagle",
+        "key":  "10F777FB4B9BFA0CAD790887D87DDBC2",
         "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "verified":  false,
         "gy":  -828,
         "gx":  -811,
         "x":  -503940,
         "y":  -214249,
-        "name":  "Scorched Ashland"
+        "name":  "Scorched Ashland",
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "916CC96142D38225BD3C9290D6321073",
@@ -11254,5 +11295,345 @@
         "origin":  "manual",
         "x":  -326307,
         "y":  55184
+    },
+    {
+        "key":  "DAY5",
+        "name":  "Castaway\u0027s Journal - Day 5",
+        "gx":  162,
+        "gy":  449,
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
+    },
+    {
+        "key":  "AA347F504DA91F1886472FB96F3745ED",
+        "name":  "SAM Site - Scorched Hill North Coast",
+        "gx":  -1241,
+        "gy":  -811,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "73A399004933990F1AE275B06716F6F2",
+        "name":  "SAM Site - Scorched Ashland Coastal",
+        "gx":  -993,
+        "gy":  -855,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "1770E38D4E83EC6DF18DDF9BF29F4F7D",
+        "name":  "SAM Site - Scorched Ashland Cliff (Teleporter)",
+        "gx":  -859,
+        "gy":  -914,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "CCBAA9AC4F9DC499AD447DA4A4A22AA3",
+        "name":  "SAM Site - Scorched Ashland West (Teleporter)",
+        "gx":  -710,
+        "gy":  -932,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "FD126D344214D814A3B789BC611050D3",
+        "name":  "SAM Site - Withered Seaside Coast",
+        "gx":  -608,
+        "gy":  -1146,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "C882B0744BB9E7CBB1B4B0BD43EB3A58",
+        "name":  "SAM Site - Scorched Hill Cliff (Withered Seaside)",
+        "gx":  -770,
+        "gy":  -1138,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  null,
+        "category":  "sam",
+        "name":  "SAM Site - Stone Pillar Cave",
+        "gx":  -976,
+        "gy":  -1060,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  null,
+        "origin":  "scraped",
+        "verified":  false
+    },
+    {
+        "key":  "AF83F2E7489B4CD1F257E19BA97496A8",
+        "name":  "SAM Site - Emberstone Plateau Hilltop",
+        "gx":  -1141,
+        "gy":  -1003,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "6929C332404F1BF9FBFF1C8D29CC1313",
+        "name":  "SAM Site - Deserted Ash Plateau (Teleporter)",
+        "gx":  -1337,
+        "gy":  -1108,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "C433DC3C48627D676E5089BB9AEB4168",
+        "name":  "SAM Site - Deserted Ash Plateau Ground",
+        "gx":  -1133,
+        "gy":  -1217,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "E143DE0B40B7A166267C73B7D63250C5",
+        "name":  "SAM Site - Loess Plains Area",
+        "gx":  -946,
+        "gy":  -1253,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  null,
+        "category":  "sam",
+        "name":  "SAM Site - Emberstone Plateau Pool",
+        "gx":  -848,
+        "gy":  -1306,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  null,
+        "origin":  "scraped",
+        "verified":  false
+    },
+    {
+        "key":  null,
+        "category":  "sam",
+        "name":  "SAM Site - Loess Plains (Teleporter)",
+        "gx":  -982,
+        "gy":  -1455,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  null,
+        "origin":  "scraped",
+        "verified":  false
+    },
+    {
+        "key":  null,
+        "category":  "sam",
+        "name":  "SAM Site - Loess Plains Mountain",
+        "gx":  -1083,
+        "gy":  -1437,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  null,
+        "origin":  "scraped",
+        "verified":  false
+    },
+    {
+        "key":  "0D95DF764AFD74CF1DFF88BF4A1CF51B",
+        "name":  "SAM Site - Frozen Coral Hill Entrance",
+        "gx":  -1139,
+        "gy":  -1392,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  null,
+        "category":  "sam",
+        "name":  "SAM Site - Splatterina Boss Area",
+        "gx":  -1210,
+        "gy":  -1317,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  null,
+        "origin":  "scraped",
+        "verified":  false
+    },
+    {
+        "key":  "8FD328C5413D91F91C6CA3BB22EF5B01",
+        "name":  "SAM Site - Feybreak Shipwreck",
+        "gx":  -1369,
+        "gy":  -1466,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "588A275441F03EF500B948813A2C38EE",
+        "name":  "SAM Site - Frozen Coral Hill Ground",
+        "gx":  -1266,
+        "gy":  -1445,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  null,
+        "category":  "sam",
+        "name":  "SAM Site - Frozen Coral Hill Southeast",
+        "gx":  -1125,
+        "gy":  -1524,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  null,
+        "origin":  "scraped",
+        "verified":  false
+    },
+    {
+        "key":  "7A85AFFD4456A9BEA4CE5BBAFF748C0F",
+        "name":  "SAM Site - Frozen Coral Hill South",
+        "gx":  -1109,
+        "gy":  -1645,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "6A2505944BB55E6572210B9D714C02F8",
+        "name":  "SAM Site - Near Feybreak Tower",
+        "gx":  -1222,
+        "gy":  -1622,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
+    },
+    {
+        "key":  "9250905449F1794FCD623C949B6973E5",
+        "name":  "SAM Site - Feybreak Tower Southwest",
+        "gx":  -1365,
+        "gy":  -1630,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "source":  "DestroyedWeapon",
+        "verified":  true,
+        "category":  "sam",
+        "origin":  "manual"
     }
 ]

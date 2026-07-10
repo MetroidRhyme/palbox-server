@@ -63,7 +63,7 @@
     "lv": 60,
     "boss": "Bjorn",
     "bossPal": "Bastigor",
-    "bossKey": null
+    "bossKey": "BOSS_BATTLE_NAME_VIKINGBOSS"
   },
   {
     "name": "Moonflower Tower",

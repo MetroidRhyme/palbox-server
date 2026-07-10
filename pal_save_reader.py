@@ -399,6 +399,73 @@ def extract_all_datamine_properties(sav_path):
     return out
 
 
+def extract_fixed_weapon_destroyed(level_sav_path):
+    """Uppercase-hex (no dashes) Guid strings for every entry in worldSaveData's
+    FixedWeaponDestroySaveData.DestroyedWeapon array -- the save-side signal for a
+    destroyed Feybreak SAM Site. World-scoped (Level.sav), NOT per-player -- unlike every
+    other DATAMINE_PROPERTIES entry above, this doesn't exist in any player .sav at all.
+    The property itself doesn't exist until the very first fixed weapon is ever destroyed
+    on this world (append-only after that, same convention as every other collection flag
+    in this file). Reverse-engineered via a before/after byte diff of Level.sav across a
+    real destroy event (2026-07-09) -- see /palbox-confirmed-locations' SAM Site section.
+    """
+    if not os.path.isfile(level_sav_path):
+        return []
+    raw = decompress_save(level_sav_path)
+    pos = find_property(raw, "FixedWeaponDestroySaveData")
+    if pos == -1:
+        return []
+    _, p = read_fstring(raw, pos)          # property name
+    typ, p = read_fstring(raw, p)          # "StructProperty"
+    if typ != "StructProperty":
+        return []
+    size = struct.unpack_from("<i", raw, p)[0]
+    p += 8                                  # Size (already read above) + ArrayIndex
+    _, p = read_fstring(raw, p)             # StructName ("PalFixedWeaponDestroySaveData")
+    p += 16                                 # struct GUID (metadata, always zero so far)
+    p += 1                                  # HasPropertyGuid
+    end = p + size
+
+    keys = []
+    while p < end:
+        fname, p2 = read_fstring(raw, p)
+        if not fname or fname == "None":
+            break
+        ftype, p2 = read_fstring(raw, p2)
+        fsize, _farrayidx = struct.unpack_from("<ii", raw, p2)
+        p2 += 8
+        if ftype != "ArrayProperty":
+            p = p2 + fsize
+            continue
+        innertype, p2 = read_fstring(raw, p2)
+        p2 += 1                             # HasPropertyGuid
+        count = struct.unpack_from("<I", raw, p2)[0]
+        p2 += 4
+        if innertype == "StructProperty" and count > 0:
+            _, p2 = read_fstring(raw, p2)    # repeated element tag: name
+            _, p2 = read_fstring(raw, p2)    # "StructProperty"
+            elemsize = struct.unpack_from("<i", raw, p2)[0]
+            p2 += 8
+            elemstructname, p2 = read_fstring(raw, p2)
+            p2 += 16                        # element struct GUID (metadata)
+            p2 += 1                         # HasPropertyGuid
+            # elemsize is the TOTAL raw payload for every element (16*count), not one
+            # element's size -- confirmed live (2026-07-10): a 1-entry array showed
+            # elemsize=16, but once a second SAM Site was destroyed the same day, the
+            # real array showed elemsize=32. The original `elemsize == 16` check silently
+            # skipped the whole read once count>1 (looked like a validation guard, was
+            # actually only ever correct by coincidence for exactly one element), leaving
+            # `p2` unadvanced and desyncing every property read after it for the rest of
+            # the file -- surfaced as a wild out-of-bounds unpack_from offset.
+            if elemstructname == "Guid" and elemsize == 16 * count:
+                for _ in range(count):
+                    a, b, c, d = struct.unpack_from("<IIII", raw, p2)
+                    keys.append("%08X%08X%08X%08X" % (a, b, c, d))
+                    p2 += 16
+        p = p2
+    return keys
+
+
 def extract_player_data(sav_path):
     raw = decompress_save(sav_path)
 
@@ -665,7 +732,11 @@ def main():
 
     # datamine-full mode: python pal_save_reader.py <save_dir> datamine-full <guid>
     # Every DATAMINE_PROPERTIES entry for one player -- backs the admin dashboard's generic
-    # Data Mine key/property browser (see /palworld-dataminer skill).
+    # Data Mine key/property browser (see /palworld-dataminer skill). Also merges in
+    # DestroyedWeapon (SAM Site), which is world-scoped (Level.sav) rather than per-player --
+    # folded into every player's response here (rather than a separate fetch) so the existing
+    # dmFullPlayers/dmAllKeysFor client-side machinery picks it up for free, the same way
+    # every other registered property does.
     if len(sys.argv) > 2 and sys.argv[2] == "datamine-full":
         guid = sys.argv[3] if len(sys.argv) > 3 else ""
         sav_path = os.path.join(save_dir, "Players", guid + ".sav")
@@ -674,9 +745,25 @@ def main():
             return
         try:
             properties = extract_all_datamine_properties(sav_path)
+            try:
+                destroyed = extract_fixed_weapon_destroyed(os.path.join(save_dir, "Level.sav"))
+            except Exception:
+                destroyed = []
+            properties["DestroyedWeapon"] = {"kind": "name_array", "entries": destroyed}
             print(json.dumps({"guid": guid, "properties": properties}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "properties": {}, "error": str(e)}))
+        return
+
+    # destroyed-weapons mode: python pal_save_reader.py <save_dir> destroyed-weapons
+    # World-scoped, no guid needed -- backs the Map tab's own "is this SAM Site destroyed"
+    # status fetch, independent of the (heavier, per-player) Data Mine tab machinery above.
+    if len(sys.argv) > 2 and sys.argv[2] == "destroyed-weapons":
+        try:
+            keys = extract_fixed_weapon_destroyed(os.path.join(save_dir, "Level.sav"))
+            print(json.dumps({"keys": keys}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"keys": [], "error": str(e)}))
         return
 
     players_dir = os.path.join(save_dir, "Players")

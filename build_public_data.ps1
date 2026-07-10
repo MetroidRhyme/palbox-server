@@ -355,6 +355,23 @@ if ($doStatic) {
   Write-Step "building data/towers.json"
   [System.IO.File]::WriteAllText((Join-Path $PubData 'towers.json'), (Get-MapCategoryJson 'tower'), $utf8)
 
+  Write-Step "building data/sam-sites.json"
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'sam-sites.json'), (Get-MapCategoryJson 'sam'), $utf8)
+
+  # Destroyed SAM Site (fixed weapon) keys -- world-scoped (Level.sav), from
+  # pal_save_reader.py's "destroyed-weapons" mode, not map_data_lib.ps1 (this isn't
+  # confirmed_locations.json data, it's the live save-side "got" signal a SAM pin's status
+  # is computed against on the public site too, same as eagle-statues/wanted-fugitives).
+  # $saveDir is a Frequent-block-only local (see above) -- NOT in scope here, so resolve it
+  # again via Get-ActiveSaveDir rather than reusing that variable name (a stale/blank
+  # $saveDir would silently drop from the native `python` arg list on splat, shifting every
+  # positional argument left by one -- caught live: this returned "Players dir not found:
+  # destroyed-weapons\Players", i.e. the mode string itself got treated as the save dir).
+  Write-Step "building data/destroyed-weapons.json"
+  $staticSaveDir = Get-ActiveSaveDir
+  $destroyedWeaponsJson = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $staticSaveDir, 'destroyed-weapons')
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'destroyed-weapons.json'), $destroyedWeaponsJson, $utf8)
+
   # ── pal-species.json (curated species data: type/work/skills/stats) ──────────
   # Built once by build_pal_species.py; bundled as a static file. The dashboard serves
   # the same JSON at /api/pal-species, which the data-fetch repoint points here.

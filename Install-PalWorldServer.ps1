@@ -17,5 +17,20 @@ if (-not (Test-Path $SteamCmd)) {
 }
 
 Write-Host "[install] installing/updating PalWorld dedicated server into $ServerDir ..."
-& $SteamCmd +force_install_dir $ServerDir +login anonymous +app_update 2394010 validate +quit
+& $SteamCmd +force_install_dir $ServerDir +login anonymous +app_info_update 1 +app_update 2394010 validate +quit
+
+# steamcmd ignores -force_install_dir once an app is already registered in its own
+# internal library (C:\PalWorldServer\steamcmd\steamapps) and updates THAT copy
+# instead - confirmed 2026-07-09: every update since 2026-07-04 silently landed in
+# steamcmd\steamapps\common\PalServer while the live server here stayed on the
+# May-28 build. Mirror the real depot output into $ServerDir ourselves so this
+# can't go stale again, excluding Saved (never part of the depot; holds live saves).
+$nestedInstall = Join-Path $SteamDir 'steamapps\common\PalServer'
+if (Test-Path $nestedInstall) {
+    Write-Host "[install] syncing updated files from steamcmd's internal library into $ServerDir ..."
+    robocopy $nestedInstall $ServerDir /E /XD "Saved" /NJH /NDL /NP | Out-Null
+    $nestedAcf = Join-Path $SteamDir 'steamapps\appmanifest_2394010.acf'
+    $topAcf    = Join-Path $ServerDir 'steamapps\appmanifest_2394010.acf'
+    if ((Test-Path $nestedAcf) -and (Test-Path (Split-Path $topAcf))) { Copy-Item $nestedAcf $topAcf -Force }
+}
 Write-Host "[install] done."

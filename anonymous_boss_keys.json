@@ -250,5 +250,33 @@
     {
         "key":  "81_5_YAMIJIMA_FBOSS_1",
         "species":  "WhiteShieldDragon"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_23",
+        "species":  "Werewolf_Ice"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_12",
+        "species":  "BadCatgirl"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_11",
+        "species":  "BlueberryFairy"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_5",
+        "species":  "FengyunDeeper_Electric"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_9",
+        "species":  "GhostRabbit"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_8",
+        "species":  "BlackPuppy"
+    },
+    {
+        "key":  "81_5_YAMIJIMA_FBOSS_16",
+        "species":  "IceHorse_Dark"
     }
 ]

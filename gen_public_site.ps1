@@ -148,6 +148,17 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
   $html, '<div id="entrance-modal-overlay".*?</div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
 if ($html -eq $before) { throw "Add entrance modal markup was not removed" }
 
+# (2a4) Remove the "Prerequisite bosses" modal -- admin-only Field Boss prereq-link
+# creation (POSTs to /api/map-add-boss-prereq / /api/map-remove-boss-prereq). Its JS
+# (openPrereqModal/savePrereqLink/removePrereqLink/wirePrereqAdd/prereqAddButtonHtml) also
+# lives inside the "-- Data Mine tab --" block stripped in (3c), and the prereq RENDERING
+# (bountyBossIcon's lock overlay, desireBossPrereqLines) is deliberately NOT stripped -- the
+# lock + lines are map data players should see; only these admin controls come out.
+$before = $html
+$html = [System.Text.RegularExpressions.Regex]::Replace(
+  $html, '<div id="prereq-modal-overlay".*?</div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+if ($html -eq $before) { throw "Prerequisite bosses modal markup was not removed" }
+
 # (2b) Remove the per-view "Reload" buttons (Pals / Paldeck / Effigies). On the static
 # site they only re-fetch the same generated JSON -- there's no live server to pull
 # fresher data from -- so they appear broken to players. The fetch functions themselves
@@ -342,6 +353,8 @@ $html = $html.Replace("'/api/bounty-bosses'", "'data/bounty-bosses.json'")
 $html = $html.Replace("'/api/wanted-fugitives'", "'data/wanted-fugitives.json'")
 $html = $html.Replace("'/api/eagle-statues'", "'data/eagle-statues.json'")
 $html = $html.Replace("'/api/towers'", "'data/towers.json'")
+$html = $html.Replace("'/api/sam-sites'", "'data/sam-sites.json'")
+$html = $html.Replace("'/api/destroyed-weapons'", "'data/destroyed-weapons.json'")
 $html = $html.Replace("'/api/pal-species'", "'data/pal-species.json'")
 $html = $html.Replace("'/api/pal-skills'", "'data/pal-skills.json'")
 $html = $html.Replace("'/api/pal-passives'", "'data/pal-passives.json'")
@@ -677,7 +690,7 @@ $expectedDataRefs = @(
   'data/pals.json', 'data/eggs.json', 'data/server-messages.json', 'data/paldeck.json',
   'data/effigies.json', 'data/journals.json', 'data/bounty-bosses.json',
   'data/wanted-fugitives.json', 'data/eagle-statues.json', 'data/towers.json',
-  'data/pal-species.json', 'data/pal-skills.json',
+  'data/sam-sites.json', 'data/destroyed-weapons.json', 'data/pal-species.json', 'data/pal-skills.json',
   'data/pal-passives.json', 'data/settings.json', 'data/meta.json',
   'data/player-location/', 'data/player-effigies/', 'data/player-notes/',
   'data/player-bounties/', 'data/player-fugitives/', 'data/player-eagles/',

@@ -3166,5 +3166,37 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FENGYUNDEEPER_ELECTRIC",
+        "name":  "Fenglope Lux",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FengyunDeeper_Electric",
+        "name":  "Fenglope Lux",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "ICEHORSE_DARK",
+        "name":  "Frostallion Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "IceHorse_Dark",
+        "name":  "Frostallion Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]
