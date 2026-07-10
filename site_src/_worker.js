@@ -279,6 +279,50 @@ async function handlePrefs(request, env, ctx) {
   return noStore(json({ ok: false }, 405));
 }
 
+// -- Map-data inaccuracy reports --------------------------------------------------
+// A player can flag a Map-tab pin as wrong/stale/duplicate from its popup (see
+// dashboard.html's reportButtonHtml/wireReportButton). Reports collect into a single
+// R2 object (append via read-modify-write; a report lost to two simultaneous submits
+// is an acceptable risk for a group this small) that the admin dashboard's Data Mine
+// tab reviews separately via `wrangler r2 object get` -- NOT through this Worker, since
+// the admin dashboard is a separate local app with no Cf-Access-Jwt-Assertion of its
+// own to present here. Write-only from this route; there is deliberately no GET.
+const REPORT_KEY = 'reports.json';
+const REPORT_MAX_NOTE = 200;
+const REPORT_MAX_STORED = 500;   // oldest entries drop off rather than growing forever if never reviewed
+async function handleReport(request, env, ctx) {
+  const payload = await verifyAccessJwt(request.headers.get('Cf-Access-Jwt-Assertion'), ctx, getIdentity(env));
+  if (!payload || !payload.email) return noStore(json({ ok: false, error: 'unauthenticated' }, 401));
+  if (request.method !== 'POST') return noStore(json({ ok: false }, 405));
+  if (!env.DATA) return noStore(json({ ok: false, error: 'no store' }, 200));
+
+  let body;
+  try { body = await request.json(); } catch (e) { return noStore(json({ ok: false, error: 'bad json' }, 400)); }
+  const category = String(body.category || '').slice(0, 40);
+  const key = String(body.key || '').slice(0, 200);
+  const name = String(body.name || '').slice(0, 200);
+  const note = String(body.note || '').slice(0, REPORT_MAX_NOTE);
+  if (!category || !key) return noStore(json({ ok: false, error: 'missing category/key' }, 400));
+
+  let list = [];
+  const existing = await env.DATA.get(REPORT_KEY);
+  if (existing) {
+    try {
+      const parsed = JSON.parse(await existing.text());
+      if (Array.isArray(parsed)) list = parsed;
+    } catch (e) { /* corrupt existing data -> start fresh rather than fail the write */ }
+  }
+  const report = {
+    id: crypto.randomUUID(), category: category, key: key, name: name, note: note,
+    reportedBy: payload.email, reportedAt: new Date().toISOString()
+  };
+  list.push(report);
+  if (list.length > REPORT_MAX_STORED) list = list.slice(list.length - REPORT_MAX_STORED);
+
+  await env.DATA.put(REPORT_KEY, JSON.stringify(list), { httpMetadata: { contentType: 'application/json' } });
+  return noStore(json({ ok: true, id: report.id }, 200));
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -299,6 +343,9 @@ export default {
 
     // Per-user UI preferences (read/write, keyed by the verified Access email).
     if (path === '/api/prefs') return handlePrefs(request, env, ctx);
+
+    // Map-data inaccuracy reports (write-only from here; admin reviews via wrangler).
+    if (path === '/api/report') return handleReport(request, env, ctx);
 
     const scope = await resolveScope(request, env, ctx);  // 'all' | <guid> | null
 

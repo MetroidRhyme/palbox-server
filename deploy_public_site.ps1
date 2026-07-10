@@ -55,10 +55,20 @@ foreach ($v in 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID') {
 }
 
 # Single-flight: the Manager fires this every poll, so never let two runs overlap
-# (a long wrangler upload must not collide with the next tick). The OS releases the
-# mutex automatically when this process exits, so no explicit cleanup is needed.
+# (a long wrangler upload must not collide with the next tick). This is invoked via the
+# call operator (`&`) from Deploy-PublicSite inside the Manager's own long-lived
+# maintenance job, NOT as a separate OS process -- that job sleeps between daily cycles
+# rather than exiting, so "the OS releases the mutex when this process exits" never
+# actually happens and every scheduled deploy permanently wedged the mutex for the rest
+# of the job's lifetime (~24h), silently blocking any other deploy_public_site.ps1 run
+# (manual or otherwise) until the Manager itself restarted. Found 2026-07-10 when a
+# manual -Force run kept reporting "another deploy run is in progress" for 15+ minutes
+# with nothing else actually running. Fixed by explicitly releasing in a `finally` --
+# confirmed `exit` inside a `try` still runs `finally` in PowerShell, so this covers
+# every early-exit path below (throws included) as well as normal completion.
 $mutex = New-Object System.Threading.Mutex($false, 'PalBoxPublicDeploy')
 if (-not $mutex.WaitOne(0)) { Write-Step 'another deploy run is in progress; skipping.'; exit 0 }
+try {
 
 # ── Load / default persistent state ────────────────────────────────────────────
 # wasOnline        : was a player online at the previous check?
@@ -201,3 +211,6 @@ $state.lastDeployStamp = $stamp
 $state.lastDeployTicks = [DateTime]::UtcNow.Ticks
 Save-State $state
 Write-Step "deploy complete; state saved."
+} finally {
+  $mutex.ReleaseMutex()
+}

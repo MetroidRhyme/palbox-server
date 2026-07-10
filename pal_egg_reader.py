@@ -19,8 +19,7 @@ Usage: python pal_egg_reader.py <save_dir>
 import sys, os, io, json, struct, contextlib, re, glob
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pal_team_reader import _install_patches, _decompress, read_players, _uid_le, _raw_bytes, _build_pal
-from pal_save_reader import find_player_names_raw
+from pal_team_reader import _install_patches, _decompress, read_players, read_player_names, _uid_le, _raw_bytes, _build_pal
 
 # Element prefix in the egg item id -> element index used by the icons (elem_NN.webp).
 _ELEM_IDX = {"Normal": 0, "Fire": 1, "Water": 2, "Electricity": 3, "Leaf": 4,
@@ -286,16 +285,20 @@ def read_eggs(save_dir, resolve_names=True):
                 break
 
     # group id -> first member player prefix (guilds are solo here, but this supports
-    # multi-member). Resolve each player's in-game name (same NickName source the Pals
-    # view uses) so owners show real names everywhere without live server state.
-    # find_player_names_raw reuses the `raw` buffer decompressed above instead of
-    # decompressing Level.sav a second time (find_player_names' own path-based form used
-    # to do exactly that on every single call here). resolve_names=False (build_public_data
-    # .ps1's builder passes this) skips the byte-scan entirely for a caller that already
-    # has its own guid->name roster and would just overwrite these names anyway.
+    # multi-member). Resolve each player's in-game name (same IsPlayer-checked source
+    # read_pals uses for /api/pals) so owners show real names everywhere without live
+    # server state. read_player_names does its own separate decompress+parse of
+    # Level.sav rather than reusing the `raw` buffer already decompressed above -- an
+    # earlier version reused `raw` via a raw byte-scan (find_player_names_raw), but that
+    # heuristic could misattribute a player's own Pal's NickName to the player (see
+    # read_player_names' docstring); this endpoint is cached by Level.sav mtime (see
+    # Get-CachedReaderOutput in PalWorldServerManager.ps1) so the extra parse only runs
+    # when the save actually changes, not per request. resolve_names=False
+    # (build_public_data.ps1's builder passes this) skips it entirely for a caller that
+    # already has its own guid->name roster and would just overwrite these names anyway.
     prefixes = [p["prefix"] for p in read_players(save_dir)]
     if resolve_names:
-        name_by_prefix = {pfx.upper(): nm for pfx, nm in find_player_names_raw(raw, prefixes).items()}
+        name_by_prefix = {pfx.upper(): nm for pfx, nm in read_player_names(save_dir).items()}
     else:
         name_by_prefix = {}
     group_owner = {}

@@ -487,97 +487,6 @@ def extract_player_data(sav_path):
     return {"tribeCaptureCount": tribe_total, "counts": counts}
 
 
-def find_player_names_raw(raw, player_guids):
-    """Core logic behind find_player_names, operating on an ALREADY-DECOMPRESSED Level.sav
-    buffer. Split out so a caller that already holds that buffer for another reason (e.g.
-    pal_egg_reader.py, which GVAS-parses the same Level.sav) doesn't have to decompress it a
-    second time just to resolve names -- decompression, not the byte-scan below, is the
-    expensive part.
-
-    Player NickName properties in Level.sav are preceded by the player's GUID
-    bytes (first 4 bytes, little-endian) within ~1000 bytes. This locates
-    names without needing a full GVAS parse.
-    """
-    # Build GUID -> 4-byte LE search pattern for each known player
-    guid_patterns = {}
-    for guid in player_guids:
-        if len(guid) < 8:
-            continue
-        try:
-            le_bytes = struct.pack("<I", int(guid[:8], 16))
-            guid_patterns[le_bytes] = guid
-        except ValueError:
-            continue
-
-    names = {}
-    pos = 0
-    needle = b"NickName\x00"
-    while True:
-        idx = raw.find(needle, pos)
-        if idx == -1:
-            break
-
-        nick_fstr_start = idx - 4
-        if nick_fstr_start < 0 or struct.unpack_from("<I", raw, nick_fstr_start)[0] != 9:
-            pos = idx + 1
-            continue
-
-        # Read the NickName StrProperty value
-        try:
-            p = nick_fstr_start
-            _, p = read_fstring(raw, p)   # "NickName"
-            typ, p = read_fstring(raw, p) # type name
-            if typ != "StrProperty":
-                pos = idx + 1
-                continue
-            p += 9  # 8-byte size + 1-byte padding
-            name, _ = read_fstring(raw, p)
-        except Exception:
-            pos = idx + 1
-            continue
-
-        if not name or len(name) > 64:
-            pos = idx + 1
-            continue
-
-        # Player NickNames are in the early section of Level.sav; Pal NickNames
-        # start much later (~2.4 MB in). Skip anything past 2 MB.
-        if nick_fstr_start > 0x200000:
-            break
-
-        # Search the 1000 bytes before this NickName for known player GUIDs.
-        # Pick the closest match (smallest distance) to avoid false positives
-        # from other player GUIDs that appear further back in the window.
-        search_start = max(0, nick_fstr_start - 1000)
-        search_window = raw[search_start:nick_fstr_start]
-        best_guid, best_dist = None, len(search_window) + 1
-        for le_bytes, guid in guid_patterns.items():
-            last_idx = search_window.rfind(le_bytes)
-            if last_idx != -1:
-                dist = len(search_window) - last_idx  # distance from NickName
-                if dist < best_dist:
-                    best_dist, best_guid = dist, guid
-        if best_guid:
-            names[best_guid] = name
-
-        pos = idx + 1
-
-    return names
-
-
-def find_player_names(level_sav_path, player_guids):
-    """Read Level.sav and return {guid: display_name} for known player GUIDs. See
-    find_player_names_raw for the actual matching logic -- this just adds the
-    decompress-from-path step for callers that don't already hold the buffer."""
-    if not os.path.isfile(level_sav_path):
-        return {}
-    try:
-        raw = decompress_save(level_sav_path)
-    except Exception:
-        return {}
-    return find_player_names_raw(raw, player_guids)
-
-
 def main():
     save_dir = sys.argv[1] if len(sys.argv) > 1 else \
         r"PATH\TO\Pal\Saved\SaveGames\0\<WorldGUID>"  # fallback for manual runs; the dashboard passes the real save folder as argv[1]
@@ -778,9 +687,17 @@ def main():
     )
     guids = [f.replace(".sav", "") for f in player_files]
 
-    # Resolve display names from Level.sav
-    level_sav = os.path.join(save_dir, "Level.sav")
-    guid_to_name = find_player_names(level_sav, guids)
+    # Resolve display names from Level.sav. Structural (IsPlayer-checked) resolution,
+    # not the find_player_names_raw byte-scan below -- that heuristic can misattribute a
+    # player's own Pal's NickName to the player when the pal's owner-GUID bytes sit
+    # closer to the pal's NickName property than the player's own NickName does (see
+    # pal_team_reader.read_player_names' docstring; observed 2026-07-10 via a SamuraiDog
+    # nicknamed "Pupperai"). This is the /api/paldeck fallback used only when the
+    # PS1 layer's own live-REST/playtime name isn't available (e.g. player offline),
+    # so it's worth getting right rather than relying on the caller to mask it.
+    from pal_team_reader import read_player_names
+    names_by_prefix = read_player_names(save_dir)
+    guid_to_name = {g: names_by_prefix.get(g[:8].upper(), g[:8]) for g in guids}
 
     players = []
     for fname in player_files:

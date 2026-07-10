@@ -581,6 +581,34 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         try { $Response.OutputStream.Write($bytes, 0, $bytes.Length); $Response.OutputStream.Close() } catch {}
     }
 
+    function Get-ReportsFromR2 {
+        # Pulls the map-data-inaccuracy reports array the public Worker writes to R2
+        # (site_src/_worker.js's handleReport, the only writer of this key) via wrangler,
+        # since the admin dashboard has no Access JWT of its own to call through the
+        # Worker with -- same reasoning as Deploy-PublicSite/Backup-OffMachine's direct
+        # wrangler use elsewhere in this file. Shared by both /api/reports (GET) and
+        # /api/reports/dismiss (POST, needs the current list before trimming). Caller is
+        # responsible for CLOUDFLARE_API_TOKEN/ACCOUNT_ID already being in the environment
+        # (see the Process->User->Machine fallback at each call site) -- this function
+        # doesn't repeat that check so a missing-credential error surfaces at the call
+        # site with full context instead of a generic failure buried in here.
+        param([string]$Bucket)
+        $tmp = Join-Path $env:TEMP ("palbox_reports_{0}.json" -f [guid]::NewGuid().ToString('N'))
+        try {
+            & wrangler r2 object get "$Bucket/reports.json" --file $tmp --remote *>&1 | Out-Null
+            if (-not (Test-Path $tmp)) { return @() }
+            $raw = Get-Content -LiteralPath $tmp -Raw -ErrorAction Stop
+            if (-not $raw) { return @() }
+            $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
+            if (-not $parsed) { return @() }
+            return @($parsed)
+        } catch {
+            return @()
+        } finally {
+            if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
     function Get-GzipBytes([string]$Text) {
         $ms = New-Object System.IO.MemoryStream
         $gz = New-Object System.IO.Compression.GZipStream($ms, [System.IO.Compression.CompressionLevel]::Optimal, $true)
@@ -902,10 +930,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         $guid = Get-ActiveGuid
         if ($guid -eq $script:playtimeGuid) { return }
         if ($script:playtimeGuid) { Save-Playtime }
-        $script:playtimeGuid  = $guid
-        $script:PlaytimeFile  = Get-PlaytimeFile $guid
-        $script:playtime      = Load-Playtime
-        $script:onlinePlayers = @{}
+        $script:playtimeGuid     = $guid
+        $script:PlaytimeFile     = Get-PlaytimeFile $guid
+        $script:playtime         = Load-Playtime
+        $script:onlinePlayers    = @{}
+        $script:tempNameBySid    = @{}
+        $script:tempNameCounter  = 0
     }
 
     function Append-Metric($entry) {
@@ -923,6 +953,44 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         }
     }
 
+    # Resolves the display name to track a $playerList entry under: the real in-game name
+    # when present, otherwise a stable "(PlayerN)" placeholder reused across polls for the
+    # same connection (keyed by playerId/userId) until a real name appears. When a real name
+    # does appear for a sid that was previously under a placeholder, migrates the existing
+    # $script:playtime (and $script:onlinePlayers) entry over to the real name -- merging into
+    # an existing real-name entry if one already exists (e.g. the player reconnected) rather
+    # than clobbering it -- so the placeholder never lingers once the real name is known.
+    function Resolve-PlayerName($pl) {
+        $sid = if ($pl.playerId) { [string]$pl.playerId } elseif ($pl.userId) { [string]$pl.userId } else { '' }
+        if ($pl.name) {
+            $name = [string]$pl.name
+            if ($sid -and $script:tempNameBySid.ContainsKey($sid)) {
+                $tempName = $script:tempNameBySid[$sid]
+                if ($tempName -ne $name -and $script:playtime.ContainsKey($tempName)) {
+                    if ($script:playtime.ContainsKey($name)) {
+                        $script:playtime[$name].totalSeconds += $script:playtime[$tempName].totalSeconds
+                        $script:playtime[$name].sessions      += $script:playtime[$tempName].sessions
+                        if ($script:playtime[$tempName].lastSeen) { $script:playtime[$name].lastSeen = $script:playtime[$tempName].lastSeen }
+                    } else {
+                        $script:playtime[$name] = $script:playtime[$tempName]
+                    }
+                    $script:playtime.Remove($tempName)
+                    if ($script:onlinePlayers.ContainsKey($tempName)) {
+                        $script:onlinePlayers[$name] = $script:onlinePlayers[$tempName]
+                        $script:onlinePlayers.Remove($tempName)
+                    }
+                }
+                $script:tempNameBySid.Remove($sid)
+            }
+            return $name
+        }
+        if ($sid -and $script:tempNameBySid.ContainsKey($sid)) { return $script:tempNameBySid[$sid] }
+        $script:tempNameCounter++
+        $tempName = "(Player$($script:tempNameCounter))"
+        if ($sid) { $script:tempNameBySid[$sid] = $tempName }
+        return $tempName
+    }
+
     function CollectMetrics {
         try {
             Sync-PlaytimeToActiveWorld
@@ -931,11 +999,18 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
             $playerList   = if ($p.players) { @($p.players) } elseif ($p.Players) { @($p.Players) } else { @() }
             # A player's in-game "name" can come back blank for a character that hasn't set
             # one yet (observed 2026-07-09/10: a brand-new world's first ~3hr session went
-            # completely untracked because /players had an entry but $_.name was empty, so it
-            # never hit $currentNames/$script:playtime -- and the empty-/players resilience
-            # fallback below didn't cover it either, since the list wasn't empty). Fall back to
-            # accountName (Steam/Epic account name, always populated per docs.palworldgame.com).
-            $currentNames = @($playerList | ForEach-Object { if ($_.name) { $_.name } elseif ($_.accountName) { $_.accountName } } | Where-Object { $_ })
+            # completely untracked because /players had an entry but $_.name was empty). A
+            # same-day fix fell back to accountName (Steam/PSN platform account name), but that
+            # surfaced the platform account name (e.g. "Anthony") in Player Stats instead of the
+            # actual in-game player name -- Anthony explicitly doesn't want a substitute name
+            # shown. Now a blank name gets a placeholder "(PlayerN)" instead, keyed by playerId/
+            # userId (see $sid below) so the SAME connection keeps the SAME placeholder across
+            # polls; once a real name shows up for that sid, Resolve-PlayerName migrates the
+            # accumulated playtime entry over to the real name. $currentNames is built
+            # below (per-player, using the resolved/placeholder name) instead of straight off
+            # $playerList so the end-of-function onlinePlayers cleanup matches what was actually
+            # tracked.
+            $currentNames = New-Object System.Collections.Generic.List[string]
             $pings        = @($playerList | Where-Object { $null -ne $_.ping } | ForEach-Object { $_.ping })
             $avgPing      = if ($pings.Count) { [math]::Round(($pings | Measure-Object -Average).Average,1) } else { 0 }
             $fps   = if ($null -ne $m.serverFps)        { $m.serverFps        } elseif ($null -ne $m.fps)            { $m.fps }            else { 0 }
@@ -970,16 +1045,31 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 } catch {}
                 return
             }
+            # Same /players-vs-/metrics disagreement as above, but the WORSE variant: it's
+            # present from the very start of a session (nobody was already being tracked to
+            # extend), so there is no name/sid anywhere to credit -- $playerList is completely
+            # empty, not just missing a name on an existing entry. Root-caused 2026-07-10 via
+            # metrics-log.jsonl showing players:1 continuously for ~56min (11:00-11:56) while
+            # Tia's playtime-log entry never moved off a stale prior-day value -- the extend
+            # branch above never engaged because onlinePlayers.Count (0) never equalled pcnt
+            # (1) for this session. Genuinely can't attribute the time here (zero identity
+            # signal), so this only logs -- a future fix could backfill once a name eventually
+            # appears (track when the mismatch started, credit the gap to whoever resolves
+            # next), but that's a guess-based heuristic that risks misattributing time if
+            # sessions overlap, and wasn't worth shipping untested with nobody online to
+            # verify against. At minimum this makes the gap visible instead of silently eating
+            # playtime with zero trace, which is what happened both times this has been seen
+            # (2026-07-01 and today).
+            elseif ($playerList.Count -eq 0 -and [int]$pcnt -gt 0) {
+                try {
+                    $line = "[{0:yyyy-MM-dd HH:mm:ss}] /players empty while metrics reported {1} online - UNATTRIBUTED (no prior tracked session to extend; onlinePlayers={2})`n" -f (Get-Date), $pcnt, $script:onlinePlayers.Count
+                    Add-Content -LiteralPath "$ServerDir\playtime-glitch.log" -Value $line -Encoding UTF8
+                } catch {}
+            }
 
             foreach ($pl in $playerList) {
-                $name = if ($pl.name) { $pl.name } elseif ($pl.accountName) { $pl.accountName } else { $null }
-                if (-not $name) {
-                    try {
-                        $line = "[{0:yyyy-MM-dd HH:mm:ss}] player entry with no name/accountName, skipped - raw: {1}`n" -f (Get-Date), (ConvertTo-Json $pl -Depth 2 -Compress)
-                        Add-Content -LiteralPath "$ServerDir\playtime-glitch.log" -Value $line -Encoding UTF8
-                    } catch {}
-                    continue
-                }
+                $name = Resolve-PlayerName $pl
+                $currentNames.Add($name)
                 if (-not $script:playtime.ContainsKey($name)) {
                     $script:playtime[$name] = @{ totalSeconds=0L; sessions=0; lastSeen=''; avgPing=0.0; sampleCount=0; steamid='' }
                 }
@@ -2244,6 +2334,68 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $species = if ($body.species) { [string]$body.species } else { $null }
                         $name = if ($body.name) { [string]$body.name } else { $null }
                         Remove-CustomMapEntry $category $key $species $name | Out-Null
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/reports' -and $method -eq 'GET') {
+                    # Data Mine tab's Reports section -- pulls player-submitted "this map data
+                    # is wrong" flags from R2 (see site_src/_worker.js's handleReport, the only
+                    # writer). Read straight via wrangler (same credential/config.ps1 pattern as
+                    # Deploy-PublicSite/Backup-OffMachine) since the admin dashboard has no
+                    # Access JWT of its own to call through the public Worker with. Empty array,
+                    # not an error, if the object doesn't exist yet (nobody has reported anything).
+                    try {
+                        foreach ($v in 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID') {
+                            if (-not [Environment]::GetEnvironmentVariable($v, 'Process')) {
+                                $val = [Environment]::GetEnvironmentVariable($v, 'User')
+                                if (-not $val) { $val = [Environment]::GetEnvironmentVariable($v, 'Machine') }
+                                if ($val) { Set-Item -Path ("Env:" + $v) -Value $val }
+                            }
+                        }
+                        if (-not $env:CLOUDFLARE_API_TOKEN -or -not $env:CLOUDFLARE_ACCOUNT_ID) { throw "R2 credentials not set in the environment." }
+                        $bucket = 'your-r2-bucket'
+                        $cfgPath = "$ServerDir\config.ps1"
+                        if (Test-Path $cfgPath) { . $cfgPath; if ($R2Bucket) { $bucket = $R2Bucket } }
+                        $list = Get-ReportsFromR2 $bucket
+                        Send-Response $res 200 "application/json" (ConvertTo-Json -InputObject @($list) -Depth 6 -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/reports/dismiss' -and $method -eq 'POST') {
+                    # Removes one report by id (admin has reviewed/fixed it) and writes the
+                    # trimmed list back to the same R2 object. Same credential/bucket
+                    # resolution as the GET above.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $id = [string]$body.id
+                        if (-not $id) { throw "No id provided." }
+                        foreach ($v in 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID') {
+                            if (-not [Environment]::GetEnvironmentVariable($v, 'Process')) {
+                                $val = [Environment]::GetEnvironmentVariable($v, 'User')
+                                if (-not $val) { $val = [Environment]::GetEnvironmentVariable($v, 'Machine') }
+                                if ($val) { Set-Item -Path ("Env:" + $v) -Value $val }
+                            }
+                        }
+                        if (-not $env:CLOUDFLARE_API_TOKEN -or -not $env:CLOUDFLARE_ACCOUNT_ID) { throw "R2 credentials not set in the environment." }
+                        $bucket = 'your-r2-bucket'
+                        $cfgPath = "$ServerDir\config.ps1"
+                        if (Test-Path $cfgPath) { . $cfgPath; if ($R2Bucket) { $bucket = $R2Bucket } }
+                        $list = @(Get-ReportsFromR2 $bucket | Where-Object { $_.id -ne $id })
+                        $tmp = Join-Path $env:TEMP ("palbox_reports_{0}.json" -f [guid]::NewGuid().ToString('N'))
+                        try {
+                            (ConvertTo-Json -InputObject @($list) -Depth 6 -Compress) | Set-Content -LiteralPath $tmp -Encoding UTF8 -NoNewline
+                            & wrangler r2 object put "$bucket/reports.json" --file $tmp --content-type application/json --remote | Out-Host
+                            if ($LASTEXITCODE -ne 0) { throw "wrangler r2 object put failed (exit $LASTEXITCODE)" }
+                        } finally {
+                            if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+                        }
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)

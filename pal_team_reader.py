@@ -204,8 +204,30 @@ def _humanize(s):
     return re.sub(r"\s+", " ", s).strip()
 
 
+# Small hand-maintained supplement for passive internal codes palcalc's db.json (the
+# source pal_names.json is built from) has no entry for at all, so they fell through to
+# _humanize() and produced e.g. "Self Death Add Item Drop up 2" with no matching
+# pal_passives.json entry (that lookup is by display name, so a humanized guess never
+# hits). Found 2026-07-10 by decompressing a live Level.sav and grepping its raw bytes
+# for the internal strings, then cross-referencing paldb.cc's Passive_Skills page (whose
+# tooltips embed these same internal effect codes alongside the real display name).
+# NOTE on "up_2": paldb.cc only names 3 tiers of SelfDeathAddItemDrop -- "Sharing is
+# Caring" (+15%), "Service-Minded" (+50%), "Lavish Hospitality" (+100%) -- with no
+# internal code visible for any of them on the page itself. The _up_1/_up_2/_up_3
+# mapping to that ascending-magnitude order is inferred from naming convention, not
+# independently confirmed; worth re-checking if a report ever says the shown effect text
+# doesn't match what the Pal actually does in-game.
+_PASSIVE_OVERRIDES = {
+    "autohpregenerate_passive": "Healing Coach",       # paldb: rank3, standalone AutoHPRegeneRate +5% (ToTrainer)
+    "selfdeathadditemdrop_up_1": "Sharing is Caring",   # paldb: rank1, +15%
+    "selfdeathadditemdrop_up_2": "Service-Minded",      # paldb: rank3, +50% -- inferred tier, see note above
+    "selfdeathadditemdrop_up_3": "Lavish Hospitality",  # paldb: rank4, +100%
+}
+
+
 def _display_passive(internal):
-    return _PASSIVE_NAMES.get(internal.lower()) or _humanize(internal)
+    key = internal.lower()
+    return _PASSIVE_NAMES.get(key) or _PASSIVE_OVERRIDES.get(key) or _humanize(internal)
 
 
 def _display_move(internal):
@@ -311,6 +333,46 @@ def read_players(save_dir):
             players.append({"uid": base.replace(".sav", ""), "prefix": base[:8].upper(),
                             "party": None, "palbox": None, "error": str(e)})
     return players
+
+
+def read_player_names(save_dir):
+    """{uid-prefix: nickname}, structurally: GVAS-parses CharacterSaveParameterMap and
+    only takes NickName/FilteredNickName from entries flagged IsPlayer==true (same check
+    read_pals uses below to separate players from Pals). This exists as a standalone
+    entry point for callers that only need names, not the full Pal list -- notably
+    pal_egg_reader.py, which used to resolve names via pal_save_reader.py's
+    find_player_names_raw, a raw byte-scan that assumes a NickName property's nearest
+    preceding player-GUID bytes belong to that player. That assumption breaks when a
+    player's OWN Pal has a custom nickname sitting close to the owner's GUID in the raw
+    buffer (observed 2026-07-10: a SamuraiDog nicknamed "Pupperai" got attributed to its
+    owner as the player's own name) -- checking IsPlayer directly sidesteps the ambiguity
+    entirely instead of guessing from byte proximity.
+
+    Calls _install_patches() itself (idempotent -- just reassigns the same monkeypatch)
+    rather than relying on the caller to have already done so: read_pals's callers all
+    install it via main()/read_eggs() before parsing CharacterSaveParameterMap, but a
+    caller that only wants names (no Pal data) has no other reason to know that's needed."""
+    _install_patches()
+    from palworld_save_tools import paltypes
+    only_char = {
+        ".worldSaveData.CharacterSaveParameterMap.Value.RawData":
+            paltypes.PALWORLD_CUSTOM_PROPERTIES[".worldSaveData.CharacterSaveParameterMap.Value.RawData"]
+    }
+    gvas = _read_gvas(os.path.join(save_dir, "Level.sav"), only_char)
+    chars = gvas.properties["worldSaveData"]["value"]["CharacterSaveParameterMap"]["value"]
+    names = {}
+    for entry in chars:
+        try:
+            sp = entry["value"]["RawData"]["value"]["object"]["SaveParameter"]["value"]
+        except (KeyError, TypeError):
+            continue
+        if not sp.get("IsPlayer", {}).get("value"):
+            continue
+        uid = entry.get("key", {}).get("PlayerUId", {}).get("value")
+        nm = _scalar(sp.get("NickName")) or _scalar(sp.get("FilteredNickName"))
+        if uid and nm:
+            names[_guid_prefix(uid)] = str(nm)
+    return names
 
 
 # ── the world save holds every Pal instance ────────────────────────────────────
@@ -520,12 +582,6 @@ def main():
             containers[cid] = {"type": "base", "ownerPrefix": "",
                                "label": "Base " + str(base_no)}
 
-    # attach a per-pal location label + type for convenience
-    for pal in pals:
-        c = containers.get(pal["container"])
-        pal["locationType"] = c["type"] if c else "unknown"
-        pal["location"] = c["label"] if c else "Unknown"
-
     # count pals per container
     for cid, c in containers.items():
         c["count"] = sum(1 for pal in pals if pal["container"] == cid)
@@ -537,6 +593,7 @@ def main():
     #                     guild by matching its pals' InstanceIds against each guild's
     #                     raw blob (which lists the guild's character handle ids).
     guilds = read_guilds(gvas, [p["prefix"] for p in players])
+    name_by_prefix = {p["prefix"]: p["name"] for p in players}
     pals_by_container = {}
     for pal in pals:
         pals_by_container.setdefault(pal["container"], []).append(pal["instanceId"])
@@ -548,8 +605,25 @@ def main():
             owner = next((g for g in guilds
                           if any(_instance_seg1_le(i) in g["blob"] for i in sample)), None)
             c["viewers"] = owner["members"] if owner else []
+            # Bases only get a generic "Base N" label above (no per-pal owner to read a
+            # name off, unlike party/palbox which already say "PlayerName - Party"/
+            # "- Palbox"). Append the resolved guild roster so the Pal Box tab's group
+            # header shows who the base actually belongs to. A base with no matched
+            # guild (e.g. a solo player's own base, or the guild-matching heuristic
+            # above found nothing) keeps the bare "Base N" label rather than claiming
+            # an empty/wrong owner.
+            viewer_names = [name_by_prefix.get(pfx, pfx) for pfx in c["viewers"] if pfx]
+            if viewer_names:
+                c["label"] += " - " + ", ".join(viewer_names)
         else:
             c["viewers"] = []
+
+    # attach a per-pal location label + type for convenience -- done last so base labels
+    # already carry the guild-roster suffix appended just above.
+    for pal in pals:
+        c = containers.get(pal["container"])
+        pal["locationType"] = c["type"] if c else "unknown"
+        pal["location"] = c["label"] if c else "Unknown"
 
     out = {
         "players": [{"prefix": p["prefix"], "name": p["name"]} for p in players],

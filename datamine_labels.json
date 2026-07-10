@@ -3198,5 +3198,21 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "SAMURAIDOG",
+        "name":  "Pupperai",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "SamuraiDog",
+        "name":  "Pupperai",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

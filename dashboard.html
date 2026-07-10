@@ -639,6 +639,14 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       known name/coordinates with a fillable Key field instead.
     </div>
 
+    <div class="dm-section" id="dm-sec-reports">
+      <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-reports')"><span class="dm-arrow">&#9660;</span>Reports<span id="dm-reports-badge" style="margin-left:6px;"></span></div>
+      <div class="dm-section-body">
+        <div class="dm-section-sub">Player-submitted "this map data is wrong" flags, sent from the report button on public-site map icons (see the confirmed_locations skill for how to fix the underlying pin). Dismiss once reviewed/fixed.</div>
+        <div id="dm-reports-area" style="overflow:auto;"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
+
     <div class="dm-section" id="dm-sec-unmapped">
       <div class="dm-section-hdr" onclick="toggleDmSection('dm-sec-unmapped')"><span class="dm-arrow">&#9660;</span>Unmapped Keys</div>
       <div class="dm-section-body">
@@ -722,9 +730,9 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         </div>
         <div class="pf-group"><span class="pf-label">Level</span>
           <div style="display:flex;gap:6px;align-items:center;">
-            <input id="pf-lvl-min" type="number" min="1" max="55" placeholder="min" class="pf-input pf-num" oninput="renderPals()">
+            <input id="pf-lvl-min" type="number" min="1" max="80" placeholder="min" class="pf-input pf-num" oninput="renderPals()">
             <span style="color:var(--muted);">to</span>
-            <input id="pf-lvl-max" type="number" min="1" max="55" placeholder="max" class="pf-input pf-num" oninput="renderPals()">
+            <input id="pf-lvl-max" type="number" min="1" max="80" placeholder="max" class="pf-input pf-num" oninput="renderPals()">
           </div>
         </div>
         <div class="pf-group"><span class="pf-label">Condensed</span>
@@ -1710,16 +1718,17 @@ function genderIcon(g){
   if(g==='Female')return '<svg class="gico g-f" viewBox="0 0 24 24" role="img" aria-label="Female"><title>Female</title><circle cx="12" cy="8" r="5"/><line x1="12" y1="13" x2="12" y2="21"/><line x1="7.5" y1="17.5" x2="16.5" y2="17.5"/></svg>';
   return '';
 }
-// Per-pal stat from the species' level-65 range (linear in IV) scaled to this level.
-// HP: 500+5L+(s65-825)*(L/65); Atk/Def: off+(s65-off)*(L/65) with off 100/50. This is
+// Per-pal stat from the species' level-80 range (linear in IV) scaled to this level.
+// HP: 500+5L+(sRef-900)*(L/80); Atk/Def: off+(sRef-off)*(L/80) with off 100/50. This is
 // the BASE stat (level+IV), excluding passive/condensation/food bonuses. The reference
-// is level 65 (the current cap, raised 55->60->65): paldb now publishes its Health/Attack/
-// Defense ranges at level 65, and pal_species.json carries those, so the anchor moved from
-// 55 to 65. 825 = 500 + 5*65 (the HP baseline at the reference level), divisor = 65.
+// is level 80 (the current cap, raised 50->55->60->65->80 with the 1.0 launch,
+// 2026-07-10): paldb now publishes its Health/Attack/Defense ranges at level 80, and
+// pal_species.json carries those, so the anchor moved from 65 to 80. 900 = 500 + 5*80
+// (the HP baseline at the reference level), divisor = 80.
 function calcStat(range,level,iv,isHp,off){
   if(!range)return null;
-  var L=level||1, s65=range[0]+(range[1]-range[0])*(iv<0?0:iv)/100;
-  return isHp?Math.floor(500+5*L+(s65-825)*(L/65)):Math.floor(off+(s65-off)*(L/65));
+  var L=level||1, sRef=range[0]+(range[1]-range[0])*(iv<0?0:iv)/100;
+  return isHp?Math.floor(500+5*L+(sRef-900)*(L/80)):Math.floor(off+(sRef-off)*(L/80));
 }
 // Bundled paldb suitability/element icons, served at /icons/ (static on the public
 // site, via a dashboard route for admin). Maps the species-data strings to icon index.
@@ -1748,9 +1757,14 @@ function workKeysOf(p,sp){
 // EXP_CURVE[L] = total exp to REACH level L (PAL curve, not the player's). Levels 1-55 came
 // from save data; 56-65 were appended when the cap rose to 65 (Tides of Terraria), verified
 // against the Pal XP table at thepalprofessor.com/xp-tables/ which matches 1-55 exactly.
-// Levels 1-65 (65 = cap); index 0 unused.
+// The 1.0 launch (2026-07-10) raised the cap again, 65->80, but no verified per-level XP
+// table for 66-80 exists yet anywhere checked (thepalprofessor.com and paldb.cc's Level_Up
+// page both still stop at 65) -- do NOT guess these values in. MAX_LEVEL is bumped to 80
+// below so the cap/stat-anchor logic is correct, but EXP_CURVE intentionally still only
+// covers 1-65; expBar() already degrades gracefully (blank bar, no crash) for levels beyond
+// the curve's end. Append 66-80 here once a verified source turns up.
 var EXP_CURVE=[0,0,25,56,93,138,207,306,440,616,843,1131,1492,1941,2495,3175,4007,5021,6253,7747,9555,11740,14378,17559,21392,26007,31561,38241,46272,55925,67524,81458,98195,118294,142429,171406,206194,247955,298084,358255,430475,517155,621186,746039,895878,1075701,1291504,1550483,1861273,2234236,2681807,3218908,3863445,4636905,5565072,6678888,8015483,9619412,11544143,13853835,16625481,19535710,22591450,25799977,29168930,32706331];
-var MAX_LEVEL=65;
+var MAX_LEVEL=80;
 // TRUST_REQ[n] = total friendship points to reach Trust level n (Palworld wiki). Max 10.
 var TRUST_REQ=[0,6000,13000,21000,30000,40000,55000,80000,110000,150000,200000];
 // A labelled progress bar with a "remaining to next" readout. Optional cls tints the fill.
@@ -2190,7 +2204,7 @@ function eggMatchesCrit(e,c){
 // Saving/editing a watch sets _watchSuppress for that one render so a freshly created
 // watch over existing pals doesn't self-trigger. Keyed per kind because the shared
 // watch list is evaluated separately on the Pals and Eggs tabs.
-var _watchSeen={pals:null,eggs:null}, _watchSuppress=false, _watchAudio=null;
+var _watchSeen={pals:null,eggs:null,sanity:null,sanityCritical:null}, _watchSuppress=false, _watchAudio=null;
 function notifyWatchFinds(kind,watchHits,idOf){
   var seen=_watchSeen[kind];
   var cur={};
@@ -2212,6 +2226,44 @@ function watchFoundAlert(kind,names,count){
   showWatchBanner('&#9733; Watch hit: '+count+' new '+label+(count===1?'':'s')+' matched &mdash; '+esc(who));
   playWatchChime();
   markTabNew(kind);
+}
+// Built-in low-Sanity alert -- always on, not a user-configured watch. Deliberately NOT
+// built on notifyWatchFinds/watchFoundAlert above: those permanently mark an instance
+// "seen" the first time it matches and never re-alert it even if it later un-matches and
+// matches again (fine for a one-time event like an egg hatching, wrong for Sanity, which
+// naturally drops, gets tended back up, and can drop again over a pal's lifetime). Here a
+// pal that recovers above 50 is removed from `seen` so a later dip alerts again.
+function notifySanityAlert(lowSanity){
+  var seen=_watchSeen.sanity;
+  var curIds={}; lowSanity.forEach(function(p){curIds[p.instanceId]=1;});
+  if(seen===null){ _watchSeen.sanity=curIds; return; }   // first render: baseline only
+  if(_watchSuppress){ _watchSeen.sanity=curIds; return; }
+  var fresh=lowSanity.filter(function(p){return !seen[p.instanceId];});
+  _watchSeen.sanity=curIds;
+  if(!fresh.length)return;
+  var names=fresh.map(function(p){return palLookup(p.species).name+(p.nickname?(' "'+p.nickname+'"'):'');});
+  var who=names.slice(0,3).join(', ')+(names.length>3?(' +'+(names.length-3)+' more'):'');
+  showWatchBanner('&#9888; Low Sanity: '+fresh.length+' pal'+(fresh.length===1?'':'s')+' below 50 &mdash; '+esc(who));
+  playWatchChime();
+  markTabNew('pals');
+}
+// Same shape as notifySanityAlert, one tier down (<25 instead of <50). Called AFTER
+// notifySanityAlert in renderPals() so if both fire on the same render (a pal crossing
+// straight past 50 to under 25 in one tick), the critical banner is the one left showing
+// -- showWatchBanner reuses a single banner element, so whichever call runs last wins.
+function notifyCriticalSanityAlert(criticalSanity){
+  var seen=_watchSeen.sanityCritical;
+  var curIds={}; criticalSanity.forEach(function(p){curIds[p.instanceId]=1;});
+  if(seen===null){ _watchSeen.sanityCritical=curIds; return; }
+  if(_watchSuppress){ _watchSeen.sanityCritical=curIds; return; }
+  var fresh=criticalSanity.filter(function(p){return !seen[p.instanceId];});
+  _watchSeen.sanityCritical=curIds;
+  if(!fresh.length)return;
+  var names=fresh.map(function(p){return palLookup(p.species).name+(p.nickname?(' "'+p.nickname+'"'):'');});
+  var who=names.slice(0,3).join(', ')+(names.length>3?(' +'+(names.length-3)+' more'):'');
+  showWatchBanner('&#128721; CRITICAL Sanity: '+fresh.length+' pal'+(fresh.length===1?'':'s')+' below 25 &mdash; '+esc(who));
+  playWatchChime();
+  markTabNew('pals');
 }
 // Transient top banner, built on demand so no HTML template change is needed (works on
 // both the admin dashboard and the generated public site). Click or 8s timeout dismisses.
@@ -2499,16 +2551,20 @@ function renderPals(){
   var lvlMax=parseInt(document.getElementById('pf-lvl-max').value,10);
   var containers=palsData.containers||{};
 
+  // Filter by who can ACCESS the pal, not just who owns it: bases are guild
+  // property with no per-pal owner (ownerPrefix=''), so key off the container's
+  // viewers (guild members for bases, the owner for party/palbox). Fall back to
+  // ownerPrefix if a container has no viewers data. Shared with the sanity-alert
+  // pools below so alerts respect the same player filter as the pal list.
+  function passesPlayerFilter(p){
+    if(!fPlayer)return true;
+    var ctr=containers[p.container];
+    var vw=ctr&&ctr.viewers;
+    return vw?vw.indexOf(fPlayer)>=0:p.ownerPrefix===fPlayer;
+  }
+
   var list=palsData.pals.filter(function(p){
-    // Filter by who can ACCESS the pal, not just who owns it: bases are guild
-    // property with no per-pal owner (ownerPrefix=''), so key off the container's
-    // viewers (guild members for bases, the owner for party/palbox). Fall back to
-    // ownerPrefix if a container has no viewers data.
-    if(fPlayer){
-      var ctr=containers[p.container];
-      var vw=ctr&&ctr.viewers;
-      if(vw?vw.indexOf(fPlayer)<0:p.ownerPrefix!==fPlayer)return false;
-    }
+    if(!passesPlayerFilter(p))return false;
     if(fLoc&&p.locationType!==fLoc)return false;
     if(palsSel.length&&palsSel.indexOf(p.species)<0)return false;
     if(onlyAlpha&&!p.isAlpha)return false;
@@ -2587,6 +2643,32 @@ function renderPals(){
     matchesHtml+='</div>';
   }
 
+  // Built-in Sanity sections + alerts (see notifySanityAlert/notifyCriticalSanityAlert
+  // for why these don't reuse the user-watch plumbing above). Checked against ALL pals
+  // that pass the player filter (but not the other view filters -- location/species/etc
+  // still shouldn't hide a real sanity problem), so a low/critical-sanity pal hidden by
+  // e.g. a location filter still gets flagged, but one belonging to a player you've
+  // filtered away from does not. Two mutually exclusive tiers -- Critical (<25) pals are
+  // pulled out of the Low (25-49) bucket rather than appearing in both sections.
+  var criticalSanity=(palsData.pals||[]).filter(function(p){return passesPlayerFilter(p)&&p.sanity!=null&&p.sanity<25;});
+  var lowSanity=(palsData.pals||[]).filter(function(p){return passesPlayerFilter(p)&&p.sanity!=null&&p.sanity>=25&&p.sanity<50;});
+  notifySanityAlert(lowSanity);
+  notifyCriticalSanityAlert(criticalSanity);   // called last so it wins the shared banner if both fire together
+  var sanityHtml='';
+  if(lowSanity.length){
+    var sortedLS=lowSanity.slice().sort(function(a,b){return a.sanity-b.sanity;});
+    sanityHtml='<div class="egg-matches"><div class="egg-matches-hdr" style="color:#ffa63b">&#9888; Low Sanity <span class="cnt">'+lowSanity.length+'</span></div>';
+    sanityHtml+='<div class="pal-grid">'+sortedLS.map(function(p){return palCard(p);}).join('')+'</div>';
+    sanityHtml+='</div>';
+  }
+  var criticalSanityHtml='';
+  if(criticalSanity.length){
+    var sortedCS=criticalSanity.slice().sort(function(a,b){return a.sanity-b.sanity;});
+    criticalSanityHtml='<div class="egg-matches"><div class="egg-matches-hdr" style="color:#ff3b3b">&#128721; CRITICAL Sanity <span class="cnt">'+criticalSanity.length+'</span></div>';
+    criticalSanityHtml+='<div class="pal-grid">'+sortedCS.map(function(p){return palCard(p);}).join('')+'</div>';
+    criticalSanityHtml+='</div>';
+  }
+
   // Group by location container (label), ordered party > palbox > base
   var order={party:0,palbox:1,base:2,unknown:3};
   var groups={};
@@ -2618,7 +2700,7 @@ function renderPals(){
       html+='<div class="empty-state" style="padding:14px">Showing first '+CAP+' of '+list.length+'. Use the filters or search to narrow down.</div>';
     }
   }
-  area.innerHTML=matchesHtml+html;
+  area.innerHTML=criticalSanityHtml+sanityHtml+matchesHtml+html;
   savePrefs();
 }
 
@@ -2893,6 +2975,13 @@ function palCard(p){
   var badges='';
   if(p.isAlpha)badges+='<span class="pal-badge pb-alpha">Alpha</span>';
   if(p.isLucky)badges+='<span class="pal-badge pb-lucky">Lucky</span>';
+  // Sanity cue: shown on every card (not just the dedicated sections below) so a
+  // low/critical-sanity pal is visible wherever it happens to render -- e.g. still
+  // spotted in the normal per-base grid even before scrolling up to the summary
+  // sections. Critical (<25) is a hotter red than Low (25-49) so severity reads at a
+  // glance without having to read the number.
+  if(p.sanity!=null&&p.sanity<25)badges+='<span class="pal-badge" style="background:rgba(220,38,38,0.22);color:#ff3b3b;border:1px solid rgba(220,38,38,0.55);">Sanity '+Math.round(p.sanity)+'</span>';
+  else if(p.sanity!=null&&p.sanity<50)badges+='<span class="pal-badge" style="background:rgba(255,166,59,0.15);color:#ffa63b;border:1px solid rgba(255,166,59,0.4);">Sanity '+Math.round(p.sanity)+'</span>';
   var nick=p.nickname?('<div class="pal-nick">'+esc(p.nickname)+'</div>'):'';
   var ivs=''
     +ivRow('HP',p.ivHp)
@@ -2990,6 +3079,25 @@ function renderPaldeck(){
   var sorted=PAL_LIST.slice().sort(function(a,b){
     return (a[0]-b[0])||((a[3]?1:0)-(b[3]?1:0));
   });
+  // Collapse Paldeck-identical duplicates -- some Tower/boss variants added in the 1.0
+  // launch (e.g. LazyDragon_Electric_Tower) share the same dex number AND display name
+  // as an already-listed entry (paldb.cc gives them the same name/art -- they're the
+  // same dex slot, just a special boss encounter of it, not a separate Pal). Showing
+  // both as separate rows double-counted the dex total and showed e.g. "Relaxaurus Lux"
+  // twice. Fold the duplicate's save-tracked count into the first (base) entry's count,
+  // then drop the duplicate row -- the render loop below stays untouched so the
+  // public-site generator's paldeck spoiler string-surgery keeps matching it.
+  var deduped=[];
+  sorted.forEach(function(e){
+    var last=deduped[deduped.length-1];
+    if(last&&last[0]===e[0]&&last[2]===e[2]){
+      var lk=last[1].toLowerCase(),ek=e[1].toLowerCase();
+      normCounts[lk]=(normCounts[lk]||0)+(normCounts[ek]||0);
+    }else{
+      deduped.push(e);
+    }
+  });
+  sorted=deduped;
   var rowDataArr=[];
   sorted.forEach(function(e,idx){
     var no=e[0],key=e[1].toLowerCase(),name=e[2],isVar=e[3];
@@ -3000,7 +3108,7 @@ function renderPaldeck(){
     else{noStr=String(no).padStart(3,'0');}
     if(isVar)noStr=noStr+'v';
     rowDataArr.push({name:name,internal:e[1],noStr:noStr,count:count});
-    var done=count>=12;
+    var done=count>=5;
     if(done)checkTotal++;
     var bg=done?'background:rgba(63,185,80,0.06);':'';
     var cnt=count?('<span style="color:var(--text)">'+count+'</span>'):('<span style="color:var(--muted)">0</span>');
@@ -3015,8 +3123,8 @@ function renderPaldeck(){
       +'</tr>';
   });
   window._palRowData=rowDataArr;
-  var allCount=PAL_LIST.length;
-  var sumStr=player.total+' unique captured | '+checkTotal+'/'+allCount+' at 12+';
+  var allCount=sorted.length;
+  var sumStr=player.total+' unique captured | '+checkTotal+'/'+allCount+' at 5+';
   document.getElementById('paldeck-summary').textContent=sumStr;
   area.innerHTML=
     // No inner scroll wrapper -- #paldeck-area is already a .panel-body (overflow:auto),
@@ -3801,6 +3909,49 @@ function desireEntrances(baseKey,ident,pin,parentLL,status){
   });
 }
 
+// Report-inaccurate-data button (2026-07-10): a player who spots wrong/stale/duplicate
+// map data can flag it without needing admin access. Lives outside both strip zones --
+// it must ship to the public site, which is the whole point. Public-only by design: each
+// builder below shows this in place of the confirm checkbox when EFFIGY_CONFIRM_ENABLED
+// is false (i.e. on the public site) -- the admin already has full edit/confirm/delete
+// controls via the Data Mine tab, so there's no need for a matching admin-side submit
+// route. Submits POST /api/report on the Cloudflare Worker (writes to R2 reports.json,
+// gated by the same Access JWT every other write path there uses -- see /api/prefs);
+// the Data Mine tab's new Reports section (admin-only) pulls that same file to review.
+// ident is whatever identity that category's pins are keyed by (same convention as
+// toggleMapConfirm above: key for effigy/journal, species for bounty, name for
+// tower/fugitive/eagle/sam).
+function reportButtonHtml(category,ident,label){
+  var rid='rpt'+Math.random().toString(36).slice(2,9);
+  return '<div class="map-report" style="margin-top:6px;">'
+    +'<a href="#" class="map-report-toggle" id="'+rid+'-t" style="font-size:11px;color:var(--muted);">&#9873; Report inaccurate data</a>'
+    +'<div id="'+rid+'-f" style="display:none;margin-top:4px;">'
+    +'<input type="text" id="'+rid+'-note" placeholder="What\'s wrong? (optional)" maxlength="200" style="width:180px;max-width:100%;box-sizing:border-box;font-size:12px;padding:3px 6px;">'
+    +'<button type="button" id="'+rid+'-send" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;margin-left:4px;">Send</button>'
+    +'</div><div id="'+rid+'-ok" style="display:none;font-size:11px;color:#3fb950;margin-top:4px;">Report sent. Thanks!</div>'
+    +'</div>';
+}
+function wireReportButton(el,category,ident,label){
+  if(!el)return;
+  var toggle=el.querySelector('.map-report-toggle'); if(!toggle)return;
+  var rid=toggle.id.slice(0,-2);
+  var form=el.querySelector('#'+rid+'-f'), note=el.querySelector('#'+rid+'-note'),
+      send=el.querySelector('#'+rid+'-send'), ok=el.querySelector('#'+rid+'-ok');
+  toggle.onclick=function(ev){
+    ev.preventDefault();
+    form.style.display=(form.style.display==='none')?'':'none';
+    if(form.style.display!=='none'&&note)note.focus();
+  };
+  if(send) send.onclick=function(){
+    send.disabled=true;
+    fetch('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({category:category,key:ident,name:label,note:(note&&note.value||'').slice(0,200)})})
+      .then(function(r){ if(!r.ok) throw new Error('failed'); return r.json(); })
+      .then(function(){ form.style.display='none'; toggle.style.display='none'; if(ok)ok.style.display=''; })
+      .catch(function(){ send.disabled=false; if(typeof toast==='function')toast('Could not send report.','error'); });
+  };
+}
+
 // Field Boss prerequisites (2026-07-09): an optional "prereqs" array of species codes on a
 // bounty row (see Add-BossPrereq in map_data_lib.ps1) -- normalizes the same PS
 // bare-object-for-1-element-array quirk desireEntrances handles above.
@@ -4009,6 +4160,9 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
       if(box) box.onchange=function(){ toggleMapConfirm('effigy',id,box.checked); };
       wireCaveAdd(el,{category:'effigy',key:id,label:id});
     });
+  } else {
+    m.bindPopup(tip+reportButtonHtml('effigy',id,id),{className:'eff-tip'});
+    m.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'effigy',id,id); });
   }
   return m;
 }
@@ -4054,6 +4208,9 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
       }
       wireCaveAdd(el,{category:'journal',key:j.key,name:j.name,label:j.name});
     });
+  } else {
+    jm.bindPopup('<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+reportButtonHtml('journal',j.key||j.name,j.name),{className:'eff-tip'});
+    jm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'journal',j.key||j.name,j.name); });
   }
   return jm;
 }
@@ -4117,6 +4274,8 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
       }
       bPopup+=caveAddButtonHtml();
       bPopup+=prereqAddButtonHtml();
+    } else {
+      bPopup+=reportButtonHtml('bounty',sp,b.name);
     }
     bm.bindPopup(bPopup,effPopupOpts(EFFIGY_CONFIRM_ENABLED&&!b.key));
     bm.on('popupopen',function(e){
@@ -4146,6 +4305,8 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
       if(EFFIGY_CONFIRM_ENABLED){
         wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
         wirePrereqAdd(el,b,'bounty');
+      } else {
+        wireReportButton(el,'bounty',sp,b.name);
       }
     });
     bm.on('popupclose',function(){
@@ -4195,6 +4356,9 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
       }
       wireCaveAdd(el,{category:'fugitive',name:h.name,label:h.name});
     });
+  } else {
+    hm.bindPopup('<b style="color:#111;">'+esc(h.name)+'</b><br>'+hTip+reportButtonHtml('fugitive',h.name,h.name),{className:'eff-tip'});
+    hm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'fugitive',h.name,h.name); });
   }
   return hm;
 }
@@ -4238,6 +4402,9 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
       }
       wireCaveAdd(el,{category:'eagle',name:es.name,label:es.name});
     });
+  } else {
+    esm.bindPopup('<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+reportButtonHtml('eagle',es.name,es.name),{className:'eff-tip'});
+    esm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'eagle',es.name,es.name); });
   }
   return esm;
 }
@@ -4284,6 +4451,9 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
       }
       wireCaveAdd(el,{category:'sam',name:s.name,label:s.name});
     });
+  } else {
+    sm.bindPopup('<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+reportButtonHtml('sam',s.name,s.name),{className:'eff-tip'});
+    sm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'sam',s.name,s.name); });
   }
   return sm;
 }
@@ -4360,6 +4530,16 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
         wireCaveAdd(_tel,{category:'tower',name:t.name,label:t.name});
         wirePrereqAdd(_tel,{name:t.name},'tower');
       }
+    });
+    tm.on('popupclose',function(){
+      if(_bossPrereqActive===twIdent){ _bossPrereqActive=null; renderEffigyMap(); }
+    });
+  } else {
+    tm.bindPopup('<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+reportButtonHtml('tower',t.name,t.name),{className:'eff-tip'});
+    tm.on('popupopen',function(e){
+      _bossPrereqActive=twIdent;
+      renderEffigyMap();
+      wireReportButton(e.popup.getElement(),'tower',t.name,t.name);
     });
     tm.on('popupclose',function(){
       if(_bossPrereqActive===twIdent){ _bossPrereqActive=null; renderEffigyMap(); }
@@ -5442,6 +5622,7 @@ function dmSnapshotKey(){
 async function fetchDataMine(){
   document.getElementById('dm-unmapped-area').innerHTML='<div class="empty-state">Loading...</div>';
   document.getElementById('dm-property-sections').innerHTML='<div class="empty-state">Loading...</div>';
+  fetchReports();   // independent of the player/mapping load below -- its own try/catch, never blocks the rest of the tab
   try{
     await Promise.all([dmFetchAndApply(),refetchDmIconRosters()]);
     renderDataMine();
@@ -5450,6 +5631,55 @@ async function fetchDataMine(){
     var msg='<div class="empty-state">Failed to load: '+esc(String(e&&e.message||e))+'</div>';
     document.getElementById('dm-unmapped-area').innerHTML=msg;
     document.getElementById('dm-property-sections').innerHTML='';
+  }
+}
+
+// Reports section: player-submitted "this map data is wrong" flags (see
+// reportButtonHtml/wireReportButton near desireEntrances -- outside this strip zone,
+// since the report BUTTON ships to the public site). This viewer/dismiss half is
+// admin-only by nature (reads via wrangler through /api/reports, which the public
+// Worker has no equivalent read route for -- see that route's comment), so it lives
+// here inside the Data Mine strip zone same as everything else on this tab.
+var dmReports=[];
+async function fetchReports(){
+  var area=document.getElementById('dm-reports-area');
+  try{
+    dmReports=await api('/api/reports');
+    if(!Array.isArray(dmReports)) dmReports=[];
+    renderReports();
+  }catch(e){
+    if(area) area.innerHTML='<div class="empty-state">Failed to load reports: '+esc(String(e&&e.message||e))+'</div>';
+  }
+}
+function renderReports(){
+  var area=document.getElementById('dm-reports-area');
+  var badge=document.getElementById('dm-reports-badge');
+  if(!area) return;
+  if(badge) badge.textContent=dmReports.length?('('+dmReports.length+')'):'';
+  if(!dmReports.length){ area.innerHTML='<div class="empty-state">No open reports.</div>'; return; }
+  var sorted=dmReports.slice().sort(function(a,b){return String(b.reportedAt||'').localeCompare(String(a.reportedAt||''));});
+  var rows=sorted.map(function(r){
+    var when=r.reportedAt?new Date(r.reportedAt).toLocaleString():'';
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      +'<td style="padding:6px 10px;"><span class="dm-kind-badge">'+esc(r.category||'')+'</span></td>'
+      +'<td style="padding:6px 10px;">'+esc(r.name||r.key||'')+(r.key&&r.name&&r.key!==r.name?('<div class="syn-key">'+esc(r.key)+'</div>'):'')+'</td>'
+      +'<td style="padding:6px 10px;color:var(--text);">'+(r.note?esc(r.note):'<span style="color:var(--muted)">(no note)</span>')+'</td>'
+      +'<td style="padding:6px 10px;color:var(--muted);font-size:11px;white-space:nowrap;">'+esc(r.reportedBy||'')+'<br>'+esc(when)+'</td>'
+      +'<td style="padding:6px 10px;"><button type="button" class="btn btn-ghost dm-save-btn" onclick="dismissReport(\''+dmEscJs(r.id)+'\')">Dismiss</button></td>'
+      +'</tr>';
+  }).join('');
+  area.innerHTML='<table class="syn-table"><thead><tr>'
+    +'<th>Category</th><th>Pin</th><th>Note</th><th>Reported</th><th></th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+async function dismissReport(id){
+  try{
+    await api('/api/reports/dismiss','POST',{id:id});
+    dmReports=dmReports.filter(function(r){return r.id!==id;});
+    renderReports();
+    toast('Report dismissed.','success');
+  }catch(e){
+    toast('Failed to dismiss: '+String(e&&e.message||e),'error');
   }
 }
 
@@ -7180,7 +7410,7 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     // Hp is stored as a x1000 fixed-point value in the save (this is the pal's max HP).
     var hp=(p.hp!=null)?Math.round(p.hp/1000):null;
     var st=stat('Sanity',(p.sanity!=null?Math.round(p.sanity):'Full'));
-    // EXP progress to next level (shown under the header); Lv 65 = cap.
+    // EXP progress to next level (shown under the header); Lv 80 = cap.
     var L=p.level||1;
     var expBar=(L>=MAX_LEVEL)?maxedBar('EXP','bar-exp'):((p.exp!=null&&EXP_CURVE[L+1]!=null)?progBar('EXP',p.exp,EXP_CURVE[L]||0,EXP_CURVE[L+1],'XP','bar-exp'):'');
     // Friendship -> Trust level (0-10) + progress to next.
@@ -7207,7 +7437,7 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     (p.equipMoves||[]).forEach(addKnown);(p.masteredMoves||[]).forEach(addKnown);
     var learnHtml=known.length?known.map(skillChip).join(''):'';
     // Stats as centered pill cards. HP uses the save's true max HP; ATK/DEF are computed
-    // from the species level-65 range scaled to level. Work Speed rides along (no IV slot).
+    // from the species level-80 range scaled to level. Work Speed rides along (no IV slot).
     var bs=sp&&sp.stats;
     var statCard=function(lbl,sv,iv){
       var ivh=(iv==null)?'<div class="iv">&nbsp;</div>':'<div class="iv" style="color:'+ivColor(iv)+'"><span class="ivl">IV</span> '+(iv<0?'-':iv)+'</div>';
@@ -7261,12 +7491,12 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     if(!d||(d.count||0)<1)return;
     var sp=(palSpecies&&palSpecies[d.internal])||null;
     var elemHtml=(sp&&sp.types&&sp.types.length)?('<div class="pm-elems">'+sp.types.map(elemPill).join('')+'</div>'):'';
-    // Base stats as the level-65 range (IV 0 -> IV 100), since there's no single instance.
+    // Base stats as the level-80 range (IV 0 -> IV 100), since there's no single instance.
     var bs=sp&&sp.stats;
     var rangeCard=function(lbl,range,isHp,off){
       if(!range)return '<div class="pm-stcard"><div class="l">'+lbl+'</div><div class="v">-</div><div class="iv">&nbsp;</div></div>';
-      var lo=calcStat(range,55,0,isHp,off), hi=calcStat(range,55,100,isHp,off);
-      return '<div class="pm-stcard"><div class="l">'+lbl+'</div><div class="v">'+lo+'-'+hi+'</div><div class="iv">Lv 65</div></div>';
+      var lo=calcStat(range,MAX_LEVEL,0,isHp,off), hi=calcStat(range,MAX_LEVEL,100,isHp,off);
+      return '<div class="pm-stcard"><div class="l">'+lbl+'</div><div class="v">'+lo+'-'+hi+'</div><div class="iv">Lv '+MAX_LEVEL+'</div></div>';
     };
     var statsHtml=bs?('<div class="pm-stcards">'+rangeCard('HP',bs.hp,true,0)+rangeCard('ATK',bs.attack,false,100)+rangeCard('DEF',bs.defense,false,50)+'</div>'):'';
     // Work suitability: species base level per work type (no per-pal boosts here).

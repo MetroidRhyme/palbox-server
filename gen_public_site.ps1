@@ -677,7 +677,7 @@ if ($html.Contains('__GEN_TS__')) { throw "data-age generation stamp placeholder
 # tab hit it; this covers every route by construction instead of needing a new named assert
 # each time one is added. Only the two Pages Functions routes and the Worker's prefs route
 # are meant to survive into the public output.
-$apiWhitelist = @('/api/palmaptile', '/api/palspawn', '/api/prefs')
+$apiWhitelist = @('/api/palmaptile', '/api/palspawn', '/api/prefs', '/api/report')
 foreach ($m in [regex]::Matches($html, '/api/[A-Za-z0-9_-]+')) {
   if ($apiWhitelist -notcontains $m.Value) { throw "leaked admin route in public output: $($m.Value)" }
 }
