@@ -24,7 +24,7 @@ effigy map. Regenerate them with:
 
 ```powershell
 python .\gen_pal_names.py          # internal->display names (from palcalc db.json) -> pal_names.json
-python .\gen_pal_assets.py         # Pal portrait PNGs + effigies.json (from palcalc + palworld-save-pal)
+python .\gen_pal_assets.py         # Pal portrait PNGs (paldb.cc) + effigies.json (palworld-save-pal)
 python .\gen_pal_icons.py          # work + element icons (paldb.cc) + procedurally-drawn passive chrome (needs Pillow) -> pal_icons\
 python .\build_pal_species.py      # element/work/skills/base-stats per Pal (from paldb.cc) -> pal_species.json
 python .\build_pal_skills.py       # active-skill power/cooldown/element/desc (paldb.cc) -> pal_skills.json

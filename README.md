@@ -72,8 +72,8 @@ Nothing secret is committed. You supply:
 
 This project fetches data and art from third parties at your discretion (not redistributed here):
 
-- Pal portraits: [tylercamp/palcalc](https://github.com/tylercamp/palcalc)
-- Species / skills / passives / spawn / map tiles: [paldb.cc](https://paldb.cc)
+- Pal portraits / species / skills / passives / spawn / map tiles: [paldb.cc](https://paldb.cc)
+- Active/passive skill internal->display name mapping: [tylercamp/palcalc](https://github.com/tylercamp/palcalc)
 - Effigy locations: [oMaN-Rod/palworld-save-pal](https://github.com/oMaN-Rod/palworld-save-pal)
 
 The passive-pill styling is inspired by [palworld.wiki.gg](https://palworld.wiki.gg), but the
