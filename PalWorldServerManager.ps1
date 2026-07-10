@@ -929,7 +929,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
             $m = Invoke-RestMethod -Uri "$PalApiBase/v1/api/metrics" -Method GET -Headers (Get-PalHeaders) -EA Stop
             $p = Invoke-RestMethod -Uri "$PalApiBase/v1/api/players" -Method GET -Headers (Get-PalHeaders) -EA Stop
             $playerList   = if ($p.players) { @($p.players) } elseif ($p.Players) { @($p.Players) } else { @() }
-            $currentNames = @($playerList | Where-Object { $_.name } | ForEach-Object { $_.name })
+            # A player's in-game "name" can come back blank for a character that hasn't set
+            # one yet (observed 2026-07-09/10: a brand-new world's first ~3hr session went
+            # completely untracked because /players had an entry but $_.name was empty, so it
+            # never hit $currentNames/$script:playtime -- and the empty-/players resilience
+            # fallback below didn't cover it either, since the list wasn't empty). Fall back to
+            # accountName (Steam/Epic account name, always populated per docs.palworldgame.com).
+            $currentNames = @($playerList | ForEach-Object { if ($_.name) { $_.name } elseif ($_.accountName) { $_.accountName } } | Where-Object { $_ })
             $pings        = @($playerList | Where-Object { $null -ne $_.ping } | ForEach-Object { $_.ping })
             $avgPing      = if ($pings.Count) { [math]::Round(($pings | Measure-Object -Average).Average,1) } else { 0 }
             $fps   = if ($null -ne $m.serverFps)        { $m.serverFps        } elseif ($null -ne $m.fps)            { $m.fps }            else { 0 }
@@ -966,7 +972,14 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
             }
 
             foreach ($pl in $playerList) {
-                $name = $pl.name; if (-not $name) { continue }
+                $name = if ($pl.name) { $pl.name } elseif ($pl.accountName) { $pl.accountName } else { $null }
+                if (-not $name) {
+                    try {
+                        $line = "[{0:yyyy-MM-dd HH:mm:ss}] player entry with no name/accountName, skipped - raw: {1}`n" -f (Get-Date), (ConvertTo-Json $pl -Depth 2 -Compress)
+                        Add-Content -LiteralPath "$ServerDir\playtime-glitch.log" -Value $line -Encoding UTF8
+                    } catch {}
+                    continue
+                }
                 if (-not $script:playtime.ContainsKey($name)) {
                     $script:playtime[$name] = @{ totalSeconds=0L; sessions=0; lastSeen=''; avgPing=0.0; sampleCount=0; steamid='' }
                 }
@@ -976,7 +989,11 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
                 $script:playtime[$name].totalSeconds += $PollInterval
                 $script:playtime[$name].lastSeen      = $entry.ts
-                $sid = if ($pl.steamid) { [string]$pl.steamid } elseif ($pl.playeruid) { [string]$pl.playeruid } else { '' }
+                # PalWorld's REST API player fields are playerId/userId (docs.palworldgame.com),
+                # not "steamid"/"playeruid" -- neither of those ever matched, so this was always
+                # blank. Kept steamid as the stored field name (already in playtime-log-*.json)
+                # to avoid a schema migration, just fixed what populates it.
+                $sid = if ($pl.playerId) { [string]$pl.playerId } elseif ($pl.userId) { [string]$pl.userId } else { '' }
                 if ($sid) { $script:playtime[$name].steamid = $sid }
                 $ping = if ($null -ne $pl.ping) { [double]$pl.ping } else { $null }
                 if ($null -ne $ping) {
