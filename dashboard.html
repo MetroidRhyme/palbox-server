@@ -566,7 +566,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         <div id="eff-filter-body" style="display:flex;flex-direction:column;gap:5px;">
         <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have already found"><span style="color:#3fb950;">&#9679;</span> Found</button>
         <div style="display:flex;align-items:center;gap:6px;">
-          <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide Lifmunk Effigy locations (yellow = manually logged, red = unconfirmed; combine with Found to also hide the ones you've already picked up)"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:conic-gradient(#e3b341 0 50%, #f85149 50% 100%);vertical-align:-1px;"></span> Lifmunk Effigies</button>
+          <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide Lifmunk Effigy locations (yellow = manually logged, blue = picked up in-save but not yet manually logged, red = unconfirmed; combine with Found to also hide the ones you've already picked up)"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:conic-gradient(#e3b341 0 50%, #f85149 50% 100%);vertical-align:-1px;"></span> Lifmunk Effigies</button>
           <span id="effigy-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Lifmunk Effigies you've picked up, out of the full roster"></span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -3448,36 +3448,51 @@ var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
 // larger, so the shape actually reads) size in px rather than a radius.
 var EFF_ACORN_SZ=EFF_DOT_R*4;
 // status: 'found' (green, picked up in-game -- stays full opacity, see .effigy-marker CSS),
-// 'confirmed' (yellow, in Anthony's confirmed_locations.json but not yet picked up), or
-// 'unconfirmed' (red, scraped-only, neither picked up nor manually logged). Admin-only --
-// see MAP_STATUS_TWO_STATE below for the public site's collapsed red/green scheme.
+// 'tracked' (blue, added 2026-07-10 -- a real save key says it's already picked up, but
+// Anthony hasn't manually ticked "Confirm location" yet), 'confirmed' (yellow, in Anthony's
+// confirmed_locations.json but not yet picked up), or 'unconfirmed' (red, scraped-only,
+// neither picked up nor manually logged). Admin-only -- see MAP_STATUS_TWO_STATE below for
+// the public site's collapsed red/green scheme (a player never needs to see Anthony's own
+// verification bookkeeping, so 'tracked' collapses straight to 'found' there).
 function effigyAcornIcon(status){
   var k='ac:'+status;
   if(_iconMemo[k]) return _iconMemo[k];
+  var color=status==='found'?'green':status==='tracked'?'blue':status==='confirmed'?'yellow':'red';
   return _iconMemo[k]=L.divIcon({
     className:'eff-map-marker effigy-marker'+(status==='found'?' eff-map-found':''),
-    html:'<img src="icons/effigy_acorn_'+(status==='found'?'green':status==='confirmed'?'yellow':'red')+'.png" alt="">',
+    html:'<img src="icons/effigy_acorn_'+color+'.png" alt="">',
     iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],
     iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]
   });
 }
-// Shared status-to-color map for the red/yellow/green scheme (see effigyAcornIcon above) --
-// used by statusRingIcon (Journal/Field Boss) below. Never dims via eff-map-found/opacity,
-// same convention as effigies -- the ring color itself is the status signal.
-var STATUS_RING_COLOR={found:'#3fb950',confirmed:'#e3b341',unconfirmed:'#f85149'};
-// Public site collapses the tri-state red/yellow/green scheme above to plain red/green --
-// flipped true by gen_public_site.ps1 (same convention as EFFIGY_CONFIRM_ENABLED, but
-// admin=false/public=true instead of the reverse). Rationale (Anthony, 2026-07-09): a
-// key-mapped ("trackable") pin's color should reflect ONLY whether the player's own save
-// data shows they found it -- Anthony's own location verification is a backend bookkeeping
-// concern that a player never needs to think about. A keyless pin has no save flag to check
-// at all, so it falls back to whatever "found" signal actually exists for it: a player
-// self-report where one exists (e.g. bounty's Mark Defeated button, already folded into
-// `got`) or, failing that, Anthony's manual verification.
+// Shared status-to-color map for the red/blue/yellow/green scheme (see effigyAcornIcon
+// above) -- used by statusRingIcon (Journal/Field Boss) below. Never dims via
+// eff-map-found/opacity, same convention as effigies -- the ring color itself is the
+// status signal.
+var STATUS_RING_COLOR={found:'#3fb950',tracked:'#58a6ff',confirmed:'#e3b341',unconfirmed:'#f85149'};
+// Public site collapses the four-state red/blue/yellow/green scheme above to plain
+// red/green -- flipped true by gen_public_site.ps1 (same convention as
+// EFFIGY_CONFIRM_ENABLED, but admin=false/public=true instead of the reverse). Rationale
+// (Anthony, 2026-07-09): a key-mapped ("trackable") pin's color should reflect ONLY
+// whether the player's own save data shows they found it -- Anthony's own location
+// verification is a backend bookkeeping concern that a player never needs to think about.
+// A keyless pin has no save flag to check at all, so it falls back to whatever "found"
+// signal actually exists for it: a player self-report where one exists (e.g. bounty's
+// Mark Defeated button, already folded into `got`) or, failing that, Anthony's manual
+// verification.
 var MAP_STATUS_TWO_STATE=false;
+// 'tracked' (blue, added 2026-07-10): a real save key exists and its flag is already true
+// (picked up/defeated/unlocked/destroyed in-game), but Anthony hasn't ticked "Confirm
+// location" for it yet -- distinct from 'confirmed' (Anthony verified it, save flag not
+// necessarily true) even though both used to share the same yellow bucket. Only reachable
+// when trackable (a real key is attached) -- got is never true otherwise, since every
+// caller derives `got` from a key lookup in the first place, but the explicit check keeps
+// this self-documenting.
 function mapStatus(confirmed,got,trackable){
   if(MAP_STATUS_TWO_STATE) return (got||(!trackable&&confirmed))?'found':'unconfirmed';
-  return (confirmed&&got)?'found':(confirmed||got||trackable)?'confirmed':'unconfirmed';
+  if(confirmed&&got) return 'found';
+  if(got&&trackable&&!confirmed) return 'tracked';
+  return (confirmed||got||trackable)?'confirmed':'unconfirmed';
 }
 function statusRingIcon(innerHtml,status,sizePx){
   var color=STATUS_RING_COLOR[status]||STATUS_RING_COLOR.unconfirmed;
@@ -4137,7 +4152,7 @@ function customPinBadge(entry){
 function effigyTipBody(pos,got,confirmed,status){
   var _g=worldToGrid(pos.x,pos.y), cx=_g.cx, cy=_g.cy;
   var tipLabel=status!=='found' ? (MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet found</b>'
-      : got ? '<b style="color:#e3b341">Found (not yet logged)</b>'
+      : got ? '<b style="color:#58a6ff">Found (not yet logged)</b>'
       : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
       : '<b style="color:#f85149">Unconfirmed</b>')
     : MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Found</span>'
@@ -4173,7 +4188,7 @@ function journalTipBody(j,confirmed,jGot,jStatus,trackable){
   var jStatusLabel=jStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Found</span>' : '<span style="color:#3fb950">&#10003; Found & confirmed</span>')
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet found</b>'
-    : jGot ? '<b style="color:#e3b341">Found (not yet logged)</b>'
+    : jGot ? '<b style="color:#58a6ff">Found (not yet logged)</b>'
     : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
     : trackable ? '<b style="color:#f85149">Unconfirmed</b>'
     : '<span style="color:#8a8f98">Found status unknown</span>';
@@ -4323,7 +4338,7 @@ function fugitiveTipBody(h,confirmed,hGot,hStatus){
   var hStatusLabel=hStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Defeated</span>' : '<span style="color:#3fb950">&#10003; Defeated & confirmed</span>')
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet defeated</b>'
-    : hGot ? '<b style="color:#e3b341">Defeated (not yet confirmed)</b>'
+    : hGot ? '<b style="color:#58a6ff">Defeated (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet defeated)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
   return hStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(h);
@@ -4369,7 +4384,7 @@ function eagleTipBody(es,confirmed,esGot,esStatus){
   var esStatusLabel=esStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Unlocked</span>' : '<span style="color:#3fb950">&#10003; Unlocked & confirmed</span>')
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet unlocked</b>'
-    : esGot ? '<b style="color:#e3b341">Unlocked (not yet confirmed)</b>'
+    : esGot ? '<b style="color:#58a6ff">Unlocked (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet unlocked)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
   return esStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(es);
@@ -4418,7 +4433,7 @@ function samTipBody(s,confirmed,sGot,sStatus){
   var sLabel=sStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Destroyed</span>' : '<span style="color:#3fb950">&#10003; Destroyed & confirmed</span>')
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet destroyed</b>'
-    : sGot ? '<b style="color:#e3b341">Destroyed (not yet confirmed)</b>'
+    : sGot ? '<b style="color:#58a6ff">Destroyed (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet destroyed)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
   return sLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(s);
@@ -4466,13 +4481,13 @@ function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bS
   var bLabel=bStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Boss cleared</span>' : '<span style="color:#3fb950">&#10003; Boss cleared & key verified</span>')
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Boss not yet cleared</b>'
-    : bGot ? '<b style="color:#e3b341">Boss cleared (key not yet verified)</b>'
+    : bGot ? '<b style="color:#58a6ff">Boss cleared (key not yet verified)</b>'
     : bossVerified ? '<b style="color:#e3b341">Key verified (boss not yet cleared)</b>'
     : '<b style="color:#f85149">Boss key unverified</b>';
   var esLabel=esStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Eagle Statue unlocked</span>' : '<span style="color:#3fb950">&#10003; Eagle Statue unlocked & key verified</span>')
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Eagle Statue not yet unlocked</b>'
-    : esGot ? '<b style="color:#e3b341">Eagle Statue unlocked (key not yet verified)</b>'
+    : esGot ? '<b style="color:#58a6ff">Eagle Statue unlocked (key not yet verified)</b>'
     : esVerified ? '<span style="color:#8a8f98;">Key verified (not yet unlocked)</span>'
     : '<b style="color:#f85149">Eagle key unverified</b>';
   var tLvl=t.lv?(' <span style="color:var(--muted)">(Lv '+t.lv+')</span>'):'';
