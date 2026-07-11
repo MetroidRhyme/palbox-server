@@ -461,7 +461,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
           $ConfigFile, $SkipFlagFile, $MaintLogFile, $DefaultSettingsPath, $ActiveSettingsPath)
 
     $LogFile      = "$ServerDir\metrics-log.jsonl"
-    $PollInterval = 300   # metrics-collection cadence (also the history-chart granularity)
+    $PollInterval = 300   # history-chart granularity / metrics-log append cadence
+    # Playtime is credited on a much faster cadence than the 300s history granularity so a
+    # session's start/end is captured to ~30s instead of ~5min, and so a brief PalWorld
+    # /v1/api/players outage (it returns [] while /metrics still reports players online) is far
+    # more likely to fall between two "up" polls than to swallow whole minutes at a sample
+    # instant. CollectMetrics now runs every $PlaytimeInterval; it only appends a history row
+    # once per $PollInterval (see $script:nextMetricAppend) so /api/history's 24h window is
+    # unchanged, and it credits playtime on every poll.
+    $PlaytimeInterval = 30   # playtime-crediting + player-count reconciliation cadence
     $SyncInterval = 20    # public-data R2 sync cadence -- how fresh the dashboards' data is
                           # (60->30->20s on 2026-07-09; Level.sav is genuinely rewritten
                           #  every ~5s (AutoSaveSpan=5, measured), so 20s is a real freshness
@@ -935,6 +943,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         $script:playtime         = Load-Playtime
         $script:onlinePlayers    = @{}
         $script:tempNameBySid    = @{}
+        $script:countPlaceholders = New-Object System.Collections.Generic.List[string]
         $script:tempNameCounter  = 0
     }
 
@@ -1021,52 +1030,28 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
             $entry = [ordered]@{ ts=(Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'); players=[int]$pcnt;
                                   fps=[math]::Round([double]$fps,1); avgPing=$avgPing;
                                   bases=[int]$bases; days=$days; frametime=$ft }
-            Append-Metric $entry
-
-            # PalWorld's /v1/api/players endpoint can intermittently come back empty for a
-            # few polls in a row even while /v1/api/metrics still correctly reports someone
-            # connected (observed 2026-07-01 ~21:50-22:15: 5 straight polls logged players:1
-            # here while /players returned nothing, silently freezing the tracker for the
-            # rest of that session even though the player never disconnected). When the two
-            # disagree like that, keep crediting whoever was already being tracked online
-            # instead of losing the time -- but only to EXTEND an existing session (never
-            # invent one without a name), and only while the metrics count still matches, so
-            # a real disconnect (metrics count actually dropping) still stops the credit.
-            if ($playerList.Count -eq 0 -and [int]$pcnt -gt 0 -and $script:onlinePlayers.Count -eq [int]$pcnt) {
-                foreach ($name in @($script:onlinePlayers.Keys)) {
-                    if (-not $script:playtime.ContainsKey($name)) { continue }
-                    $script:playtime[$name].totalSeconds += $PollInterval
-                    $script:playtime[$name].lastSeen      = $entry.ts
-                }
-                Save-Playtime
-                try {
-                    $line = "[{0:yyyy-MM-dd HH:mm:ss}] /players empty while metrics reported {1} online - credited {2}`n" -f (Get-Date), $pcnt, ($script:onlinePlayers.Keys -join ',')
-                    Add-Content -LiteralPath "$ServerDir\playtime-glitch.log" -Value $line -Encoding UTF8
-                } catch {}
-                return
-            }
-            # Same /players-vs-/metrics disagreement as above, but the WORSE variant: it's
-            # present from the very start of a session (nobody was already being tracked to
-            # extend), so there is no name/sid anywhere to credit -- $playerList is completely
-            # empty, not just missing a name on an existing entry. Root-caused 2026-07-10 via
-            # metrics-log.jsonl showing players:1 continuously for ~56min (11:00-11:56) while
-            # Tia's playtime-log entry never moved off a stale prior-day value -- the extend
-            # branch above never engaged because onlinePlayers.Count (0) never equalled pcnt
-            # (1) for this session. Genuinely can't attribute the time here (zero identity
-            # signal), so this only logs -- a future fix could backfill once a name eventually
-            # appears (track when the mismatch started, credit the gap to whoever resolves
-            # next), but that's a guess-based heuristic that risks misattributing time if
-            # sessions overlap, and wasn't worth shipping untested with nobody online to
-            # verify against. At minimum this makes the gap visible instead of silently eating
-            # playtime with zero trace, which is what happened both times this has been seen
-            # (2026-07-01 and today).
-            elseif ($playerList.Count -eq 0 -and [int]$pcnt -gt 0) {
-                try {
-                    $line = "[{0:yyyy-MM-dd HH:mm:ss}] /players empty while metrics reported {1} online - UNATTRIBUTED (no prior tracked session to extend; onlinePlayers={2})`n" -f (Get-Date), $pcnt, $script:onlinePlayers.Count
-                    Add-Content -LiteralPath "$ServerDir\playtime-glitch.log" -Value $line -Encoding UTF8
-                } catch {}
+            # The history chart keeps its 300s granularity even though this function now polls
+            # every $PlaytimeInterval: only append a metrics-log row once a full $PollInterval
+            # has elapsed, so /api/history (-Tail 288 = 24h) is unchanged. The playtime crediting
+            # below still runs on every poll. $entry.ts is reused for lastSeen either way.
+            if ((Get-Date) -ge $script:nextMetricAppend) {
+                Append-Metric $entry
+                $script:nextMetricAppend = (Get-Date).AddSeconds($PollInterval)
             }
 
+            # ---------------------------------------------------------------------------
+            # Playtime is credited against the RELIABLE player count ($pcnt, from /metrics);
+            # /players is used only for identity. PalWorld's /v1/api/players intermittently
+            # returns [] while /metrics still reports players online (observed 2026-07-01 and
+            # 2026-07-10 -- whole sessions went untracked because identity was the only thing
+            # driving the credit; e.g. Tia lost ~56min on 2026-07-10). Reconciling to $pcnt
+            # every poll means online time is never lost: players /players can name are credited
+            # by name; any remaining online count that can't be named right now is credited to a
+            # temporary "(PlayerN)" placeholder slot that migrates onto the real name the moment
+            # it appears. The faster $PlaytimeInterval polling further shrinks the window where
+            # /players happens to be down at a sample instant.
+            # ---------------------------------------------------------------------------
+            $newlyOnline = New-Object System.Collections.Generic.List[string]
             foreach ($pl in $playerList) {
                 $name = Resolve-PlayerName $pl
                 $currentNames.Add($name)
@@ -1076,8 +1061,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 if (-not $script:onlinePlayers.ContainsKey($name)) {
                     $script:onlinePlayers[$name] = Get-Date
                     $script:playtime[$name].sessions++
+                    $newlyOnline.Add($name)
                 }
-                $script:playtime[$name].totalSeconds += $PollInterval
+                $script:playtime[$name].totalSeconds += $PlaytimeInterval
                 $script:playtime[$name].lastSeen      = $entry.ts
                 # PalWorld's REST API player fields are playerId/userId (docs.palworldgame.com),
                 # not "steamid"/"playeruid" -- neither of those ever matched, so this was always
@@ -1092,10 +1078,89 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     $script:playtime[$name].sampleCount++
                 }
             }
+
+            # Persist identified sessions that /players momentarily dropped from THIS poll while
+            # /metrics still counts them online, so a one-poll flicker doesn't freeze/reset a
+            # live session. Bounded by $pcnt (adding to $currentNames "claims" a slot) so a real
+            # disconnect -- the count actually dropping -- still stops the credit and lets the
+            # end-of-poll cleanup drop them.
+            if (([int]$pcnt - $currentNames.Count) -gt 0) {
+                foreach ($name in @($script:onlinePlayers.Keys)) {
+                    if (([int]$pcnt - $currentNames.Count) -le 0) { break }
+                    if ($name -in $currentNames -or $name -in $script:countPlaceholders) { continue }
+                    if (-not $script:playtime.ContainsKey($name)) { continue }
+                    $script:playtime[$name].totalSeconds += $PlaytimeInterval
+                    $script:playtime[$name].lastSeen      = $entry.ts
+                    $currentNames.Add($name)
+                }
+            }
+
+            # Anything metrics still counts online but nobody named is real time /players can't
+            # attribute yet -- credit it to "(PlayerN)" placeholders so it is never lost.
+            $deficit = [int]$pcnt - $currentNames.Count
+            if ($deficit -lt 0) { $deficit = 0 }
+            # Retire surplus placeholders. Prefer migrating a placeholder's accrued time onto a
+            # real name that came online THIS poll (the target case: a session that started
+            # during a /players outage finally got named). With no name to migrate onto, keep the
+            # placeholder's accrued total (just stop it accruing) rather than discard the time.
+            if ($script:countPlaceholders.Count -gt $deficit) {
+                $migrateTargets = New-Object System.Collections.Generic.List[string]
+                foreach ($n in $newlyOnline) { if ($n -notin $script:countPlaceholders) { $migrateTargets.Add($n) } }
+                while ($script:countPlaceholders.Count -gt $deficit) {
+                    $ph = $script:countPlaceholders[$script:countPlaceholders.Count - 1]
+                    $script:countPlaceholders.RemoveAt($script:countPlaceholders.Count - 1)
+                    $script:onlinePlayers.Remove($ph)
+                    if ($migrateTargets.Count -gt 0 -and $script:playtime.ContainsKey($ph)) {
+                        $real = $migrateTargets[0]; $migrateTargets.RemoveAt(0)
+                        $carried = [long]$script:playtime[$ph].totalSeconds
+                        $script:playtime[$real].totalSeconds += $carried
+                        # Both the placeholder and the real name each opened a "session" for what
+                        # is one real connection, so collapse the double-count.
+                        $sess = [int]$script:playtime[$real].sessions + [int]$script:playtime[$ph].sessions - 1
+                        if ($sess -lt 1) { $sess = 1 }
+                        $script:playtime[$real].sessions = $sess
+                        $script:playtime.Remove($ph)
+                        try {
+                            $line = "[{0:yyyy-MM-dd HH:mm:ss}] migrated placeholder {1} -> {2} (+{3}s carried)`n" -f (Get-Date), $ph, $real, $carried
+                            Add-Content -LiteralPath "$ServerDir\playtime-glitch.log" -Value $line -Encoding UTF8
+                        } catch {}
+                    }
+                }
+            }
+            # Credit surviving placeholders, then open new ones until the pool covers $deficit.
+            foreach ($ph in @($script:countPlaceholders)) {
+                if (-not $script:playtime.ContainsKey($ph)) {
+                    $script:playtime[$ph] = @{ totalSeconds=0L; sessions=1; lastSeen=''; avgPing=0.0; sampleCount=0; steamid='' }
+                }
+                $script:playtime[$ph].totalSeconds += $PlaytimeInterval
+                $script:playtime[$ph].lastSeen      = $entry.ts
+                $currentNames.Add($ph)
+            }
+            while ($script:countPlaceholders.Count -lt $deficit) {
+                $script:tempNameCounter++
+                $ph = "(Player$($script:tempNameCounter))"
+                $script:countPlaceholders.Add($ph)
+                if (-not $script:playtime.ContainsKey($ph)) {
+                    $script:playtime[$ph] = @{ totalSeconds=0L; sessions=0; lastSeen=''; avgPing=0.0; sampleCount=0; steamid='' }
+                }
+                $script:playtime[$ph].sessions++
+                $script:onlinePlayers[$ph] = Get-Date
+                $script:playtime[$ph].totalSeconds += $PlaytimeInterval
+                $script:playtime[$ph].lastSeen      = $entry.ts
+                $currentNames.Add($ph)
+                try {
+                    $line = "[{0:yyyy-MM-dd HH:mm:ss}] /players named {1} but metrics reported {2} online - opened placeholder {3}`n" -f (Get-Date), $playerList.Count, $pcnt, $ph
+                    Add-Content -LiteralPath "$ServerDir\playtime-glitch.log" -Value $line -Encoding UTF8
+                } catch {}
+            }
+
             foreach ($name in @($script:onlinePlayers.Keys)) {
                 if ($name -notin $currentNames) { $script:onlinePlayers.Remove($name) }
             }
-            Save-Playtime
+            # Skip the disk write when nobody is (or just was) online -- avoids rewriting the
+            # log every $PlaytimeInterval while the world sits idle. The final credit of a
+            # departing player was already saved on the prior poll (while $pcnt was still >0).
+            if ([int]$pcnt -gt 0 -or $newlyOnline.Count -gt 0) { Save-Playtime }
         } catch {}
     }
 
@@ -1131,6 +1196,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     $script:onlinePlayers = @{}
     Sync-PlaytimeToActiveWorld
     $nextCollect          = [datetime]::MinValue
+    $script:nextMetricAppend = [datetime]::MinValue   # history-row append gate (see CollectMetrics)
     $nextSync             = [datetime]::MinValue
     $nextEggCheck         = [datetime]::MinValue
     $script:lastEggStamp  = ''
@@ -1304,7 +1370,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
 
             if ((Get-Date) -ge $nextCollect) {
                 CollectMetrics
-                $nextCollect = (Get-Date).AddSeconds($PollInterval)
+                $nextCollect = (Get-Date).AddSeconds($PlaytimeInterval)
                 # Release the cached ~34MB Paldex JSON once its 24h TTL (see /api/palspawn)
                 # has passed, rather than leaving it resident until the next spawn-map
                 # request happens to overwrite it -- if the Map tab isn't in active use for a
