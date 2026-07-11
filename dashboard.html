@@ -512,6 +512,29 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <div class="panel-body" id="saves-area"><div class="empty-state">Loading...</div></div>
   </div>
 
+  <!-- Parallel Servers (admin-only; the whole #view-dashboard block is stripped from the public build) -->
+  <div class="panel">
+    <div class="panel-header">
+      <span>Parallel Servers</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="badge" id="instances-badge">-</span>
+        <button class="btn btn-ghost" onclick="fetchInstances()">&#8635; Reload</button>
+      </div>
+    </div>
+    <div class="actions-inner" style="border-bottom:1px solid var(--border)">
+      <div class="action-group">
+        <div class="action-label">Spin up a second server</div>
+        <div class="row">
+          <input type="text" id="inst-name" placeholder="Name e.g. Hardcore World">
+          <select id="inst-seed"><option value="">Empty new world</option></select>
+          <button class="btn btn-primary" onclick="createInstance()" style="white-space:nowrap">&#10010; Create Server</button>
+        </div>
+        <div class="hint" id="inst-disk-hint">Clones this install into a sibling folder with its own world &amp; ports, so it runs at the same time as the main server. Cloning runs in the background and takes a few minutes; you Start it (approving a one-time Windows Firewall prompt) once it finishes.</div>
+      </div>
+    </div>
+    <div class="panel-body" id="instances-area"><div class="empty-state">Loading...</div></div>
+  </div>
+
   <!-- Settings Editor -->
   <div class="panel">
     <div class="panel-header">
@@ -1276,6 +1299,14 @@ function switchView(name){
   // Unmapped Keys without Anthony having to switch tabs or reload. Only runs while this tab
   // is actually on screen.
   if(name==='datamine'){_dmLivePollTimer=setInterval(dmLivePollTick,8000);}
+  // Parallel Servers panel lives on the dashboard tab -- poll its status/provisioning
+  // progress while that tab is on screen. typeof-guarded because fetchInstances is
+  // admin-only JS stripped from the public build (switchView itself is not stripped).
+  if(_instancesPollTimer){clearInterval(_instancesPollTimer);_instancesPollTimer=null;}
+  if(name==='dashboard' && typeof fetchInstances==='function'){
+    fetchInstances();
+    _instancesPollTimer=setInterval(function(){ if(typeof fetchInstances==='function'){ fetchInstances(); } },10000);
+  }
   try{localStorage.setItem('palbox_active_tab',name);}catch(e){}
   // Player positions AND each overlay's found/collected state (effigies, journals,
   // bosses, fugitives, eagles) can all change while the player is mid-session --
@@ -1308,6 +1339,7 @@ function switchView(name){
 var _mapLivePollTimer=null;
 var _mapRosterPollTimer=null;
 var _mapDataminePollTimer=null;
+var _instancesPollTimer=null;
 // Same data fetch the Data Mine tab's own dmLivePollTick uses, but scoped to the Map tab:
 // refreshes dmFullPlayers/dmMappings so dmComputeUnmappedRows() (the shared source for both
 // the Add Icon modal's key dropdown and the Key Available badge) is never stale just because
@@ -6612,7 +6644,7 @@ async function reloadEffigyView(){
 // -- Data fetchers -------------------------------------------------------------
 async function refreshAll(){
   resetCountdown();
-  await Promise.allSettled([fetchInfo(),fetchMetrics(),fetchPlayers(),fetchHistory(),fetchPlaytime(),fetchMaintenanceInfo(),fetchMaintLog(),fetchSaves(),fetchPaldeck(),fetchSyncStatus()]);
+  await Promise.allSettled([fetchInfo(),fetchMetrics(),fetchPlayers(),fetchHistory(),fetchPlaytime(),fetchMaintenanceInfo(),fetchMaintLog(),fetchSaves(),fetchInstances(),fetchPaldeck(),fetchSyncStatus()]);
   if(!sLoaded) fetchFileSettings();
   loadEggNotify();
   setText('last-updated',new Date().toLocaleTimeString());
@@ -7030,6 +7062,7 @@ function saveRowHtml(s){
     +'<td style="color:var(--muted);font-size:11px">'+esc(savedTxt)+'</td>'
     +'<td style="white-space:nowrap">'+actBtn
     +'<button class="btn btn-ghost" onclick="renameSave(\''+esc(s.id)+'\',\''+esc(s.name)+'\')" style="margin-left:4px">Rename</button>'
+    +'<button class="btn btn-ghost" onclick="createInstanceFromSave(\''+esc(s.id)+'\',\''+esc(s.name)+'\')" style="margin-left:4px" title="Clone the server and run this save as a second, parallel server">+ Server</button>'
     +bkBtn+delBtn+'</td>'
     +'</tr>';
 }
@@ -7130,6 +7163,146 @@ async function deleteSave(id,name){
   if(!confirm('Delete the library copy "'+name+'"?\nThis cannot be undone. The active world is not affected.'))return;
   try{await api('/api/save-delete','POST',{slot:id});toast('Deleted "'+name+'".','success');await fetchSaves();}
   catch(e){toast('Delete failed: '+e.message,'error');}
+}
+
+// -- Parallel Servers ----------------------------------------------------------
+// Admin-only. Lives inside the refreshAll..fetchPaldeck admin-JS strip range, so
+// gen_public_site.ps1 removes this whole block from the public build (same as the
+// Save Manager JS above). switchView guards its fetchInstances call with a typeof
+// check so the public site (where this is stripped) no-ops instead of throwing.
+var instancesList=[];
+// Library saves usable to seed / load into a parallel server (real, non-backup slots
+// with world data). Reuses savesList populated by fetchSaves().
+function instSeedOptions(mode){
+  var opts='<option value="">'+(mode==='load'?'(pick a save)':'Empty new world')+'</option>';
+  (savesList||[]).filter(function(s){return !isBackup(s) && s.guid;}).forEach(function(s){
+    opts+='<option value="'+esc(s.id)+'">'+esc(s.name)+'</option>';
+  });
+  return opts;
+}
+async function fetchInstances(){
+  try{
+    var d=await api('/api/instances');
+    instancesList=d.instances||[];
+    renderInstances(d);
+    var badge=document.getElementById('instances-badge');
+    if(badge){
+      var run=instancesList.filter(function(i){return i.running;}).length;
+      badge.textContent=instancesList.length?(instancesList.length+' server'+(instancesList.length>1?'s':'')+', '+run+' running'):'None';
+    }
+    var seed=document.getElementById('inst-seed');
+    if(seed){ var cur=seed.value; seed.innerHTML=instSeedOptions('new'); seed.value=cur; }
+    var hint=document.getElementById('inst-disk-hint');
+    if(hint && d.freeGB!=null){
+      hint.innerHTML='Clones this install into a sibling folder with its own world &amp; ports, so it runs at the same time as the main server. Cloning runs in the background (a few minutes). Free disk: '+esc(String(d.freeGB))+'&nbsp;GB.';
+    }
+  }catch(e){
+    var a=document.getElementById('instances-area');
+    if(a)a.innerHTML='<div class="empty-state err">Could not load servers: '+esc(e.message)+'</div>';
+  }
+}
+function instStatusTag(i){
+  if(i.status==='provisioning') return '<span class="tag tag-blue">provisioning</span>';
+  if(String(i.status||'').indexOf('error')===0) return '<span class="tag tag-red" title="'+esc(i.status)+'">error</span>';
+  if(i.running) return '<span class="tag tag-green">running</span>';
+  return '<span class="tag tag-muted">stopped</span>';
+}
+function instRowHtml(i){
+  var prov=(i.status==='provisioning');
+  var startStop=i.running
+    ? '<button class="btn btn-danger" onclick="stopInstance(\''+esc(i.id)+'\',\''+esc(i.name)+'\')">Stop</button>'
+    : '<button class="btn btn-green" onclick="startInstance(\''+esc(i.id)+'\',\''+esc(i.name)+'\')"'+(prov?' disabled':'')+'>Start</button>';
+  var loadCtl='<select id="instload-'+esc(i.id)+'" style="max-width:150px"'+(prov?' disabled':'')+'>'+instSeedOptions('load')+'</select>'
+    +'<button class="btn btn-ghost" onclick="loadIntoInstance(\''+esc(i.id)+'\',\''+esc(i.name)+'\')"'+(prov?' disabled':'')+' style="margin-left:4px">Load</button>';
+  var resync='<button class="btn btn-ghost" onclick="resyncInstance(\''+esc(i.id)+'\',\''+esc(i.name)+'\')"'+((prov||i.running)?' disabled':'')+' title="Re-copy game binaries from the primary after a Palworld update">Re-sync</button>';
+  var del='<button class="btn btn-danger" onclick="deleteInstance(\''+esc(i.id)+'\',\''+esc(i.name)+'\')"'+(prov?' disabled':'')+' style="margin-left:4px">Delete</button>';
+  return '<tr>'
+    +'<td class="player-name">'+esc(i.name)+' '+instStatusTag(i)+'<div class="hint" style="font-family:monospace">'+esc(i.dir)+'</div></td>'
+    +'<td style="font-family:monospace;font-size:11px">game '+i.gamePort+'<br>REST '+i.restPort+'</td>'
+    +'<td style="font-family:monospace;font-size:11px">'+esc(String(i.guid||'').substring(0,8))+'</td>'
+    +'<td>'+(i.running?(i.players==null?'?':i.players):'-')+'</td>'
+    +'<td style="white-space:nowrap">'+startStop+' '+loadCtl+'</td>'
+    +'<td style="white-space:nowrap">'+resync+del+'</td>'
+    +'</tr>';
+}
+function renderInstances(d){
+  var area=document.getElementById('instances-area');
+  if(!area)return;
+  var list=d.instances||[];
+  if(!list.length){
+    var np=d.nextPorts;
+    area.innerHTML='<div class="empty-state">No parallel servers yet. Create one above'+(np?(' &mdash; the first will use game port '+np.game+' / REST '+np.rest):'')+'. Each is a full copy of this install with its own world and ports, so it runs at the same time as the main server.</div>';
+    return;
+  }
+  var rows=list.map(instRowHtml).join('');
+  area.innerHTML='<table><thead><tr><th>Name</th><th>Ports</th><th>World</th><th>Players</th><th>Run / Load save</th><th>Maintain</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+async function createInstance(){
+  var name=(document.getElementById('inst-name').value||'').trim();
+  if(!name){toast('Enter a name for the new server first.','error');return;}
+  var seed=document.getElementById('inst-seed');
+  var slot=seed?seed.value:'';
+  var seedName=(seed && seed.selectedIndex>0)?seed.options[seed.selectedIndex].text:'';
+  var warn='Create a new parallel server "'+name+'"?\n\n'
+    +'- A full copy of this install is cloned into a sibling folder in the background (a few minutes).\n'
+    +(slot?('- It will be seeded with your saved world "'+seedName+'".\n'):'- It starts with a fresh empty world.\n')
+    +'- It gets its own ports and runs alongside the main server.\n'
+    +'- You Start it (and approve a one-time Windows Firewall prompt) once cloning finishes.';
+  if(!confirm(warn))return;
+  toast('Provisioning "'+name+'" - cloning install in the background...','warn',9000);
+  try{
+    var r=await api('/api/instance-new','POST',{name:name,slot:slot});
+    toast(r.status||('Provisioning "'+name+'".'),'success',8000);
+    document.getElementById('inst-name').value='';
+    if(seed)seed.value='';
+    fetchInstances();
+  }catch(e){toast('Create failed: '+e.message,'error',8000);}
+}
+// "Button next to a save" entry point: clone + seed a parallel server straight from
+// a Save Manager row.
+function createInstanceFromSave(slotId,slotName){
+  var name=prompt('Name for a new parallel server seeded with "'+slotName+'":',slotName+' (server 2)');
+  if(name===null)return; name=name.trim();
+  if(!name){toast('Name required.','error');return;}
+  if(!confirm('Create a parallel server "'+name+'" from save "'+slotName+'"?\n\n- Clones this install into a sibling folder in the background (a few minutes).\n- Then Start it from the Parallel Servers panel (with a one-time firewall prompt).'))return;
+  toast('Provisioning "'+name+'" from "'+slotName+'"...','warn',9000);
+  api('/api/instance-new','POST',{name:name,slot:slotId})
+    .then(function(r){toast(r.status||('Provisioning "'+name+'".'),'success',8000);fetchInstances();})
+    .catch(function(e){toast('Create failed: '+e.message,'error',8000);});
+}
+async function startInstance(id,name){
+  if(!confirm('Start "'+name+'"?\n\nThe first start opens a Windows Firewall prompt - approve it so players can connect. It launches in its own window.'))return;
+  toast('Starting "'+name+'" (approve the firewall prompt if it appears)...','warn',9000);
+  try{ var r=await api('/api/instance-start','POST',{id:id}); toast(r.status||('Starting "'+name+'".'),'success',8000); setTimeout(fetchInstances,3000); }
+  catch(e){toast('Start failed: '+e.message,'error',8000);}
+}
+async function stopInstance(id,name){
+  if(!confirm('Stop "'+name+'"? Players on it will be disconnected. The world is saved first.'))return;
+  toast('Stopping "'+name+'"...','warn',8000);
+  try{ var r=await api('/api/instance-stop','POST',{id:id}); toast(r.status||('Stopped "'+name+'".'),'success'); setTimeout(fetchInstances,2000); }
+  catch(e){toast('Stop failed: '+e.message,'error',8000);}
+}
+async function loadIntoInstance(id,name){
+  var sel=document.getElementById('instload-'+id);
+  var slot=sel?sel.value:'';
+  if(!slot){toast('Pick a save to load into this server first.','error');return;}
+  var sName=sel.options[sel.selectedIndex].text;
+  if(!confirm('Load "'+sName+'" onto server "'+name+'"?\n\n- If it is running it is stopped and restarted on this world.\n- The world is copied into this server (your library copy is untouched).\n- Approve the firewall prompt if this is its first start.'))return;
+  toast('Loading "'+sName+'" onto "'+name+'"...','warn',9000);
+  try{ var r=await api('/api/instance-start','POST',{id:id,slot:slot}); toast(r.status||('Loaded onto "'+name+'".'),'success',8000); setTimeout(fetchInstances,3000); }
+  catch(e){toast('Load failed: '+e.message,'error',8000);}
+}
+async function resyncInstance(id,name){
+  if(!confirm('Re-sync "'+name+'" binaries from the primary?\n\nUse this after a Palworld update so this server runs the current game version. Its own world and settings are preserved. Runs in the background; it must be stopped.'))return;
+  toast('Re-syncing "'+name+'" binaries...','warn',9000);
+  try{ var r=await api('/api/instance-resync','POST',{id:id}); toast(r.status||('Re-syncing "'+name+'".'),'success',8000); setTimeout(fetchInstances,2000); }
+  catch(e){toast('Re-sync failed: '+e.message,'error',8000);}
+}
+async function deleteInstance(id,name){
+  if(!confirm('Delete parallel server "'+name+'"?\n\nThis STOPS it, removes its Windows Firewall rule, and DELETES its entire install folder (including its world). This cannot be undone.\n\nIf you want to keep its world, Load it into your library from that server first.'))return;
+  toast('Deleting "'+name+'"...','warn',9000);
+  try{ var r=await api('/api/instance-delete','POST',{id:id}); toast(r.status||('Deleted "'+name+'".'),'success',8000); setTimeout(fetchInstances,1500); }
+  catch(e){toast('Delete failed: '+e.message,'error',8000);}
 }
 
 // -- Countdown -----------------------------------------------------------------
