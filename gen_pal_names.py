@@ -21,8 +21,19 @@ def main():
         for e in db.get(section, []):
             internal = e.get("InternalName")
             name = e.get("Name")
-            if internal and name and name != "-":
-                out[internal.lower()] = name
+            if not (internal and name):
+                continue
+            # Skip palcalc's non-name placeholders. Three kinds leak in otherwise (~1400 of
+            # them), and because pal_team_reader looks the internal code up here BEFORE its
+            # _humanize() fallback, a junk mapping here surfaces raw in the UI instead of a
+            # clean humanized label:
+            #   "-"                     palcalc has no localized name for it
+            #   name == internal        partner-skill/ride/base-camp effect atoms whose Name is
+            #                           just the code echoed back (e.g. "AddItemDrop_PartnerSkill_1")
+            #   "en Text"               the game's own untranslated test/debug skills (TestSkill1..)
+            if name == "-" or name == "en Text" or name.strip().lower() == internal.strip().lower():
+                continue
+            out[internal.lower()] = name
         return out
 
     data = {"passives": build("PassiveSkills"), "moves": build("ActiveSkills")}
