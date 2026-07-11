@@ -93,8 +93,11 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 .stat-sub{font-size:10px;color:var(--muted);margin-top:4px;}
 
 /* Mid row */
-.mid-row{display:flex;gap:12px;}
-.mid-row .panel-players{flex:7;min-width:0;}
+.mid-row{display:flex;gap:12px;align-items:stretch;}
+.mid-row .mid-left{flex:7;min-width:0;display:flex;flex-direction:column;gap:12px;}
+.mid-row .panel-players{min-width:0;}
+.mid-row .panel-playtime{flex:1;min-height:0;}
+.mid-row .panel-playtime .panel-body{overflow:auto;}
 .mid-row .panel-actions{flex:5;min-width:260px;}
 
 /* Charts row */
@@ -378,6 +381,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 
   <!-- Players + Actions -->
   <div class="mid-row">
+    <div class="mid-left">
     <div class="panel panel-players">
       <div class="panel-header">
         <span>Online Players</span>
@@ -385,6 +389,13 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
       </div>
       <div class="panel-body" id="player-area"><div class="empty-state">Loading...</div></div>
     </div>
+
+    <!-- Player Stats: sits beneath Online Players, left of Server Controls -->
+    <div class="panel panel-playtime">
+      <div class="panel-header"><span>Player Stats</span></div>
+      <div class="panel-body" id="playtime-area"><div class="empty-state">No data yet &mdash; stats accumulate as players connect.</div></div>
+    </div>
+    </div><!-- /mid-left -->
 
     <div class="panel panel-actions">
       <div class="panel-header"><span>Server Controls</span></div>
@@ -467,12 +478,6 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <div class="panel"><div class="panel-header"><span>Server FPS <span style="font-weight:400;font-size:11px;color:var(--muted)">(24h)</span></span></div><div class="chart-body"><canvas id="chart-fps"></canvas></div></div>
     <div class="panel"><div class="panel-header"><span>Avg Ping ms <span style="font-weight:400;font-size:11px;color:var(--muted)">(24h)</span></span></div><div class="chart-body"><canvas id="chart-ping"></canvas></div></div>
     <div class="panel"><div class="panel-header"><span>Frame Time ms <span style="font-weight:400;font-size:11px;color:var(--muted)">(24h)</span></span></div><div class="chart-body"><canvas id="chart-frametime"></canvas></div></div>
-  </div>
-
-  <!-- Player Stats -->
-  <div class="panel">
-    <div class="panel-header"><span>Player Stats</span></div>
-    <div class="panel-body" id="playtime-area"><div class="empty-state">No data yet &mdash; stats accumulate as players connect.</div></div>
   </div>
 
   <!-- Save Manager -->
