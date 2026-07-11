@@ -42,6 +42,14 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
     $OffMachineStateFile = "$ServerDir\.palbox_offmachine_backup_state.json"
     $OffMachineConfig    = "$ServerDir\config.ps1"
 
+    # Parallel-server awareness: lets this job's stop/start checks target ONLY the
+    # primary (root install, 8211) instead of every *PalServer* process, so a daily
+    # maintenance reboot never kills a running parallel server. With no instances
+    # registered, Get-PrimaryServerProcesses returns all PalServer processes exactly
+    # as the old name-based checks did (see pal_instances.ps1).
+    . "$ServerDir\pal_instances.ps1"
+    Initialize-InstanceLib -PrimaryRoot $ServerDir
+
     function Log([string]$Msg) {
         $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Msg"
         Write-Output $line
@@ -79,8 +87,11 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
     }
 
     function Stop-PalServer {
-        if (-not (Get-Process | Where-Object { $_.Name -like "*PalServer*" })) {
-            Log "No PalServer process found - skipping stop."
+        # Primary-scoped (root install / 8211) so a maintenance reboot leaves any
+        # running parallel servers alone. Falls back to all-PalServer when no
+        # parallel instances exist.
+        if (-not (Test-PrimaryServerRunning)) {
+            Log "No primary PalServer process found - skipping stop."
             return
         }
         Log "Saving world before shutdown..."
@@ -94,13 +105,12 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
         } catch { Log "REST shutdown failed: $($_.Exception.Message)" }
 
         $waited = 0
-        while ((Get-Process | Where-Object { $_.Name -like "*PalServer*" }) -and $waited -lt 90) {
+        while ((Test-PrimaryServerRunning) -and $waited -lt 90) {
             Start-Sleep -Seconds 3; $waited += 3
         }
-        if (Get-Process | Where-Object { $_.Name -like "*PalServer*" }) {
+        if (Test-PrimaryServerRunning) {
             Log "Server still alive after 90s - force killing..."
-            Get-Process | Where-Object { $_.Name -like "*PalServer*" } |
-                Stop-Process -Force -ErrorAction SilentlyContinue
+            Get-PrimaryServerProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 3
         }
         Log "Server stopped."
@@ -368,7 +378,7 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
     }
 
     # Start server if not already running
-    if (-not (Get-Process | Where-Object { $_.Name -like "*PalServer*" })) {
+    if (-not (Test-PrimaryServerRunning)) {
         Log "Server not running - starting now..."
         Start-Process powershell.exe -ArgumentList "-ExecutionPolicy Bypass -File `"$StartScript`""
         Log "Server process launched."
@@ -497,6 +507,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # list; used by the /api/effigies...towers routes below.
     . "$ServerDir\map_data_lib.ps1"
     Initialize-MapDataLib -Root $ServerDir
+
+    # Parallel-server ("secondary instance") management. Provides Get-InstanceList,
+    # port/provision/firewall/start/stop helpers, and Get-PrimaryServerProcesses /
+    # Test-PrimaryServerRunning -- used below so the primary's own stop/status checks
+    # never catch a running parallel server. See pal_instances.ps1.
+    . "$ServerDir\pal_instances.ps1"
+    Initialize-InstanceLib -PrimaryRoot $ServerDir
 
     # Save-management paths. The dedicated server loads whichever world folder
     # DedicatedServerName (in GameUserSettings.ini) points at, under SaveGames\0.
@@ -811,9 +828,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # Graceful stop (save + REST shutdown), force-kill as a last resort. Returns
     # $true once no PalServer process remains.
     function Stop-PalServerWait {
-        # -Name 'PalServer*' instead of piping every process on the box through
-        # Where-Object -- a targeted Get-Process filter, not a full enumeration.
-        if (-not (Get-Process -Name 'PalServer*' -EA SilentlyContinue)) { return $true }
+        # Primary-scoped (root install / 8211) so switching the primary's world never
+        # kills a running parallel server. Falls back to all-PalServer when none exist.
+        if (-not (Test-PrimaryServerRunning)) { return $true }
         try { Invoke-RestMethod -Uri "$PalApiBase/v1/api/save" -Method POST -Headers (Get-PalHeaders) -EA Stop | Out-Null } catch {}
         Start-Sleep -Seconds 3
         try {
@@ -821,20 +838,20 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 -Body (ConvertTo-Json @{ waittime=5; message="Switching world save - back shortly." }) -EA Stop | Out-Null
         } catch {}
         $waited = 0
-        while ((Get-Process -Name 'PalServer*' -EA SilentlyContinue) -and $waited -lt 60) {
+        while ((Test-PrimaryServerRunning) -and $waited -lt 60) {
             Start-Sleep -Seconds 2; $waited += 2
         }
-        if (Get-Process -Name 'PalServer*' -EA SilentlyContinue) {
-            Get-Process -Name 'PalServer*' -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
+        if (Test-PrimaryServerRunning) {
+            Get-PrimaryServerProcesses | Stop-Process -Force -EA SilentlyContinue
             Start-Sleep -Seconds 3
         }
-        return -not [bool](Get-Process -Name 'PalServer*' -EA SilentlyContinue)
+        return (-not (Test-PrimaryServerRunning))
     }
 
     function Get-SaveList {
         if (-not (Test-Path $SaveLibraryRoot)) { New-Item -ItemType Directory -Path $SaveLibraryRoot -Force | Out-Null }
         $activeGuid = Get-ActiveGuid
-        $running    = [bool](Get-Process | Where-Object { $_.Name -like "*PalServer*" })
+        $running    = Test-PrimaryServerRunning
         $markerFile = Join-Path $SaveLibraryRoot '.active-slot'
         $activeSlot = if (Test-Path $markerFile) { (Get-Content $markerFile -Raw -Encoding UTF8).Trim() } else { $null }
 
@@ -1666,7 +1683,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/start' -and $method -eq 'POST') {
-                    if (Get-Process | Where-Object { $_.Name -like "*PalServer*" }) {
+                    if (Test-PrimaryServerRunning) {
                         Send-Response $res 200 "application/json" '{"status":"Already running"}'
                     } else {
                         Start-Process powershell.exe -ArgumentList "-ExecutionPolicy Bypass -File `"$StartScript`""
@@ -1748,6 +1765,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             # Record into the banner feed (nested job: dot-source once on demand).
                             try{ if(-not (Get-Command Add-ServerMessage -EA SilentlyContinue)){ . "$ServerDir\server_messages.ps1" }; Add-ServerMessage $msg 'maintenance' }catch{}
                         }
+                        # Parallel-server aware: only wait on the PRIMARY (root install
+                        # / 8211), never a running parallel server. PrimaryUp uses the
+                        # module if it loaded, else falls back to the old name-based check
+                        # so a missing module never breaks the unattended reboot path.
+                        try { . "$ServerDir\pal_instances.ps1"; Initialize-InstanceLib -PrimaryRoot $ServerDir } catch {}
+                        function PrimaryUp {
+                            if (Get-Command Test-PrimaryServerRunning -EA SilentlyContinue) { return (Test-PrimaryServerRunning) }
+                            return [bool](Get-Process | Where-Object { $_.Name -like "*PalServer*" })
+                        }
                         BC "Server rebooting in $waitSecs seconds!"
                         $rem=$waitSecs
                         foreach ($mark in @(300,120,60,30,10,5)) {
@@ -1763,7 +1789,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         try{Invoke-RestMethod -Uri "$palBase/v1/api/shutdown" -Method POST -Headers $h `
                                 -Body(ConvertTo-Json @{waittime=10;message="Shutting down now."})|Out-Null}catch{}
                         $waited=0
-                        while((Get-Process|Where-Object{$_.Name-like"*PalServer*"})-and$waited-lt 90){Start-Sleep -Seconds 3;$waited+=3}
+                        while((PrimaryUp)-and$waited-lt 90){Start-Sleep -Seconds 3;$waited+=3}
                         # Re-apply the captured settings now that the server has exited
                         # (and finished its own clobbering write), before it starts again.
                         if($setStage){ try{[IO.File]::WriteAllText($setPath,$setStage,(New-Object Text.UTF8Encoding($false)))}catch{} }
@@ -1795,6 +1821,14 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             # Record into the banner feed (nested job: dot-source once on demand).
                             try{ if(-not (Get-Command Add-ServerMessage -EA SilentlyContinue)){ . "$ServerDir\server_messages.ps1" }; Add-ServerMessage $msg 'maintenance' }catch{}
                         }
+                        # Parallel-server aware: only wait on / force-kill the PRIMARY,
+                        # never a running parallel server. PrimaryUp falls back to the old
+                        # name-based check if the module did not load.
+                        try { . "$ServerDir\pal_instances.ps1"; Initialize-InstanceLib -PrimaryRoot $ServerDir } catch {}
+                        function PrimaryUp {
+                            if (Get-Command Test-PrimaryServerRunning -EA SilentlyContinue) { return (Test-PrimaryServerRunning) }
+                            return [bool](Get-Process | Where-Object { $_.Name -like "*PalServer*" })
+                        }
                         BC "Server shutting down in $waitSecs seconds!"
                         $rem=$waitSecs
                         foreach ($mark in @(300,120,60,30,10,5)) {
@@ -1811,8 +1845,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 -Body(ConvertTo-Json @{waittime=5;message="Shutting down now."})|Out-Null}catch{}
                         # Force-kill if it has not exited on its own within 90s.
                         $waited=0
-                        while((Get-Process|Where-Object{$_.Name-like"*PalServer*"})-and$waited-lt 90){Start-Sleep -Seconds 3;$waited+=3}
-                        if(Get-Process|Where-Object{$_.Name-like"*PalServer*"}){Get-Process|Where-Object{$_.Name-like"*PalServer*"}|Stop-Process -Force -EA SilentlyContinue}
+                        while((PrimaryUp)-and$waited-lt 90){Start-Sleep -Seconds 3;$waited+=3}
+                        if(PrimaryUp){ if(Get-Command Get-PrimaryServerProcesses -EA SilentlyContinue){Get-PrimaryServerProcesses|Stop-Process -Force -EA SilentlyContinue}else{Get-Process|Where-Object{$_.Name-like"*PalServer*"}|Stop-Process -Force -EA SilentlyContinue} }
                         # Restore the captured settings after the server has exited, so
                         # the next start uses the edited values rather than the clobbered ones.
                         if($setStage){ Start-Sleep -Seconds 2; try{[IO.File]::WriteAllText($setPath,$setStage,(New-Object Text.UTF8Encoding($false)))}catch{} }
@@ -1838,7 +1872,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         if (-not $name.Trim()) { throw "A name is required." }
                         if (-not (Get-ActiveGuid)) { throw "No active world found to copy." }
                         # Force a save first so the copy reflects current progress.
-                        if (Get-Process | Where-Object { $_.Name -like "*PalServer*" }) {
+                        if (Test-PrimaryServerRunning) {
                             try { Invoke-RestMethod -Uri "$PalApiBase/v1/api/save" -Method POST -Headers (Get-PalHeaders) -EA Stop | Out-Null; Start-Sleep -Seconds 2 } catch {}
                         }
                         $id = Save-WorldToLibrary $name.Trim() ([string]$body.note) $false
@@ -1973,6 +2007,191 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         if ($slotId -eq $activeSlot) { throw "Cannot delete the active save - switch to another save first." }
                         Remove-Item $slotDir -Recurse -Force
                         Send-Response $res 200 "application/json" '{"status":"Deleted"}'
+                    } catch {
+                        Send-Response $res 400 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                # ── Parallel-server ("secondary instance") routes ──────────────────
+                # A parallel server is a full clone of this install (its own Pal\Saved)
+                # running on its own port block. See pal_instances.ps1 for the why and
+                # the helpers used here (Get-InstanceList / New-ServerInstance / start /
+                # stop / provision / firewall). instance-new provisions asynchronously
+                # (multi-GB robocopy) via a background job so this request returns fast.
+
+                ($path -eq '/api/instances' -and $method -eq 'GET') {
+                    try {
+                        $out = @()
+                        foreach ($i in (Get-InstanceList)) {
+                            $st = Get-InstanceStatus -Inst $i
+                            $players = $null
+                            if ($st.running) {
+                                try {
+                                    $cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:$AdminPassword"))
+                                    $h = @{ Authorization = "Basic $cred" }
+                                    $m = Invoke-RestMethod -Uri "http://localhost:$($i.restPort)/v1/api/metrics" -Method GET -Headers $h -TimeoutSec 2 -EA Stop
+                                    if ($null -ne $m.currentplayernum) { $players = [int]$m.currentplayernum }
+                                } catch {}
+                            }
+                            $runState = if ($i.status -eq 'provisioning') { 'provisioning' } elseif ($st.running) { 'running' } else { 'stopped' }
+                            $out += [ordered]@{
+                                id=$i.id; name=$i.name; dir=$i.dir; num=$i.num;
+                                gamePort=$i.gamePort; restPort=$i.restPort; publicPort=$i.publicPort; rconPort=$i.rconPort;
+                                guid=$i.guid; created=$i.created; status=$runState; running=$st.running; players=$players
+                            }
+                        }
+                        $freeGB = $null
+                        try { $freeGB = [math]::Round((Get-PSDrive -Name ($ServerDir.Substring(0,1)) -EA Stop).Free / 1GB, 1) } catch {}
+                        $nextNum = $null; $nextPorts = $null
+                        try { $nextNum = Get-NextInstanceNum; $pb = Get-InstancePortBlock -Num $nextNum; $nextPorts = [ordered]@{ game=$pb.game; rest=$pb.rest } } catch {}
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ instances=$out; freeGB=$freeGB; nextNum=$nextNum; nextPorts=$nextPorts } -Depth 6 -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/instance-new' -and $method -eq 'POST') {
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $name = [string]$body.name
+                        if (-not $name.Trim()) { throw "A name is required." }
+                        $slotId = if ($body.PSObject.Properties['slot']) { [string]$body.slot } else { '' }
+
+                        # If seeding from a library save, adopt that world's GUID so the
+                        # clone loads it; otherwise New-ServerInstance mints a fresh GUID.
+                        $seedWorldDir = ''
+                        $seedGuid = $null
+                        if ($slotId) {
+                            if (-not (Test-SlotId $slotId)) { throw "Save not found." }
+                            $slotDir = Join-Path $SaveLibraryRoot $slotId
+                            if (-not (Test-Path $slotDir)) { throw "Save not found." }
+                            $sMeta = Read-SlotMeta $slotDir
+                            $sWorld = Get-SlotWorldDir $slotDir $sMeta
+                            if (-not $sWorld.guid -or -not (Test-Path (Join-Path $sWorld.dir 'Level.sav'))) { throw "Save has no world data." }
+                            $seedWorldDir = $sWorld.dir; $seedGuid = $sWorld.guid
+                        }
+
+                        $inst = New-ServerInstance -Name $name.Trim() -Guid $seedGuid
+                        Set-InstanceRecord -Inst $inst | Out-Null
+
+                        # Heavy clone + config write runs in the background; status stays
+                        # 'provisioning' until the job flips it to 'stopped'.
+                        $instJson = ($inst | ConvertTo-Json -Depth 6 -Compress)
+                        Start-Job -Name "PalProvision-$($inst.id)" -ScriptBlock {
+                            param($ServerDir, $instJson, $SourceSettingsPath, $SeedWorldDir)
+                            . "$ServerDir\pal_instances.ps1"
+                            Initialize-InstanceLib -PrimaryRoot $ServerDir
+                            $inst = $instJson | ConvertFrom-Json
+                            $r = Invoke-InstanceProvision -Inst $inst -SourceSettingsPath $SourceSettingsPath
+                            if ($r.ok -and $SeedWorldDir) {
+                                $dst = Join-Path $inst.dir "Pal\Saved\SaveGames\0\$($inst.guid)"
+                                if (-not (Test-Path -LiteralPath $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }
+                                robocopy $SeedWorldDir $dst /MIR /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
+                            }
+                            # Re-read latest registry, flip just this record's status.
+                            $list = @(Get-InstanceList)
+                            foreach ($x in $list) {
+                                if ($x.id -eq $inst.id) {
+                                    if ($r.ok) { $x.status = 'stopped' } else { $x.status = "error: $($r.reason)" }
+                                }
+                            }
+                            Save-InstanceList $list
+                        } -ArgumentList $ServerDir, $instJson, $ActiveSettingsPath, $seedWorldDir | Out-Null
+
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ status="Provisioning '$($name.Trim())' (cloning install in the background)."; id=$inst.id; gamePort=$inst.gamePort; restPort=$inst.restPort } -Compress)
+                    } catch {
+                        Send-Response $res 400 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/instance-start' -and $method -eq 'POST') {
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $id = [string]$body.id
+                        if (-not (Test-InstanceId $id)) { throw "Instance not found." }
+                        $inst = Get-InstanceById -Id $id
+                        if (-not $inst) { throw "Instance not found." }
+                        if ($inst.status -eq 'provisioning') { throw "Still provisioning - try again once it finishes." }
+
+                        # Optionally load a library save into this instance before start.
+                        $slotId = if ($body.PSObject.Properties['slot']) { [string]$body.slot } else { '' }
+                        if ($slotId) {
+                            if (-not (Test-SlotId $slotId)) { throw "Save not found." }
+                            $slotDir = Join-Path $SaveLibraryRoot $slotId
+                            $sMeta = Read-SlotMeta $slotDir
+                            $sWorld = Get-SlotWorldDir $slotDir $sMeta
+                            if (-not $sWorld.guid -or -not (Test-Path (Join-Path $sWorld.dir 'Level.sav'))) { throw "Save has no world data." }
+                            if ((Get-InstanceStatus -Inst $inst).running) { Stop-ServerInstanceProc -Inst $inst -AdminPassword $AdminPassword | Out-Null }
+                            $dst = Join-Path $inst.dir "Pal\Saved\SaveGames\0\$($sWorld.guid)"
+                            if (-not (Copy-WorldTree $sWorld.dir $dst -Mirror)) { throw "Copy into instance failed." }
+                            Set-InstanceActiveGuid -Inst $inst -Guid $sWorld.guid
+                            $inst.guid = $sWorld.guid
+                            Set-InstanceRecord -Inst $inst | Out-Null
+                        }
+
+                        $r = Start-ServerInstanceProc -Inst $inst -Players 4
+                        if (-not $r.ok) { throw $r.reason }
+                        $fwNote = if ($r.firewall -eq 'added') { " Firewall rule added (UDP $($inst.gamePort))." } elseif ($r.firewall -eq 'exists') { "" } else { " Firewall: $($r.firewall)." }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ status="Starting '$($inst.name)' on port $($inst.gamePort).$fwNote" } -Compress)
+                    } catch {
+                        Send-Response $res 400 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/instance-stop' -and $method -eq 'POST') {
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $id = [string]$body.id
+                        if (-not (Test-InstanceId $id)) { throw "Instance not found." }
+                        $inst = Get-InstanceById -Id $id
+                        if (-not $inst) { throw "Instance not found." }
+                        $r = Stop-ServerInstanceProc -Inst $inst -AdminPassword $AdminPassword
+                        if (-not $r.ok) { throw $r.reason }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ status="Stopped '$($inst.name)'." } -Compress)
+                    } catch {
+                        Send-Response $res 400 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/instance-resync' -and $method -eq 'POST') {
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $id = [string]$body.id
+                        if (-not (Test-InstanceId $id)) { throw "Instance not found." }
+                        $inst = Get-InstanceById -Id $id
+                        if (-not $inst) { throw "Instance not found." }
+                        if ((Get-InstanceStatus -Inst $inst).running) { throw "Stop the instance before re-syncing its binaries." }
+                        # Background it - another multi-GB robocopy.
+                        $instJson = ($inst | ConvertTo-Json -Depth 6 -Compress)
+                        Start-Job -Name "PalResync-$($inst.id)" -ScriptBlock {
+                            param($ServerDir, $instJson)
+                            . "$ServerDir\pal_instances.ps1"
+                            Initialize-InstanceLib -PrimaryRoot $ServerDir
+                            $inst = $instJson | ConvertFrom-Json
+                            Invoke-InstanceResync -Inst $inst | Out-Null
+                        } -ArgumentList $ServerDir, $instJson | Out-Null
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ status="Re-syncing '$($inst.name)' binaries from the primary in the background." } -Compress)
+                    } catch {
+                        Send-Response $res 400 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/instance-delete' -and $method -eq 'POST') {
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $id = [string]$body.id
+                        if (-not (Test-InstanceId $id)) { throw "Instance not found." }
+                        $inst = Get-InstanceById -Id $id
+                        if (-not $inst) { throw "Instance not found." }
+                        $r = Remove-ServerInstance -Inst $inst -AdminPassword $AdminPassword
+                        if (-not $r.ok) { throw $r.reason }
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ status="Deleted '$($inst.name)' and its files." } -Compress)
                     } catch {
                         Send-Response $res 400 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
                     }

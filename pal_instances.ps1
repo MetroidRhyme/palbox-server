@@ -144,6 +144,49 @@ function Get-PidOnUdpPort {
     } catch { return $null }
 }
 
+# --- primary-vs-parallel process identity -------------------------------------
+# Every existing single-server stop/reboot/maintenance check matches PalServer
+# processes by NAME (*PalServer*), which would sweep up parallel servers too. These
+# two helpers let those call sites target only the PRIMARY (root install, 8211).
+#
+# The primary is identified by INSTALL-DIR PATH: a process whose exe lives under a
+# registered clone dir (C:\PalWorldServer2\...) is a parallel; everything else is
+# primary. Path works even while a server is still binding its port (unlike a
+# port-owner lookup), and the port-owner check is kept only as a fallback for the
+# rare case a process's .Path is inaccessible.
+#
+# CRUCIAL backward-compat: with NO instances registered this returns ALL PalServer
+# processes -- exactly what the old name-based checks returned -- so single-server
+# behavior is unchanged until a parallel server actually exists.
+function Get-PrimaryServerProcesses {
+    $all = @(Get-Process | Where-Object { $_.Name -like '*PalServer*' })
+    if ($all.Count -eq 0) { return @() }
+    $insts = @(Get-InstanceList)
+    if ($insts.Count -eq 0) { return $all }
+    $cloneDirs = @($insts | ForEach-Object { $_.dir.TrimEnd('\').ToLower() + '\' })
+    $primary = @()
+    foreach ($p in $all) {
+        $path = $null
+        try { $path = $p.Path } catch {}
+        $isClone = $false
+        if ($path) {
+            $lp = $path.ToLower()
+            foreach ($d in $cloneDirs) { if ($lp.StartsWith($d)) { $isClone = $true; break } }
+        } else {
+            # .Path inaccessible -- fall back to matching a clone's game-port owner.
+            foreach ($i in $insts) {
+                if ((Get-PidOnUdpPort -Port ([int]$i.gamePort)) -eq $p.Id) { $isClone = $true; break }
+            }
+        }
+        if (-not $isClone) { $primary += $p }
+    }
+    return @($primary)
+}
+
+function Test-PrimaryServerRunning {
+    return ((Get-PrimaryServerProcesses).Count -gt 0)
+}
+
 # --- minimal ini helpers (self-contained copies; the Manager job has its own) ---
 function Read-InstOptionSettings {
     param([Parameter(Mandatory)][string]$Path)
