@@ -9637,9 +9637,9 @@
         "z":  0,
         "name":  "Dumud",
         "source":  "NormalBossDefeatFlag",
-        "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "verified":  true
     },
     {
         "key":  "81_1_FOREST_FBOSS_6",
