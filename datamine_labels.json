@@ -3614,5 +3614,21 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "ELECPOMERANIAN",
+        "name":  "Puffolt",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "ElecPomeranian",
+        "name":  "Puffolt",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

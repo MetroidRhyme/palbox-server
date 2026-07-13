@@ -1251,11 +1251,11 @@
         "name":  "Sealed Realm of the Swordmaster",
         "gx":  -109,
         "gy":  -467,
-        "verified":  false,
         "category":  "eagle",
         "origin":  "manual",
         "y":  107510,
-        "x":  -338700
+        "x":  -338700,
+        "verified":  true
     },
     {
         "key":  "E0819EFB41581AEAC3A029B0EE2FE195",
@@ -9658,19 +9658,19 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_15",
-        "gx":  -411,
-        "gy":  -55,
         "lv":  null,
         "species":  "CatVampire",
-        "x":  -149133,
-        "y":  -30649,
-        "z":  0,
-        "name":  "Felbat",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "Foxsparks Cryst",
+        "key":  null,
+        "gx":  -411,
+        "gy":  -55,
+        "x":  null,
+        "y":  null,
+        "z":  null
     },
     {
         "key":  "81_1_GRASS_FBOSS_16",
@@ -10035,19 +10035,19 @@
         "origin":  "manual"
     },
     {
+        "lv":  null,
+        "species":  "LazyDragon_Electric",
+        "source":  "NormalBossDefeatFlag",
+        "category":  "bounty",
+        "origin":  "manual",
+        "verified":  true,
+        "name":  "Bushi",
         "key":  "81_1_GRASS_FBOSS_6",
         "gx":  -203,
         "gy":  -346,
-        "lv":  null,
-        "species":  "LazyDragon_Electric",
-        "x":  -282702,
-        "y":  64823,
-        "z":  0,
-        "name":  "Relaxaurus Lux",
-        "source":  "NormalBossDefeatFlag",
-        "verified":  false,
-        "category":  "bounty",
-        "origin":  "manual"
+        "x":  null,
+        "y":  null,
+        "z":  null
     },
     {
         "key":  "81_5_YAMIJIMA_FBOSS_17",
@@ -11123,19 +11123,19 @@
         "origin":  "manual"
     },
     {
-        "key":  "79C561B747335A7A0A8FBF9FAE280E62",
-        "z":  null,
         "species":  null,
         "lv":  null,
-        "gy":  -348,
-        "gx":  -215,
-        "x":  -283620,
-        "y":  59315,
-        "name":  "Sealed Realm of the Thunder Dragon",
         "source":  "FastTravelPointUnlockFlag",
         "verified":  false,
         "category":  "eagle",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "Sealed Realm of the Swordmaster",
+        "key":  "79C561B747335A7A0A8FBF9FAE280E62",
+        "gx":  -214,
+        "gy":  -348,
+        "x":  null,
+        "y":  null,
+        "z":  null
     },
     {
         "key":  "B001852C491FF5E70C4747BFF9972924",
