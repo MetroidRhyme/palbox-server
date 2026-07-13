@@ -1344,11 +1344,11 @@
         "x":  -39432
     },
     {
-        "key":  "F382ADAE4259150BF994FF873ECF242B",
-        "verified":  false,
         "category":  "eagle",
         "origin":  "manual",
+        "verified":  true,
         "name":  "Isle of Murmurs",
+        "key":  "F382ADAE4259150BF994FF873ECF242B",
         "gx":  -352,
         "gy":  76,
         "x":  null,
@@ -9628,19 +9628,19 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_27",
-        "gx":  -310,
-        "gy":  4,
-        "lv":  null,
         "species":  "LazyCatfish",
-        "x":  -122052,
-        "y":  15710,
-        "z":  0,
-        "name":  "Dumud",
         "source":  "NormalBossDefeatFlag",
         "category":  "bounty",
         "origin":  "manual",
-        "verified":  true
+        "verified":  false,
+        "name":  "Dumud",
+        "key":  "81_1_GRASS_FBOSS_27",
+        "gx":  -310,
+        "gy":  4,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "lv":  null
     },
     {
         "key":  "81_1_FOREST_FBOSS_6",
