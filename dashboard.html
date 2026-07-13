@@ -3754,9 +3754,11 @@ function toggleMapConfirm(category,ident,checked,nameFallback){
   if(!EFFIGY_CONFIRM_ENABLED)return;
   var body={category:category,confirmed:checked};
   if(category==='effigy') body.key=ident;
-  else if(category==='journal'){ if(ident) body.key=ident; else body.name=nameFallback; }
   else if(category==='bounty') body.species=ident;
-  else body.name=ident;
+  // fugitive/eagle/sam/tower/journal: send the save key when the pin has one so two pins
+  // sharing a display name resolve independently (Find-ConfirmedRow filters key by category);
+  // fall back to the name only for a still-keyless pin (2026-07-13).
+  else { if(ident) body.key=ident; else body.name=nameFallback; }
   fetch('/api/map-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
     .then(function(){
@@ -3772,16 +3774,28 @@ function toggleMapConfirm(category,ident,checked,nameFallback){
         var be=bossLocations&&bossLocations.find(function(b){return b.species&&b.species.toUpperCase()===ident.toUpperCase();});
         if(be) be.m=checked;
       } else if(category==='tower'){
-        var te=towerLocations&&towerLocations.find(function(t){return t.name&&t.name.toUpperCase()===ident.toUpperCase();});
+        var te=towerLocations&&towerLocations.find(function(t){
+          return ident ? (t.key&&t.key.toUpperCase()===ident.toUpperCase())
+            : (t.name&&nameFallback&&t.name.toUpperCase()===nameFallback.toUpperCase());
+        });
         if(te) te.m=checked;
       } else if(category==='fugitive'){
-        var he=wantedFugitiveLocations&&wantedFugitiveLocations.find(function(h){return h.name&&h.name.toUpperCase()===ident.toUpperCase();});
+        var he=wantedFugitiveLocations&&wantedFugitiveLocations.find(function(h){
+          return ident ? (h.key&&h.key.toUpperCase()===ident.toUpperCase())
+            : (h.name&&nameFallback&&h.name.toUpperCase()===nameFallback.toUpperCase());
+        });
         if(he) he.m=checked;
       } else if(category==='eagle'){
-        var ee=eagleStatueLocations&&eagleStatueLocations.find(function(es){return es.name&&es.name.toUpperCase()===ident.toUpperCase();});
+        var ee=eagleStatueLocations&&eagleStatueLocations.find(function(es){
+          return ident ? (es.key&&es.key.toUpperCase()===ident.toUpperCase())
+            : (es.name&&nameFallback&&es.name.toUpperCase()===nameFallback.toUpperCase());
+        });
         if(ee) ee.m=checked;
       } else if(category==='sam'){
-        var sse=samSiteLocations&&samSiteLocations.find(function(s){return s.name&&s.name.toUpperCase()===ident.toUpperCase();});
+        var sse=samSiteLocations&&samSiteLocations.find(function(s){
+          return ident ? (s.key&&s.key.toUpperCase()===ident.toUpperCase())
+            : (s.name&&nameFallback&&s.name.toUpperCase()===nameFallback.toUpperCase());
+        });
         if(sse) sse.m=checked;
       }
       renderEffigyMap();
@@ -4429,9 +4443,9 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
         +caveAddButtonHtml();
       openIconDetail('Wanted Fugitive',h.name,bodyHtml,ident,hm,function(el){
         var box=el.querySelector('#'+hChkId);
-        if(box) box.onchange=function(){ toggleMapConfirm('fugitive',h.name,box.checked); };
+        if(box) box.onchange=function(){ toggleMapConfirm('fugitive',h.key||null,box.checked,h.name); };
         if(!h.key) wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
-        wireCaveAdd(el,{category:'fugitive',name:h.name,label:h.name});
+        wireCaveAdd(el,{category:'fugitive',key:h.key||null,name:h.name,label:h.name});
       });
     });
   } else {
@@ -4470,9 +4484,9 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
         +caveAddButtonHtml();
       openIconDetail('Eagle Statue',es.name,bodyHtml,ident,esm,function(el){
         var box=el.querySelector('#'+esChkId);
-        if(box) box.onchange=function(){ toggleMapConfirm('eagle',es.name,box.checked); };
+        if(box) box.onchange=function(){ toggleMapConfirm('eagle',es.key||null,box.checked,es.name); };
         if(!es.key) wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm);
-        wireCaveAdd(el,{category:'eagle',name:es.name,label:es.name});
+        wireCaveAdd(el,{category:'eagle',key:es.key||null,name:es.name,label:es.name});
       });
     });
   } else {
@@ -4514,9 +4528,9 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
         +caveAddButtonHtml();
       openIconDetail('SAM Site',s.name,bodyHtml,ident,sm,function(el){
         var box=el.querySelector('#'+sChkId);
-        if(box) box.onchange=function(){ toggleMapConfirm('sam',s.name,box.checked); };
+        if(box) box.onchange=function(){ toggleMapConfirm('sam',s.key||null,box.checked,s.name); };
         if(!s.key) wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm);
-        wireCaveAdd(el,{category:'sam',name:s.name,label:s.name});
+        wireCaveAdd(el,{category:'sam',key:s.key||null,name:s.name,label:s.name});
       });
     });
   } else {
@@ -4578,7 +4592,7 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
       _bossPrereqActive=twIdent;
       renderEffigyMap();
       var _tg=worldToGrid(t.x,t.y);
-      var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:null,gx:_tg.cx,gy:_tg.cy,label:t.name};
+      var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:t.lv!=null?t.lv:null,gx:_tg.cx,gy:_tg.cy,label:t.name};
       var tKeys='<br><span style="color:#5a6573;font-size:11px;">Eagle key: <code>'+(t.key?esc(t.key):'none')+'</code></span>'
         +'<br><span style="color:#5a6573;font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
       var bodyHtml='<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+tKeys
@@ -4590,12 +4604,12 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
         +caveAddButtonHtml()+prereqAddButtonHtml();
       openIconDetail('Tower',t.name,bodyHtml,ident,tm,function(el){
         var box=el.querySelector('#'+tChkId);
-        if(box) box.onchange=function(){ toggleMapConfirm('tower',t.name,box.checked); };
+        if(box) box.onchange=function(){ toggleMapConfirm('tower',t.key||null,box.checked,t.name); };
         var esBox=el.querySelector('#'+esChkId);
         if(esBox) esBox.onchange=function(){ toggleTowerKeyVerified(t.name,'eagleVerified',esBox.checked); };
         var bBox=el.querySelector('#'+bChkId);
         if(bBox) bBox.onchange=function(){ toggleTowerKeyVerified(t.name,'bossVerified',bBox.checked); };
-        wireCaveAdd(el,{category:'tower',name:t.name,label:t.name});
+        wireCaveAdd(el,{category:'tower',key:t.key||null,name:t.name,label:t.name});
         wirePrereqAdd(el,{name:t.name},'tower');
       },function(){
         if(_bossPrereqActive===twIdent){ _bossPrereqActive=null; renderEffigyMap(); }
@@ -6110,12 +6124,14 @@ function detailConfirmHtml(chkId,confirmed){
 }
 // The shared bottom section every category gets for free: display name (hidden for effigy,
 // which has no name concept -- see Get-MapCategoryJson's effigy dict shape), save key,
-// level (bounty/fugitive only -- see Edit-MapEntry's generic $fields.lv), coordinates, and
+// level (bounty/fugitive/tower -- see Edit-MapEntry's generic $fields.lv), coordinates, and
 // Save/Delete buttons. Values are filled in by wireIconDetailFooter once the HTML exists.
 function iconDetailFooterHtml(category){
   var nameField=category==='effigy' ? '' :
     '<div class="ai-field"><label>Display name</label><input id="icon-detail-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name"></div>';
-  var lvField=(category==='bounty'||category==='fugitive') ?
+  // Level input for the three categories that carry a level: bounty (typed in by hand -- never
+  // scraped), fugitive (scraped), and tower (2026-07-13 -- towerTipBody already displays it).
+  var lvField=(category==='bounty'||category==='fugitive'||category==='tower') ?
     '<div class="ai-field"><label>Level</label><input id="icon-detail-lv" class="pf-input" style="width:140px;" type="number" min="1" placeholder="Level"></div>' : '';
   return '<div class="pm-sec" style="margin-top:16px;"><div class="pm-sec-h">Edit</div>'
     +nameField
@@ -6568,7 +6584,7 @@ function renderEffigyMapNow(){
     // reduces to plain found-or-not -- see mapStatus().
     var status=mapStatus(confirmed,got,true);
     if(status==='unconfirmed'&&!effigyShowUnconfirmed) return;
-    effDesire('e:'+id,status+'|'+confirmed,function(){
+    effDesire('e:'+id,status+'|'+confirmed+'|'+pos.x+'|'+pos.y,function(){
       return _effDotMode
         ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(pos,got,confirmed,status))
         : buildEffigyMarker(id,pos,got,confirmed,status);
@@ -6600,7 +6616,7 @@ function renderEffigyMapNow(){
       // (MAP_STATUS_TWO_STATE) drops that middle state -- see mapStatus().
       var jStatus=mapStatus(confirmed,jGot,trackable);
       if(jStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
-      effDesire('j:'+(j.key||idx),jStatus+'|'+confirmed,function(){
+      effDesire('j:'+(j.key||idx),jStatus+'|'+confirmed+'|'+j.x+'|'+j.y+'|'+(j.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(j.x,j.y),'journal',jStatus,'<b style="color:#1673d1">'+j.name+'</b><br>'+journalTipBody(j,confirmed,jGot,jStatus,trackable))
           : buildJournalMarker(j,confirmed,jGot,jStatus,trackable);
@@ -6655,7 +6671,7 @@ function renderEffigyMapNow(){
         var pb=bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
         return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
       });
-      effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable+'|'+bLocked,function(){
+      effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable+'|'+bLocked+'|'+b.x+'|'+b.y+'|'+(b.name||'')+'|'+(b.lv||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b>'+(b.lv?(' <span style="color:var(--muted)">(Lv '+b.lv+')</span>'):'')+'<br>'+bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails))
           : buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLocked,prereqDetails);
@@ -6681,7 +6697,7 @@ function renderEffigyMapNow(){
       // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var hStatus=mapStatus(confirmed,hGot,trackable);
       if(hStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
-      effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed,function(){
+      effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed+'|'+h.x+'|'+h.y+'|'+(h.name||'')+'|'+(h.lv||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b>'+(h.lv?(' <span style="color:var(--muted)">(Lv '+h.lv+')</span>'):'')+'<br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
           : buildFugitiveMarker(h,confirmed,hGot,hStatus);
@@ -6703,7 +6719,7 @@ function renderEffigyMapNow(){
       // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var esStatus=mapStatus(confirmed,esGot,trackable);
       if(esStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
-      effDesire('es:'+(es.key||es.name||idx),esStatus+'|'+confirmed,function(){
+      effDesire('es:'+(es.key||es.name||idx),esStatus+'|'+confirmed+'|'+es.x+'|'+es.y+'|'+(es.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(es.x,es.y),'eagle',esStatus,'<b style="color:#111;">'+es.name+'</b><br>'+eagleTipBody(es,confirmed,esGot,esStatus))
           : buildEagleMarker(es,confirmed,esGot,esStatus);
@@ -6750,7 +6766,7 @@ function renderEffigyMapNow(){
         var pb=bossLocations&&bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
         return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
       });
-      effDesire('tw:'+(t.name||idx),bStatus+'|'+esStatus+'|'+confirmed+'|'+tLocked,function(){
+      effDesire('tw:'+(t.name||idx),bStatus+'|'+esStatus+'|'+confirmed+'|'+tLocked+'|'+t.x+'|'+t.y+'|'+(t.name||'')+'|'+(t.lv||''),function(){
         if(_effDotMode){
           var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails);
           return buildDotMarker(effigyRposToLatLng(t.x,t.y),'tower',bStatus,'<b style="color:#111;">'+t.name+'</b>'+_tt.lvl+'<br>'+_tt.body);
@@ -6771,9 +6787,11 @@ function renderEffigyMapNow(){
     samSiteLocations.forEach(function(s,idx){
       var confirmed=!!s.m;
       var sGot=!!(s.key&&samDestroyedSet.has(s.key.toUpperCase()));
+      // The "found" toggle hides already-destroyed SAM sites, same as every other category.
+      if(sGot&&!effigyShowFound) return;
       var sStatus=mapStatus(confirmed,sGot,!!s.key);
       if(sStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
-      effDesire('sam:'+(s.name||idx),sStatus+'|'+confirmed,function(){
+      effDesire('sam:'+(s.name||idx),sStatus+'|'+confirmed+'|'+s.x+'|'+s.y+'|'+(s.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(s.x,s.y),'sam',sStatus,'<b style="color:#111;">'+s.name+'</b><br>'+samTipBody(s,confirmed,sGot,sStatus))
           : buildSamMarker(s,confirmed,sGot,sStatus);

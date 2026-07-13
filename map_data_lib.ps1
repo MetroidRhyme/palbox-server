@@ -6,7 +6,7 @@
 # functions exists. Call Initialize-MapDataLib -Root <dir> once before using anything
 # else in this file.
 #
-# ── Hand-confirmed map locations (Anthony's own live-play data) ──────────────
+# -- Hand-confirmed map locations (Anthony's own live-play data) --------------
 # confirmed_locations.json holds flag-key -> {name,gx,gy} entries Anthony has
 # personally verified in-game via a companion save-watching script (Desktop
 # DataMine\palworld_full_save_dump.py, see the palworld-project skill). These
@@ -83,6 +83,13 @@ function Save-ConfirmedLocations($arr) {
     }
     if (-not $moved) {
         Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        # The in-place editors (Edit-MapEntry, Set-MapConfirmVerified, entrance/prereq add-remove)
+        # mutate cached row objects BEFORE calling this, so those edits are already sitting in
+        # $script:confirmedLocations even though they never reached disk. Invalidate the cache
+        # (2026-07-13) so the next Get-ConfirmedLocations reloads the real on-disk state instead
+        # of serving the failed edit until a Manager restart.
+        $script:confirmedLocations = $null
+        $script:confirmedLocationsMtime = $null
         throw "Save-ConfirmedLocations: could not replace $f after retries (held open by a reader)."
     }
     # Only advance the in-memory cache once the new data is actually on disk, so a failed
@@ -220,7 +227,14 @@ function Get-MapCategoryJson([string]$category) {
         $result = [ordered]@{}
         foreach ($c in $confirmed) {
             if ($c.category -ne 'effigy' -or -not $c.key) { continue }
-            $entry = @{ x = $c.x; y = $c.y; z = $c.z }
+            # Prefer scraped world x/y; fall back to Anthony's gx/gy grid via ConvertTo-WorldXY
+            # (2026-07-13) -- mirrors the array-category branch below. Without this, any effigy
+            # whose row has only gx/gy reads back as null coords and the pin vanishes. That path
+            # is now reachable: Edit-MapEntry nulls x/y/z on a coordinate edit, and
+            # Add-CustomMapEntry creates effigy rows with gx/gy only.
+            $hasXY = ($null -ne $c.x -and $null -ne $c.y)
+            $xy = if ($hasXY) { @{ x = $c.x; y = $c.y } } else { ConvertTo-WorldXY $c.gx $c.gy }
+            $entry = @{ x = $xy.x; y = $xy.y; z = $c.z }
             if ($c.verified -eq $true) { $entry.m = $true }
             if ($c.custom -eq $true) { $entry.custom = $true }
             $ents = ConvertTo-EntranceList $c
@@ -457,10 +471,18 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
             $dupe = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and $_.key -and $_.key.ToUpper() -eq $newKey.ToUpper() } | Select-Object -First 1
             if ($dupe) { throw "Another $category pin already uses that key." }
         }
+        $oldKey = $matched.key
         Set-EntryProp $matched 'key' $newKey
-        if ($category -eq 'bounty' -and $newKey -and -not (Test-SyndicateKeyShape $newKey)) {
-            $sp = if ($matched.species) { $matched.species } else { $matched.name }
-            Add-AnonymousBossKey $newKey $sp
+        if ($category -eq 'bounty') {
+            # Re-keying a bounty: drop the OLD key's anonymous_boss_keys.json mapping (2026-07-13)
+            # before adding the new one, so a stale orphaned key->species pair isn't left behind.
+            if ($oldKey -and $oldKey -ne $newKey -and -not (Test-SyndicateKeyShape $oldKey)) {
+                Remove-AnonymousBossKey $oldKey
+            }
+            if ($newKey -and -not (Test-SyndicateKeyShape $newKey)) {
+                $sp = if ($matched.species) { $matched.species } else { $matched.name }
+                Add-AnonymousBossKey $newKey $sp
+            }
         }
     }
     if ($fields.ContainsKey('gx') -or $fields.ContainsKey('gy')) {
@@ -651,6 +673,26 @@ function Add-AnonymousBossKey([string]$key, [string]$species) {
         $arr = @($arr) + [pscustomobject]@{ key = $key; species = $species }
     }
     $json = ConvertTo-Json -InputObject @($arr) -Depth 6
+    $tmp = "$anonFile.tmp"
+    [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
+    Move-Item -LiteralPath $tmp -Destination $anonFile -Force
+}
+
+# Remove one key's entry from anonymous_boss_keys.json (2026-07-13). Counterpart to
+# Add-AnonymousBossKey, called when a bounty pin is re-keyed via Edit-MapEntry -- without it
+# the OLD key would keep resolving to the species, leaving an orphaned mapping. No-ops if the
+# key isn't present. Same atomic temp+move + no-BOM convention as Add-AnonymousBossKey.
+function Remove-AnonymousBossKey([string]$key) {
+    if (-not $key) { return }
+    $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
+    if (-not (Test-Path -LiteralPath $anonFile)) { return }
+    # Same PS 5.1 no-@() gotcha as Add-AnonymousBossKey above.
+    try { $arr = Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $arr = @() }
+    $arr = @($arr)
+    $keyU = $key.ToUpper()
+    $kept = @($arr | Where-Object { -not ($_.key -and $_.key.ToUpper() -eq $keyU) })
+    if ($kept.Count -eq $arr.Count) { return }
+    $json = ConvertTo-Json -InputObject @($kept) -Depth 6
     $tmp = "$anonFile.tmp"
     [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
     Move-Item -LiteralPath $tmp -Destination $anonFile -Force

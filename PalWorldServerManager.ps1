@@ -14,7 +14,7 @@ $MaintLogFile        = "$ServerDir\maintenance.log"
 $DefaultSettingsPath = "$ServerDir\DefaultPalWorldSettings.ini"
 $ActiveSettingsPath  = "$ServerDir\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
 
-# ── Maintenance Job ───────────────────────────────────────────────────────────
+# -- Maintenance Job -----------------------------------------------------------
 
 $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
     param($InstallScript, $StartScript, $AdminPassword, $RestApiBase,
@@ -464,7 +464,7 @@ $MaintenanceJob = Start-Job -Name "PalMaintenance" -ScriptBlock {
 } -ArgumentList $InstallScript, $StartScript, $AdminPassword, $RestApiBase,
                 $ConfigFile, $SkipFlagFile, $MaintLogFile, $ServerDir
 
-# ── Dashboard Job ─────────────────────────────────────────────────────────────
+# -- Dashboard Job -------------------------------------------------------------
 
 $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     param($ServerDir, $AdminPassword, $PalApiBase, $DashPort, $StartScript,
@@ -523,7 +523,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     $SaveLibraryRoot  = "$ServerDir\SaveLibrary"
     $GameUserSettings = "$ServerDir\Pal\Saved\Config\WindowsServer\GameUserSettings.ini"
 
-    # ── INI helpers ───────────────────────────────────────────────────────────
+    # -- INI helpers -----------------------------------------------------------
 
     function Parse-IniSettings($path) {
         $result = [ordered]@{}
@@ -559,14 +559,14 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         Move-Item -Path $tmp -Destination $path -Force
     }
 
-    # ── Playtime / metrics helpers ────────────────────────────────────────────
+    # -- Playtime / metrics helpers --------------------------------------------
 
     function Get-PalHeaders {
         $cred = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:$AdminPassword"))
         @{ Authorization = "Basic $cred"; "Content-Type" = "application/json" }
     }
 
-    # ── Egg-ready alert opt-in + state ────────────────────────────────────────────
+    # -- Egg-ready alert opt-in + state --------------------------------------------
     # Keys are normalized to the uppercase 8-hex player prefix so they match the egg
     # reader's `owner` and the online players' UID prefix.
     function Get-EggNotifyConfig {
@@ -708,7 +708,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         return @()
     }
 
-    # ── Save-management helpers ───────────────────────────────────────────────
+    # -- Save-management helpers -----------------------------------------------
 
     # Read/write the world GUID the server loads on start. The server rewrites
     # GameUserSettings.ini on shutdown, so this must only be changed while stopped.
@@ -1195,7 +1195,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
         "POST /api/stop"     = @{ PalPath="stop";     Method="POST" }
     }
 
-    # ── HTML Page ─────────────────────────────────────────────────────────────
+    # -- HTML Page -------------------------------------------------------------
 
     # Read from dashboard.html (extracted verbatim from this here-string) rather than
     # inline, for syntax highlighting and reviewable diffs; gen_public_site.ps1 reads the
@@ -1206,7 +1206,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # is the single biggest payload the dashboard serves (~430KB uncompressed).
     $script:htmlGzip = Get-GzipBytes $HtmlPage
 
-    # ── State ─────────────────────────────────────────────────────────────────
+    # -- State -----------------------------------------------------------------
     $script:playtimeGuid  = $null
     $script:PlaytimeFile  = $null
     $script:playtime      = @{}
@@ -1224,7 +1224,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     $script:palIconCache  = @{}
     $script:palIconDir    = "$ServerDir\PalAssets\Pals"
 
-    # ── HTTP listener ──────────────────────────────────────────────────────────
+    # -- HTTP listener ----------------------------------------------------------
     $taken = Get-NetTCPConnection -LocalPort $DashPort -State Listen -ErrorAction SilentlyContinue
     if ($taken) {
         Write-Output "Port $DashPort in use - clearing..."
@@ -2013,7 +2013,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
-                # ── Parallel-server ("secondary instance") routes ──────────────────
+                # -- Parallel-server ("secondary instance") routes ------------------
                 # A parallel server is a full clone of this install (its own Pal\Saved)
                 # running on its own port block. See pal_instances.ps1 for the why and
                 # the helpers used here (Get-InstanceList / New-ServerInstance / start /
@@ -3464,7 +3464,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
 } -ArgumentList $ServerDir, $AdminPassword, $RestApiBase, $DashPort, $StartScript,
                 $ConfigFile, $SkipFlagFile, $MaintLogFile, $DefaultSettingsPath, $ActiveSettingsPath
 
-# ── Monitor loop ──────────────────────────────────────────────────────────────
+# -- Monitor loop --------------------------------------------------------------
 
 Write-Host ""
 Write-Host "  PalWorld Server Manager" -ForegroundColor Cyan
