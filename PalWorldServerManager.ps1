@@ -2631,9 +2631,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     # custom:true rows -- added 2026-07-12 for post-1.0 location corrections,
                     # extended same day to also allow renaming and editing the raw save key).
                     # Body: { category, identityKey?, identitySpecies?, identityName?, name?,
-                    # key?, gx?, gy? } -- identity* resolves the row by its CURRENT
+                    # key?, gx?, gy?, lv? } -- identity* resolves the row by its CURRENT
                     # key/species/name (same convention as /api/map-custom-edit), name/key/
-                    # gx/gy are the new values (gx and gy must both be present together if
+                    # gx/gy/lv are the new values (gx and gy must both be present together if
                     # either is). See Edit-MapEntry in map_data_lib.ps1.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
@@ -2647,6 +2647,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         if ($body.PSObject.Properties['key']) { $fields.key = if ($body.key) { [string]$body.key } else { $null } }
                         if ($body.PSObject.Properties['gx']) { $fields.gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null } }
                         if ($body.PSObject.Properties['gy']) { $fields.gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null } }
+                        if ($body.PSObject.Properties['lv']) { $fields.lv = if ($null -ne $body.lv -and [string]$body.lv -ne '') { [int]$body.lv } else { $null } }
                         $updated = Edit-MapEntry $category $identKey $identSpecies $identName $fields
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
                     } catch {

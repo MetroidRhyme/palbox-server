@@ -3741,10 +3741,19 @@ function toggleBountyManual(species){
 // write are retired). "ident" is whatever identity that category's pins are keyed by --
 // key for effigy/journal, species for bounty, name for tower/fugitive/eagle -- matching
 // exactly what Get-MapCategoryJson emits, so the round-trip always resolves.
-function toggleMapConfirm(category,ident,checked){
+// nameFallback (added 2026-07-12): journal is the one category whose confirm identity
+// (body.key) can be null -- ~27 journals shipped with no key even in the roster, and the
+// confirm checkbox used to only ever render when trackable (i.e. key present), so this
+// never came up before. Now that the full-screen detail panel always shows the confirm
+// control regardless of key (see palbox-confirmed-locations skill), a keyless journal
+// needs a name to fall back to -- Find-ConfirmedRow already resolves a keyless journal row
+// by name just fine, this was purely a client-side gap. Every other category already
+// passes a stable, always-present identity (species/name), so nameFallback is unused there.
+function toggleMapConfirm(category,ident,checked,nameFallback){
   if(!EFFIGY_CONFIRM_ENABLED)return;
   var body={category:category,confirmed:checked};
-  if(category==='effigy'||category==='journal') body.key=ident;
+  if(category==='effigy') body.key=ident;
+  else if(category==='journal'){ if(ident) body.key=ident; else body.name=nameFallback; }
   else if(category==='bounty') body.species=ident;
   else body.name=ident;
   fetch('/api/map-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
@@ -3753,7 +3762,10 @@ function toggleMapConfirm(category,ident,checked){
       if(category==='effigy'){
         if(effigyLocations&&effigyLocations[ident]) effigyLocations[ident].m=checked;
       } else if(category==='journal'){
-        var je=journalLocations&&journalLocations.find(function(j){return j.key&&j.key.toUpperCase()===ident.toUpperCase();});
+        var je=journalLocations&&journalLocations.find(function(j){
+          return ident ? (j.key&&j.key.toUpperCase()===ident.toUpperCase())
+            : (j.name&&nameFallback&&j.name.toUpperCase()===nameFallback.toUpperCase());
+        });
         if(je) je.m=checked;
       } else if(category==='bounty'){
         var be=bossLocations&&bossLocations.find(function(b){return b.species&&b.species.toUpperCase()===ident.toUpperCase();});
@@ -4034,6 +4046,16 @@ function bossPrereqArr(b){
 // "only show the lines... when one of the linked bosses are selected", later extended to
 // hover too) -- the lock badge itself has no such gating.
 var _bossPrereqActive=null;
+// Identity/marker/close-callback of whichever pin's full-screen detail panel (see the
+// "-- Data Mine tab --" JS block's openIconDetail) is currently open, or null. Declared
+// here (NOT inside the admin-only strip zone that defines openIconDetail/closeIconDetail
+// itself) so the shared marker cull-check below (m===_iconDetailMarker) can safely
+// reference it even on the public build, where it always just stays null -- referencing a
+// variable that only existed inside the stripped block would throw a ReferenceError once
+// gen_public_site.ps1 removes that block's own "var" declaration.
+var _iconDetailIdent=null;
+var _iconDetailMarker=null;
+var _iconDetailOnClose=null;
 // Registers one prerequisite-chain line per (pin, prereq boss) pair into the shared marker
 // cache/diff engine, same convention as desireEntrances above -- but only actually calls
 // effDesire (making the line "desired" for this render) when _bossPrereqActive matches
@@ -4105,22 +4127,6 @@ function saveKeyRow(key){
 function mapKeyButtonHtml(btnId){
   return '<br><span id="'+btnId+'-wrap"><button type="button" class="btn btn-ghost eff-map-key-btn" id="'+btnId+'" style="margin-top:6px;font-size:12px;">Map to key...</button></span>';
 }
-// Popup options for the effigy-family markers. A KEYLESS pin carries the async "Map to
-// key..." flow (wireMapKeyButton): loading keys + picking from the dropdown takes several
-// seconds, during which Leaflet's DEFAULT auto-close behaviour will tear the popup down --
-// `autoClose` closes it the instant any other popup opens, and `closeOnClick` closes it on
-// any map click (including the map's own autoPan settling). Either one killed the half-built
-// dropdown ("flashes then closes"). Disabling both for keyless pins makes the popup persist
-// until the user (or a successful Map) closes it. Keyed pins keep the browse-friendly
-// defaults -- their only control is an instant "Confirm location" checkbox, no async window.
-function effPopupOpts(keyless,extra){
-  var o=extra?Object.assign({},extra):{};
-  if(keyless){ o.autoClose=false; o.closeOnClick=false; }
-  return o;
-}
-// Set true only for the brief window around mapMarkerToKey's own marker.closePopup() so the
-// TEMP popupclose diagnostic below doesn't fire for that intended close. See wireMapKeyButton.
-var _mapKeyMapping=false;
 function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
   var btn=popupEl.querySelector('#'+btnId);
   if(!btn) return;
@@ -4148,29 +4154,23 @@ function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
       if(goBtn) goBtn.onclick=function(){
         var sel=document.getElementById(selId);
         if(!sel||!sel.value){ toast('Pick a key first.','error'); return; }
-        _mapKeyMapping=true;                 // suppress the diagnostic for the intended close
         mapMarkerToKey(catLabel,name,gx,gy,sel.value,marker);
       };
-      // TEMP DIAGNOSTIC (2026-07-08): the popup has been reported closing on its own right
-      // after this dropdown appears, and static analysis can't pin which teardown path does
-      // it. Log the close stack ONCE (unless it was our own post-Map closePopup) so the real
-      // cause is captured the next time it happens. Remove once the culprit is confirmed.
-      _mapKeyMapping=false;
-      if(marker&&marker.once) marker.once('popupclose',function(){
-        if(_mapKeyMapping) return;
-        console.warn('[mapkey] popup closed unexpectedly during key pick:\n'+((new Error()).stack||'(no stack)'));
-      });
     }).catch(function(e){
       toast('Failed to load keys: '+String(e&&e.message||e),'error');
       btn.disabled=false; btn.textContent='Map to key...';
     });
   };
 }
+// marker is unused now (dropped the old marker.closePopup() call -- this only ever runs from
+// within the full-screen icon detail panel these days, see openIconDetail, not a Leaflet
+// popup) but kept as a parameter so wireMapKeyButton's existing call sites (which all still
+// pass it) don't need touching.
 async function mapMarkerToKey(catLabel,name,gx,gy,key,marker){
   try{
     await applyIconKeyMapping(catLabel,name,gx,gy,key);
     toast('Mapped "'+name+'" to '+key+'.','success');
-    if(marker&&marker.closePopup) marker.closePopup();
+    closeIconDetail();
     renderEffigyMap();
   }catch(e){
     toast('Failed to map: '+String(e&&e.message||e),'error');
@@ -4218,16 +4218,15 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
   m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   if(EFFIGY_CONFIRM_ENABLED){
     var chkId='eff-confirm-'+id;
-    m.bindPopup(tip+saveKeyRow(id)+'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>'+caveAddButtonHtml()+editDeleteButtonsHtml(),
-      {className:'eff-tip'});
-    m.on('popupopen',function(e){
-      var el=e.popup.getElement(); if(!el) return;
-      var box=el.querySelector('#'+chkId);
-      if(box) box.onchange=function(){ toggleMapConfirm('effigy',id,box.checked); };
-      wireCaveAdd(el,{category:'effigy',key:id,label:id});
+    m.on('click',function(){
       var _g=worldToGrid(pos.x,pos.y);
-      wireEditDelete(el,{category:'effigy',key:id,label:id,gx:_g.cx,gy:_g.cy},m);
+      var ident={category:'effigy',key:id,species:null,name:null,lv:null,gx:_g.cx,gy:_g.cy,label:id};
+      var bodyHtml=tip+saveKeyRow(id)+detailConfirmHtml(chkId,confirmed)+caveAddButtonHtml();
+      openIconDetail('Effigy',id,bodyHtml,ident,m,function(el){
+        var box=el.querySelector('#'+chkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('effigy',id,box.checked); };
+        wireCaveAdd(el,{category:'effigy',key:id,label:id});
+      });
     });
   } else {
     m.bindPopup(tip+reportButtonHtml('effigy',id,id),{className:'eff-tip'});
@@ -4255,28 +4254,20 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   jm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   if(EFFIGY_CONFIRM_ENABLED){
-    var jPopup='<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+saveKeyRow(j.key);
-    var jChkId='journal-confirm-'+j.key;
+    var jChkId='journal-confirm-'+(j.key||j.name).replace(/[^a-zA-Z0-9]/g,'_');
     var jMapBtnId='journal-mapkey-'+j.name.replace(/[^a-zA-Z0-9]/g,'_');
-    if(trackable){
-      jPopup+='<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-        +'<input type="checkbox" id="'+jChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
-    } else {
-      jPopup+=mapKeyButtonHtml(jMapBtnId);
-    }
-    jPopup+=caveAddButtonHtml()+editDeleteButtonsHtml();
-    jm.bindPopup(jPopup,effPopupOpts(!trackable,{className:'eff-tip'}));
-    jm.on('popupopen',function(e){
-      var el=e.popup.getElement();
-      if(!el) return;
-      if(trackable){
+    jm.on('click',function(){
+      var ident={category:'journal',key:j.key||null,species:null,name:j.name,lv:null,gx:j.gx,gy:j.gy,label:j.name};
+      var bodyHtml='<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+saveKeyRow(j.key)
+        +detailConfirmHtml(jChkId,confirmed)
+        +(trackable?'':mapKeyButtonHtml(jMapBtnId))
+        +caveAddButtonHtml();
+      openIconDetail('Journal',j.name,bodyHtml,ident,jm,function(el){
         var box=el.querySelector('#'+jChkId);
-        if(box) box.onchange=function(){ toggleMapConfirm('journal',j.key,box.checked); };
-      } else {
-        wireMapKeyButton(el,jMapBtnId,'Journal',j.name,j.gx,j.gy,jm);
-      }
-      wireCaveAdd(el,{category:'journal',key:j.key,name:j.name,label:j.name});
-      wireEditDelete(el,{category:'journal',key:j.key,name:j.name,label:j.name,gx:j.gx,gy:j.gy},jm);
+        if(box) box.onchange=function(){ toggleMapConfirm('journal',j.key||null,box.checked,j.name); };
+        if(!trackable) wireMapKeyButton(el,jMapBtnId,'Journal',j.name,j.gx,j.gy,jm);
+        wireCaveAdd(el,{category:'journal',key:j.key,name:j.name,label:j.name});
+      });
     });
   } else {
     jm.bindPopup('<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+reportButtonHtml('journal',j.key||j.name,j.name),{className:'eff-tip'});
@@ -4306,7 +4297,11 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
   var sp=(b.species||'').toUpperCase();
   var bm=L.marker(effigyRposToLatLng(b.x,b.y),{icon:bountyBossIcon(b.name,bStatus,bLocked),interactive:true});
   var bStatusLabel=bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails);
-  bm.bindTooltip('<b style="color:#111;">'+b.name+'</b><br>'+bStatusLabel,
+  // Level display (added 2026-07-12): bounty_bosses.json never scraped a level for Field
+  // Bosses (unlike wanted_fugitives.json/towers.json), so this only ever shows once Anthony
+  // types one in via the icon detail panel's Level field -- same tLvl/hLvl convention.
+  var bLvl=b.lv?(' <span style="color:var(--muted)">(Lv '+b.lv+')</span>'):'';
+  bm.bindTooltip('<b style="color:#111;">'+b.name+'</b>'+bLvl+'<br>'+bStatusLabel,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   bm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   // Hovering also reveals this boss's prereq-chain lines (see desireBossPrereqLines) --
@@ -4319,36 +4314,57 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
   // wanders off it.
   bm.on('mouseover',function(){ _bossPrereqActive=sp; renderEffigyMap(); });
   bm.on('mouseout',function(){
-    if(_bossPrereqActive===sp&&!(bm.isPopupOpen&&bm.isPopupOpen())){ _bossPrereqActive=null; renderEffigyMap(); }
+    if(_bossPrereqActive===sp&&!(bm.isPopupOpen&&bm.isPopupOpen())&&_iconDetailMarker!==bm){ _bossPrereqActive=null; renderEffigyMap(); }
   });
   var bChkId='bounty-confirm-'+sp;
-  // A boss also needs a popup purely to let it be SELECTED-via-click (see _bossPrereqActive)
-  // whenever it's locked or lists its own prereqs -- clicking a locked boss (or one of the
-  // prereq bosses it names) is how the connecting lines get revealed on touch devices with
-  // no hover. Hover above already covers this for every boss regardless of this flag.
+  // A boss also needs a popup (public site) or the full-screen panel (admin) purely to let
+  // it be SELECTED-via-click (see _bossPrereqActive) whenever it's locked or lists its own
+  // prereqs -- clicking a locked boss (or one of the prereq bosses it names) is how the
+  // connecting lines get revealed on touch devices with no hover. Hover above already
+  // covers this for every boss regardless of this flag.
   var selectable=bLocked||bossPrereqArr(b).length>0;
-  if(clickable||EFFIGY_CONFIRM_ENABLED||selectable){
-    var bPopup='<b style="color:#111;">'+esc(b.name)+'</b><br>'+bStatusLabel;
+  if(EFFIGY_CONFIRM_ENABLED){
+    var bMapBtnId='bounty-mapkey-'+sp;
+    bm.on('click',function(){
+      _bossPrereqActive=sp;
+      renderEffigyMap();
+      var g=worldToGrid(b.x,b.y);
+      var ident={category:'bounty',species:b.species,name:b.name,lv:b.lv!=null?b.lv:null,key:b.key||null,gx:g.cx,gy:g.cy,label:b.name};
+      var bodyHtml='<b style="color:#111;">'+esc(b.name)+'</b>'+bLvl+'<br>'+bStatusLabel
+        +(clickable?('<br><button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="margin-top:6px;font-size:12px;">'
+          +(bManual?'Unmark defeated':'Mark defeated')+'</button>'):'')
+        +saveKeyRow(b.key)
+        +detailConfirmHtml(bChkId,confirmed)
+        +(b.key?'':mapKeyButtonHtml(bMapBtnId))
+        +caveAddButtonHtml()
+        +prereqAddButtonHtml();
+      openIconDetail('Field Boss',b.name,bodyHtml,ident,bm,function(el){
+        var btn=el.querySelector('.eff-bounty-mark-btn');
+        if(btn){
+          btn.onclick=function(){
+            var wasManual=bManual;
+            toggleBountyManual(b.species);
+            toast((wasManual?'Unmarked ':'Marked ')+b.name+(wasManual?' as not defeated.':' as defeated.'),'success');
+            closeIconDetail();
+          };
+        }
+        var box=el.querySelector('#'+bChkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('bounty',b.species,box.checked); };
+        if(!b.key) wireMapKeyButton(el,bMapBtnId,'Field Boss',b.name,g.cx,g.cy,bm);
+        wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
+        wirePrereqAdd(el,b,'bounty');
+      },function(){
+        if(_bossPrereqActive===sp){ _bossPrereqActive=null; renderEffigyMap(); }
+      });
+    });
+  } else if(clickable||selectable){
+    var bPopup='<b style="color:#111;">'+esc(b.name)+'</b>'+bLvl+'<br>'+bStatusLabel;
     if(clickable){
       bPopup+='<br><button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="margin-top:6px;font-size:12px;">'
         +(bManual?'Unmark defeated':'Mark defeated')+'</button>';
     }
-    var bMapBtnId='bounty-mapkey-'+sp;
-    if(EFFIGY_CONFIRM_ENABLED){
-      bPopup+=saveKeyRow(b.key);
-      if(b.key){
-        bPopup+='<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-          +'<input type="checkbox" id="'+bChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
-      } else {
-        bPopup+=mapKeyButtonHtml(bMapBtnId);
-      }
-      bPopup+=caveAddButtonHtml();
-      bPopup+=prereqAddButtonHtml();
-      bPopup+=editDeleteButtonsHtml();
-    } else {
-      bPopup+=reportButtonHtml('bounty',sp,b.name);
-    }
-    bm.bindPopup(bPopup,effPopupOpts(EFFIGY_CONFIRM_ENABLED&&!b.key));
+    bPopup+=reportButtonHtml('bounty',sp,b.name);
+    bm.bindPopup(bPopup);
     bm.on('popupopen',function(e){
       // Selecting this boss reveals its prereq-chain lines (see desireBossPrereqLines) --
       // done here rather than a plain 'click' handler so it stays in sync with whatever
@@ -4366,21 +4382,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
           bm.closePopup();
         };
       }
-      if(b.key){
-        var box=el.querySelector('#'+bChkId);
-        if(box) box.onchange=function(){ toggleMapConfirm('bounty',b.species,box.checked); };
-      } else {
-        var g=worldToGrid(b.x,b.y);
-        wireMapKeyButton(el,bMapBtnId,'Field Boss',b.name,g.cx,g.cy,bm);
-      }
-      if(EFFIGY_CONFIRM_ENABLED){
-        wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
-        wirePrereqAdd(el,b,'bounty');
-        var _bg=worldToGrid(b.x,b.y);
-        wireEditDelete(el,{category:'bounty',species:b.species,name:b.name,label:b.name,key:b.key||null,gx:_bg.cx,gy:_bg.cy},bm);
-      } else {
-        wireReportButton(el,'bounty',sp,b.name);
-      }
+      wireReportButton(el,'bounty',sp,b.name);
     });
     bm.on('popupclose',function(){
       if(_bossPrereqActive===sp){ _bossPrereqActive=null; renderEffigyMap(); }
@@ -4404,34 +4406,32 @@ function fugitiveTipBody(h,confirmed,hGot,hStatus){
 function buildFugitiveMarker(h,confirmed,hGot,hStatus){
   var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hStatus),interactive:true});
   var hTip=fugitiveTipBody(h,confirmed,hGot,hStatus);
-  hm.bindTooltip('<b style="color:#111;">'+h.name+'</b><br>'+hTip,
+  // Level display (added 2026-07-12): wanted_fugitives.json has always carried "lv" (unlike
+  // bounty_bosses.json, which never scraped one), it just was never shown anywhere before --
+  // same tLvl convention Tower already uses.
+  var hLvl=h.lv?(' <span style="color:var(--muted)">(Lv '+h.lv+')</span>'):'';
+  hm.bindTooltip('<b style="color:#111;">'+h.name+'</b>'+hLvl+'<br>'+hTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   hm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   if(EFFIGY_CONFIRM_ENABLED){
     var hChkId='fugitive-confirm-'+h.name.replace(/[^a-zA-Z0-9]/g,'_');
     var hMapBtnId='fugitive-mapkey-'+h.name.replace(/[^a-zA-Z0-9]/g,'_');
-    var hPopup='<b style="color:#111;">'+esc(h.name)+'</b><br>'+hTip+saveKeyRow(h.key);
-    hPopup+=h.key
-      ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-        +'<input type="checkbox" id="'+hChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
-      :mapKeyButtonHtml(hMapBtnId);
-    hPopup+=caveAddButtonHtml()+editDeleteButtonsHtml();
-    hm.bindPopup(hPopup,effPopupOpts(!h.key,{className:'eff-tip'}));
-    hm.on('popupopen',function(e){
-      var el=e.popup.getElement();
-      if(!el) return;
+    hm.on('click',function(){
       var g=worldToGrid(h.x,h.y);
-      if(h.key){
+      var ident={category:'fugitive',key:h.key||null,species:null,name:h.name,lv:h.lv!=null?h.lv:null,gx:g.cx,gy:g.cy,label:h.name};
+      var bodyHtml='<b style="color:#111;">'+esc(h.name)+'</b>'+hLvl+'<br>'+hTip+saveKeyRow(h.key)
+        +detailConfirmHtml(hChkId,confirmed)
+        +(h.key?'':mapKeyButtonHtml(hMapBtnId))
+        +caveAddButtonHtml();
+      openIconDetail('Wanted Fugitive',h.name,bodyHtml,ident,hm,function(el){
         var box=el.querySelector('#'+hChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('fugitive',h.name,box.checked); };
-      } else {
-        wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
-      }
-      wireCaveAdd(el,{category:'fugitive',name:h.name,label:h.name});
-      wireEditDelete(el,{category:'fugitive',name:h.name,label:h.name,key:h.key||null,gx:g.cx,gy:g.cy},hm);
+        if(!h.key) wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
+        wireCaveAdd(el,{category:'fugitive',name:h.name,label:h.name});
+      });
     });
   } else {
-    hm.bindPopup('<b style="color:#111;">'+esc(h.name)+'</b><br>'+hTip+reportButtonHtml('fugitive',h.name,h.name),{className:'eff-tip'});
+    hm.bindPopup('<b style="color:#111;">'+esc(h.name)+'</b>'+hLvl+'<br>'+hTip+reportButtonHtml('fugitive',h.name,h.name),{className:'eff-tip'});
     hm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'fugitive',h.name,h.name); });
   }
   return hm;
@@ -4457,25 +4457,19 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
   if(EFFIGY_CONFIRM_ENABLED){
     var esChkId='eagle-confirm-'+es.name.replace(/[^a-zA-Z0-9]/g,'_');
     var esMapBtnId='eagle-mapkey-'+es.name.replace(/[^a-zA-Z0-9]/g,'_');
-    var esPopup='<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+saveKeyRow(es.key);
-    esPopup+=es.key
-      ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-        +'<input type="checkbox" id="'+esChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
-      :mapKeyButtonHtml(esMapBtnId);
-    esPopup+=caveAddButtonHtml()+editDeleteButtonsHtml();
-    esm.bindPopup(esPopup,effPopupOpts(!es.key,{className:'eff-tip'}));
-    esm.on('popupopen',function(e){
-      var el=e.popup.getElement();
-      if(!el) return;
+    esm.on('click',function(){
       var g=worldToGrid(es.x,es.y);
-      if(es.key){
+      var ident={category:'eagle',key:es.key||null,species:null,name:es.name,lv:null,gx:g.cx,gy:g.cy,label:es.name};
+      var bodyHtml='<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+saveKeyRow(es.key)
+        +detailConfirmHtml(esChkId,confirmed)
+        +(es.key?'':mapKeyButtonHtml(esMapBtnId))
+        +caveAddButtonHtml();
+      openIconDetail('Eagle Statue',es.name,bodyHtml,ident,esm,function(el){
         var box=el.querySelector('#'+esChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('eagle',es.name,box.checked); };
-      } else {
-        wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm);
-      }
-      wireCaveAdd(el,{category:'eagle',name:es.name,label:es.name});
-      wireEditDelete(el,{category:'eagle',name:es.name,label:es.name,key:es.key||null,gx:g.cx,gy:g.cy},esm);
+        if(!es.key) wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm);
+        wireCaveAdd(el,{category:'eagle',name:es.name,label:es.name});
+      });
     });
   } else {
     esm.bindPopup('<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+reportButtonHtml('eagle',es.name,es.name),{className:'eff-tip'});
@@ -4507,25 +4501,19 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
   if(EFFIGY_CONFIRM_ENABLED){
     var sChkId='sam-confirm-'+s.name.replace(/[^a-zA-Z0-9]/g,'_');
     var sMapBtnId='sam-mapkey-'+s.name.replace(/[^a-zA-Z0-9]/g,'_');
-    var sPopup='<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+saveKeyRow(s.key);
-    sPopup+=s.key
-      ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-        +'<input type="checkbox" id="'+sChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
-      :mapKeyButtonHtml(sMapBtnId);
-    sPopup+=caveAddButtonHtml()+editDeleteButtonsHtml();
-    sm.bindPopup(sPopup,effPopupOpts(!s.key,{className:'eff-tip'}));
-    sm.on('popupopen',function(e){
-      var el=e.popup.getElement();
-      if(!el) return;
+    sm.on('click',function(){
       var g=worldToGrid(s.x,s.y);
-      if(s.key){
+      var ident={category:'sam',key:s.key||null,species:null,name:s.name,lv:null,gx:g.cx,gy:g.cy,label:s.name};
+      var bodyHtml='<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+saveKeyRow(s.key)
+        +detailConfirmHtml(sChkId,confirmed)
+        +(s.key?'':mapKeyButtonHtml(sMapBtnId))
+        +caveAddButtonHtml();
+      openIconDetail('SAM Site',s.name,bodyHtml,ident,sm,function(el){
         var box=el.querySelector('#'+sChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('sam',s.name,box.checked); };
-      } else {
-        wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm);
-      }
-      wireCaveAdd(el,{category:'sam',name:s.name,label:s.name});
-      wireEditDelete(el,{category:'sam',name:s.name,label:s.name,key:s.key||null,gx:g.cx,gy:g.cy},sm);
+        if(!s.key) wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm);
+        wireCaveAdd(el,{category:'sam',name:s.name,label:s.name});
+      });
     });
   } else {
     sm.bindPopup('<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+reportButtonHtml('sam',s.name,s.name),{className:'eff-tip'});
@@ -4576,41 +4564,38 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
   // (public site, EFFIGY_CONFIRM_ENABLED false).
   tm.on('mouseover',function(){ _bossPrereqActive=twIdent; renderEffigyMap(); });
   tm.on('mouseout',function(){
-    if(_bossPrereqActive===twIdent&&!(tm.isPopupOpen&&tm.isPopupOpen())){ _bossPrereqActive=null; renderEffigyMap(); }
+    if(_bossPrereqActive===twIdent&&!(tm.isPopupOpen&&tm.isPopupOpen())&&_iconDetailMarker!==tm){ _bossPrereqActive=null; renderEffigyMap(); }
   });
   if(EFFIGY_CONFIRM_ENABLED){
     var tChkId='tower-confirm-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
     var esChkId='tower-eagle-verify-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
     var bChkId='tower-boss-verify-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
-    var tKeys='<br><span style="color:#5a6573;font-size:11px;">Eagle key: <code>'+(t.key?esc(t.key):'none')+'</code></span>'
-      +'<br><span style="color:#5a6573;font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
-    tm.bindPopup('<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+tKeys
-      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+tChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>'
-      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+esChkId+'"'+(esVerified?' checked':'')+'> Verify Eagle Statue key</label>'
-      +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'+caveAddButtonHtml()+prereqAddButtonHtml()+editDeleteButtonsHtml(),
-      {className:'eff-tip'});
-    tm.on('popupopen',function(e){
+    tm.on('click',function(){
       _bossPrereqActive=twIdent;
       renderEffigyMap();
-      var box=e.popup.getElement()&&e.popup.getElement().querySelector('#'+tChkId);
-      if(box) box.onchange=function(){ toggleMapConfirm('tower',t.name,box.checked); };
-      var esBox=e.popup.getElement()&&e.popup.getElement().querySelector('#'+esChkId);
-      if(esBox) esBox.onchange=function(){ toggleTowerKeyVerified(t.name,'eagleVerified',esBox.checked); };
-      var bBox=e.popup.getElement()&&e.popup.getElement().querySelector('#'+bChkId);
-      if(bBox) bBox.onchange=function(){ toggleTowerKeyVerified(t.name,'bossVerified',bBox.checked); };
-      var _tel=e.popup.getElement();
-      if(_tel){
-        wireCaveAdd(_tel,{category:'tower',name:t.name,label:t.name});
-        wirePrereqAdd(_tel,{name:t.name},'tower');
-        var _tg=worldToGrid(t.x,t.y);
-        wireEditDelete(_tel,{category:'tower',name:t.name,label:t.name,key:t.key||null,gx:_tg.cx,gy:_tg.cy},tm);
-      }
-    });
-    tm.on('popupclose',function(){
-      if(_bossPrereqActive===twIdent){ _bossPrereqActive=null; renderEffigyMap(); }
+      var _tg=worldToGrid(t.x,t.y);
+      var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:null,gx:_tg.cx,gy:_tg.cy,label:t.name};
+      var tKeys='<br><span style="color:#5a6573;font-size:11px;">Eagle key: <code>'+(t.key?esc(t.key):'none')+'</code></span>'
+        +'<br><span style="color:#5a6573;font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
+      var bodyHtml='<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+tKeys
+        +detailConfirmHtml(tChkId,confirmed)
+        +'<label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
+        +'<input type="checkbox" id="'+esChkId+'"'+(esVerified?' checked':'')+'> Verify Eagle Statue key</label>'
+        +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
+        +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'
+        +caveAddButtonHtml()+prereqAddButtonHtml();
+      openIconDetail('Tower',t.name,bodyHtml,ident,tm,function(el){
+        var box=el.querySelector('#'+tChkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('tower',t.name,box.checked); };
+        var esBox=el.querySelector('#'+esChkId);
+        if(esBox) esBox.onchange=function(){ toggleTowerKeyVerified(t.name,'eagleVerified',esBox.checked); };
+        var bBox=el.querySelector('#'+bChkId);
+        if(bBox) bBox.onchange=function(){ toggleTowerKeyVerified(t.name,'bossVerified',bBox.checked); };
+        wireCaveAdd(el,{category:'tower',name:t.name,label:t.name});
+        wirePrereqAdd(el,{name:t.name},'tower');
+      },function(){
+        if(_bossPrereqActive===twIdent){ _bossPrereqActive=null; renderEffigyMap(); }
+      });
     });
   } else {
     tm.bindPopup('<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+reportButtonHtml('tower',t.name,t.name),{className:'eff-tip'});
@@ -4637,17 +4622,23 @@ function syncEffigyLayer(){
     bounds=effigyLeaflet.getBounds().pad(EFF_CULL_PAD);
   }
   _effShown.forEach(function(m,key){
-    // Never touch a marker whose popup is currently open -- not for culling (a pan/zoom,
-    // including the popup's own autoPan-into-view on open, pushing it outside the padded
-    // viewport) and not for a rebuild (the underlying entry's cache key/sig changing, e.g.
-    // dmAutoFillFromRosters silently linking a fallback-guessed key to the very roster
+    // Never touch a marker whose popup is currently open (public site's report-popup path,
+    // and the cave-entrance/prereq sub-modals' own small popups) -- not for culling (a
+    // pan/zoom, including the popup's own autoPan-into-view on open, pushing it outside the
+    // padded viewport) and not for a rebuild (the underlying entry's cache key/sig changing,
+    // e.g. dmAutoFillFromRosters silently linking a fallback-guessed key to the very roster
     // entry Anthony is mid-way through mapping by hand via "Map to key..."). Either path
     // removing the marker force-closes the popup with no way to reopen it, which was
     // silently killing that dropdown mid-pick (2026-07-08). The stale entry is left in
     // _effShown under its old key; once the popup closes, the next render's _effDesired
     // no longer has anything at that old key (or has a fresh one, if the entry got a new
     // cache key from the same rebuild), so a normal pass cleans it up then.
-    if(m.isPopupOpen&&m.isPopupOpen()) return;
+    // Same protection extended (2026-07-12) to m===_iconDetailMarker -- the admin markers'
+    // click now opens the full-screen detail panel instead of a Leaflet popup, so
+    // isPopupOpen() is never true for them any more; without this they could be silently
+    // removed/rebuilt out from under an open panel mid-edit (e.g. during its own "Map to
+    // key..." async dropdown load).
+    if((m.isPopupOpen&&m.isPopupOpen())||m===_iconDetailMarker) return;
     var d=_effDesired.get(key);
     if(!d||d.m!==m){
       effigyMarkerLayer.removeLayer(m);
@@ -6077,69 +6068,128 @@ function refetchMapCategory(category){
   if(typeof refetch==='function') refetch(true);
 }
 
-// -- Edit (name/key/coordinates) / Delete icon (2026-07-12, post-1.0 map cleanup) --
-// Admin-only "fix a shifted, misnamed, or wrongly-keyed pin" / "remove a bad pin" controls
-// for any of the 7 renderable map categories -- unlike the cave-entrance/prereq/custom-icon
-// features above, these work on ANY row (scraped/live/custom alike), not just custom:true
-// ones, since the whole point is correcting real imported/live-captured data after the
-// game's 1.0 update moved things. Lives inside the "-- Data Mine tab --" JS block (same as
-// every other admin map-edit control) so gen_public_site.ps1 strips it from the public
-// build; the modal's own HTML gets a dedicated strip step, same pattern as
-// entrance/prereq/addicon.
-// _editTarget carries the pin's CURRENT identity (key/species/name -- whichever the category
-// uses, see Find-ConfirmedRow) so a rename/re-key still resolves the right row; "name" and
-// "key" both double as identity AND the pre-filled current value, except effigy has no
-// display name at all (its ident has no .name field -- see buildEffigyMarker) so the name
-// field is hidden there, and effigy's key is required (can't be blanked, see Edit-MapEntry).
-var _editTarget=null;
-function editDeleteButtonsHtml(){
-  return '<br><button type="button" class="btn btn-ghost eff-editcoords-btn" style="margin-top:6px;font-size:12px;">Edit</button> '
-    +'<button type="button" class="btn btn-ghost eff-delete-icon-btn" style="margin-top:6px;font-size:12px;color:#f85149;">Delete icon</button>';
+// -- Full-screen icon detail panel (2026-07-12, replaces the old per-marker popup) -
+// Anthony found the old Leaflet popup (confirm checkbox + cave/prereq/edit/delete buttons
+// all crammed into a small anchored bubble) cramped -- clicking a marker now opens
+// #icon-detail-overlay, a full-viewport panel (a plain top-level <body> div, same as
+// addicon/entrance/prereq-modal-overlay, NOT nested in Leaflet's own DOM/pane hierarchy --
+// that matters because Leaflet's map pane gets a CSS transform applied during panning,
+// which would silently break position:fixed on anything nested inside it) with the same
+// status text, save-key info, confirm control, and cave/prereq buttons the popup used to
+// show, PLUS the edit fields (name/key/gx/gy/lv) and delete button that used to live behind
+// a separate small "Edit" button + modal -- all in one place now, no more nested modals for
+// the common case. hover tooltips (bindTooltip) are UNCHANGED, only the click/popup
+// interaction moved. The public (non-admin) marker branches are completely untouched --
+// they still use a small Leaflet popup with a "report wrong data" button, gated the same as
+// always behind EFFIGY_CONFIRM_ENABLED being false.
+//
+// Each buildXMarker's EFFIGY_CONFIRM_ENABLED branch builds its OWN category-specific
+// "detail body" html (status label + save-key row + confirm checkbox + cave/prereq buttons
+// + any category-specific controls like Tower's dual verify checkboxes or Bounty's
+// mark-defeated button) and a "wireExtra(el)" callback to wire those controls, then calls
+// openIconDetail(...) -- which appends the SHARED edit-fields-and-delete-button footer
+// (iconDetailFooterHtml/wireIconDetailFooter below) automatically, so no category needs to
+// build that part itself.
+//
+// Confirm is now ALWAYS shown regardless of whether the pin has a key (previously
+// exclusive with "Map to key..." for journal/bounty/fugitive/eagle/sam -- a keyless pin
+// showed only the map-key button, no way to confirm at all). Find-ConfirmedRow already
+// resolves a keyless row by species(bounty)/name(fugitive/eagle/tower/sam), so
+// /api/map-confirm has always worked without a key server-side; this was purely a client
+// gating gap. detailConfirmHtml is now unconditional everywhere it's used; mapKeyButtonHtml
+// is appended ADDITIONALLY (not exclusively) when the pin has no key yet.
+// _iconDetailIdent/_iconDetailMarker/_iconDetailOnClose themselves are declared up near
+// _bossPrereqActive (NOT here) -- see that declaration's comment for why.
+function detailConfirmHtml(chkId,confirmed){
+  return '<label style="display:flex;align-items:center;gap:6px;margin-top:10px;cursor:pointer;font-size:14px;">'
+    +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
 }
-function wireEditDelete(popupEl,ident,marker){
-  var eb=popupEl.querySelector('.eff-editcoords-btn');
-  if(eb) eb.onclick=function(){ openEditCoordsModal(ident); };
-  var db=popupEl.querySelector('.eff-delete-icon-btn');
-  if(db) db.onclick=function(){ deleteMapIcon(ident,marker); };
+// The shared bottom section every category gets for free: display name (hidden for effigy,
+// which has no name concept -- see Get-MapCategoryJson's effigy dict shape), save key,
+// level (bounty/fugitive only -- see Edit-MapEntry's generic $fields.lv), coordinates, and
+// Save/Delete buttons. Values are filled in by wireIconDetailFooter once the HTML exists.
+function iconDetailFooterHtml(category){
+  var nameField=category==='effigy' ? '' :
+    '<div class="ai-field"><label>Display name</label><input id="icon-detail-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name"></div>';
+  var lvField=(category==='bounty'||category==='fugitive') ?
+    '<div class="ai-field"><label>Level</label><input id="icon-detail-lv" class="pf-input" style="width:140px;" type="number" min="1" placeholder="Level"></div>' : '';
+  return '<div class="pm-sec" style="margin-top:16px;"><div class="pm-sec-h">Edit</div>'
+    +nameField
+    +'<div class="ai-field"><label>Save key</label><input id="icon-detail-key" class="pf-input" style="width:100%;" type="text" placeholder="Raw save-flag key"></div>'
+    +lvField
+    +'<div class="ai-field"><label>Coordinates (gx / gy)</label><div style="display:flex;gap:8px;">'
+    +'<input id="icon-detail-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">'
+    +'<input id="icon-detail-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy"></div></div>'
+    +'<div style="display:flex;gap:8px;margin-top:14px;">'
+    +'<button type="button" class="btn btn-primary" id="icon-detail-save-btn">Save changes</button>'
+    +'<button type="button" class="btn btn-ghost" id="icon-detail-delete-btn" style="color:#f85149;">Delete icon</button>'
+    +'</div></div>';
 }
-function openEditCoordsModal(ident){
-  _editTarget=ident;
-  document.getElementById('editcoords-parent-label').textContent=ident.label||ident.name||ident.key||'this pin';
-  var nameField=document.getElementById('editcoords-name-field');
-  if(ident.category==='effigy'){
-    nameField.style.display='none';
-  } else {
-    nameField.style.display='';
-    document.getElementById('editcoords-name').value=ident.name||'';
-  }
-  document.getElementById('editcoords-key').value=ident.key||'';
-  document.getElementById('editcoords-gx').value=(ident.gx!=null?ident.gx:'');
-  document.getElementById('editcoords-gy').value=(ident.gy!=null?ident.gy:'');
-  document.getElementById('editcoords-modal-overlay').style.display='flex';
+function wireIconDetailFooter(el,ident,marker){
+  var nameInput=el.querySelector('#icon-detail-name');
+  if(nameInput) nameInput.value=ident.name||'';
+  var keyInput=el.querySelector('#icon-detail-key');
+  if(keyInput) keyInput.value=ident.key||'';
+  var lvInput=el.querySelector('#icon-detail-lv');
+  if(lvInput) lvInput.value=(ident.lv!=null?ident.lv:'');
+  var gxInput=el.querySelector('#icon-detail-gx');
+  if(gxInput) gxInput.value=(ident.gx!=null?ident.gx:'');
+  var gyInput=el.querySelector('#icon-detail-gy');
+  if(gyInput) gyInput.value=(ident.gy!=null?ident.gy:'');
+  var saveBtn=el.querySelector('#icon-detail-save-btn');
+  if(saveBtn) saveBtn.onclick=function(){ saveIconDetailEdits(ident,marker); };
+  var delBtn=el.querySelector('#icon-detail-delete-btn');
+  if(delBtn) delBtn.onclick=function(){ deleteMapIcon(ident,marker); };
 }
-window.closeEditCoordsModal=function(){
-  document.getElementById('editcoords-modal-overlay').style.display='none';
-  _editTarget=null;
+// categoryLabel/title are display-only; ident carries the pin's CURRENT identity (see
+// Find-ConfirmedRow) so Save/Delete resolve the right row even after a rename/re-key.
+// wireExtra(el), if given, wires whatever category-specific controls bodyHtml included
+// (confirm checkbox, map-key button, cave/prereq-add buttons, Tower's verify checkboxes,
+// Bounty's mark-defeated button) -- same "querySelector and wire if present" pattern the
+// old popupopen handlers already used, just targeting this panel's body instead of
+// e.popup.getElement(). onClose runs once, right before the panel actually closes (e.g. to
+// clear a hover-selected prereq-line state).
+function openIconDetail(categoryLabel,title,bodyHtml,ident,marker,wireExtra,onClose){
+  _iconDetailIdent=ident;
+  _iconDetailMarker=marker||null;
+  _iconDetailOnClose=onClose||null;
+  document.getElementById('icon-detail-category').textContent=categoryLabel;
+  document.getElementById('icon-detail-title').textContent=title;
+  var body=document.getElementById('icon-detail-body');
+  body.innerHTML=bodyHtml+iconDetailFooterHtml(ident.category);
+  wireIconDetailFooter(body,ident,marker);
+  if(typeof wireExtra==='function') wireExtra(body);
+  document.getElementById('icon-detail-overlay').style.display='block';
+}
+window.closeIconDetail=function(){
+  document.getElementById('icon-detail-overlay').style.display='none';
+  if(typeof _iconDetailOnClose==='function') _iconDetailOnClose();
+  _iconDetailIdent=null; _iconDetailMarker=null; _iconDetailOnClose=null;
 };
-async function saveEditCoords(){
-  if(!_editTarget) return;
-  var t=_editTarget;
-  var gx=document.getElementById('editcoords-gx').value.trim();
-  var gy=document.getElementById('editcoords-gy').value.trim();
+async function saveIconDetailEdits(ident,marker){
+  var category=ident.category;
+  var gx=document.getElementById('icon-detail-gx').value.trim();
+  var gy=document.getElementById('icon-detail-gy').value.trim();
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
-  var newKey=document.getElementById('editcoords-key').value.trim();
-  if(t.category==='effigy'&&!newKey){ toast('Effigy pins require a key.','error'); return; }
-  var body={category:t.category,identityKey:t.key||null,identitySpecies:t.species||null,identityName:t.name||null,key:newKey||null,gx:gx,gy:gy};
-  if(t.category!=='effigy'){
-    var newName=document.getElementById('editcoords-name').value.trim();
+  var newKey=document.getElementById('icon-detail-key').value.trim();
+  if(category==='effigy'&&!newKey){ toast('Effigy pins require a key.','error'); return; }
+  var body={category:category,identityKey:ident.key||null,identitySpecies:ident.species||null,identityName:ident.name||null,key:newKey||null,gx:gx,gy:gy};
+  var nameInput=document.getElementById('icon-detail-name');
+  if(nameInput){
+    var newName=nameInput.value.trim();
     if(!newName){ toast('Display name cannot be blank.','error'); return; }
     body.name=newName;
   }
+  var lvInput=document.getElementById('icon-detail-lv');
+  if(lvInput){
+    var newLv=lvInput.value.trim();
+    body.lv=newLv===''?null:newLv;
+  }
   try{
     await api('/api/map-edit-icon','POST',body);
-    closeEditCoordsModal();
     toast('Pin updated.','success');
-    refetchMapCategory(t.category);
+    closeIconDetail();
+    refetchMapCategory(category);
   }catch(e){
     toast('Failed to update pin: '+String(e&&e.message||e),'error');
   }
@@ -6148,7 +6198,7 @@ async function deleteMapIcon(ident,marker){
   if(!confirm('Delete '+(ident.label||ident.name||ident.key||'this pin')+'? This removes it from the map entirely (it can only come back if a future scraped-roster re-import re-adds it).')) return;
   try{
     await api('/api/map-delete-icon','POST',{category:ident.category,key:ident.key||null,species:ident.species||null,name:ident.name||null});
-    if(marker&&marker.closePopup) marker.closePopup();
+    closeIconDetail();
     toast('Icon deleted.','success');
     refetchMapCategory(ident.category);
   }catch(e){
@@ -6600,7 +6650,7 @@ function renderEffigyMapNow(){
       });
       effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable+'|'+bLocked,function(){
         return _effDotMode
-          ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b><br>'+bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails))
+          ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b>'+(b.lv?(' <span style="color:var(--muted)">(Lv '+b.lv+')</span>'):'')+'<br>'+bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails))
           : buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLocked,prereqDetails);
       });
       if(b.entrances) desireEntrances('b:'+idx,{category:'bounty',species:b.species,name:b.name,label:b.name},b,effigyRposToLatLng(b.x,b.y),bStatus);
@@ -6625,7 +6675,7 @@ function renderEffigyMapNow(){
       var hStatus=mapStatus(confirmed,hGot,trackable);
       effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed,function(){
         return _effDotMode
-          ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b><br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
+          ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b>'+(h.lv?(' <span style="color:var(--muted)">(Lv '+h.lv+')</span>'):'')+'<br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
           : buildFugitiveMarker(h,confirmed,hGot,hStatus);
       });
       if(h.entrances) desireEntrances('h:'+(h.key||h.name||idx),{category:'fugitive',name:h.name,label:h.name},h,effigyRposToLatLng(h.x,h.y),hStatus);
@@ -7643,7 +7693,7 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     </div>
   </div>
 </div>
-<div id="entrance-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:2000;" onclick="if(event.target===this)closeEntranceModal()">
+<div id="entrance-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:3500;" onclick="if(event.target===this)closeEntranceModal()">
   <div class="pal-modal" id="entrance-modal-body" style="max-width:420px;">
     <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Add cave entrance</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Surface access point for <b id="entrance-parent-label"></b></div>
@@ -7660,7 +7710,7 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     </div>
   </div>
 </div>
-<div id="prereq-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:2000;" onclick="if(event.target===this)closePrereqModal()">
+<div id="prereq-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:3500;" onclick="if(event.target===this)closePrereqModal()">
   <div class="pal-modal" id="prereq-modal-body" style="max-width:420px;">
     <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Prerequisite bosses</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:10px;"><b id="prereq-boss-label"></b> stays locked (a big red lock on the map) until every boss listed here is defeated.</div>
@@ -7678,29 +7728,16 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     </div>
   </div>
 </div>
-<div id="editcoords-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:2000;" onclick="if(event.target===this)closeEditCoordsModal()">
-  <div class="pal-modal" id="editcoords-modal-body" style="max-width:420px;">
-    <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Edit pin</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Editing <b id="editcoords-parent-label"></b></div>
-    <div class="ai-field" id="editcoords-name-field">
-      <label>Display name</label>
-      <input id="editcoords-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name">
-    </div>
-    <div class="ai-field">
-      <label>Save key</label>
-      <input id="editcoords-key" class="pf-input" style="width:100%;" type="text" placeholder="Raw save-flag key">
-    </div>
-    <div class="ai-field">
-      <label>Coordinates (gx / gy)</label>
-      <div style="display:flex;gap:8px;">
-        <input id="editcoords-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">
-        <input id="editcoords-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy">
+<div id="icon-detail-overlay" style="display:none;position:fixed;inset:0;z-index:3000;background:var(--bg,#0d1117);overflow-y:auto;">
+  <div style="max-width:760px;margin:0 auto;padding:22px 20px 80px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;">
+      <div>
+        <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;" id="icon-detail-category"></div>
+        <div style="font-size:22px;font-weight:700;" id="icon-detail-title"></div>
       </div>
+      <button class="btn btn-ghost" onclick="closeIconDetail()" style="font-size:14px;">&times; Close</button>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
-      <button class="btn btn-ghost" onclick="closeEditCoordsModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEditCoords()">Save</button>
-    </div>
+    <div id="icon-detail-body"></div>
   </div>
 </div>
 <script>

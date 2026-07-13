@@ -471,6 +471,16 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
         Set-EntryProp $matched 'y' $null
         Set-EntryProp $matched 'z' $null
     }
+    # $fields.lv (added 2026-07-12): generic level passthrough, no category restriction --
+    # Get-MapCategoryJson already emits "lv" for ANY row that has it regardless of category
+    # (originally populated for fugitive/tower only, via wanted_fugitives.json/towers.json).
+    # Anthony wanted this editable for bounty too (bounty_bosses.json never scraped a level
+    # at all, so every bounty row starts with no lv) and for fugitive (lv already exists on
+    # those rows from the roster import, just was never exposed for editing or display
+    # before). Null clears it same as any other optional field.
+    if ($fields.ContainsKey('lv')) {
+        Set-EntryProp $matched 'lv' $fields['lv']
+    }
     Save-ConfirmedLocations $confirmed
     return $matched
 }

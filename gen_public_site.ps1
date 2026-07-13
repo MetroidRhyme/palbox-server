@@ -159,15 +159,20 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
   $html, '<div id="prereq-modal-overlay".*?</div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
 if ($html -eq $before) { throw "Prerequisite bosses modal markup was not removed" }
 
-# (2a5) Remove the "Edit coordinates" modal -- admin-only pin-location correction (POSTs to
-# /api/map-edit-icon / /api/map-delete-icon, added 2026-07-12 for post-Palworld-1.0 map
-# cleanup). Its JS (editDeleteButtonsHtml/wireEditDelete/openEditCoordsModal/saveEditCoords/
-# deleteMapIcon) also lives inside the "-- Data Mine tab --" block stripped in (3c) -- only
-# the modal markup needs stripping here.
+# (2a5) Remove the full-screen "icon detail" panel -- admin-only pin editing (confirm,
+# cave/prereq buttons, name/key/gx/gy/lv fields, delete), added 2026-07-12 to replace the
+# old cramped per-marker Leaflet popup with a full-viewport view (see the
+# palbox-confirmed-locations skill's "full-screen icon detail panel" section). Its JS
+# (openIconDetail/closeIconDetail/iconDetailFooterHtml/wireIconDetailFooter/
+# saveIconDetailEdits/deleteMapIcon) also lives inside the "-- Data Mine tab --" block
+# stripped in (3c) -- only the panel markup needs stripping here. Anchored on the unique
+# "icon-detail-body" placeholder div plus the 2 further closing </div>s that wrap it
+# (deeper nesting than the other admin modals, so the generic 3-close pattern those use
+# doesn't apply here).
 $before = $html
 $html = [System.Text.RegularExpressions.Regex]::Replace(
-  $html, '<div id="editcoords-modal-overlay".*?</div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
-if ($html -eq $before) { throw "Edit coordinates modal markup was not removed" }
+  $html, '<div id="icon-detail-overlay".*?<div id="icon-detail-body"></div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+if ($html -eq $before) { throw "Icon detail panel markup was not removed" }
 
 # (2b) Remove the per-view "Reload" buttons (Pals / Paldeck / Effigies). On the static
 # site they only re-fetch the same generated JSON -- there's no live server to pull
