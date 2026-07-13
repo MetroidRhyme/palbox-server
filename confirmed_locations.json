@@ -9663,14 +9663,14 @@
         "category":  "bounty",
         "origin":  "manual",
         "verified":  true,
-        "name":  "Foxsparks Cryst",
+        "name":  "Foxparks Cryst",
         "key":  null,
         "gx":  -411,
         "gy":  -55,
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  null
+        "lv":  15
     },
     {
         "key":  "81_1_GRASS_FBOSS_16",
