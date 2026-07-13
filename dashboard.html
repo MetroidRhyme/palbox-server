@@ -3535,7 +3535,7 @@ function statusRingIcon(innerHtml,status,sizePx){
   var color=STATUS_RING_COLOR[status]||STATUS_RING_COLOR.unconfirmed;
   return L.divIcon({
     className:'eff-map-marker',
-    html:'<div class="status-ring" style="border:2px solid '+color+';">'+innerHtml+'</div>',
+    html:'<div class="status-ring" style="border:2px solid '+color+';position:relative;">'+innerHtml+'</div>',
     iconSize:[sizePx,sizePx],
     iconAnchor:[sizePx/2,sizePx/2]
   });
@@ -3564,15 +3564,30 @@ function bountyLockOverlayHtml(sizePx){
   var lsz=Math.round(sizePx*0.9);
   return '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:'+lsz+'px;height:'+lsz+'px;filter:drop-shadow(0 0 2px #000) drop-shadow(0 0 2px #000);">'+BOUNTY_LOCK_SVG+'</div>';
 }
+// Falls back to a "?" placeholder (added 2026-07-12) when a bounty's display name has no
+// matching portrait file in PalAssets\Pals (the palPortrait image request 404s) -- most
+// often after Anthony renames a Field Boss pin via the Map tab's Edit modal to something
+// that isn't an exact Pal species name. Previously the <img> just went invisible on error
+// (onerror set visibility:hidden), leaving a blank dark circle with no indication anything was wrong --
+// easy to mistake for a loading glitch. The "?" sits UNDER the <img> in the same box (both
+// absolutely positioned, "?" at a lower z-index) so it only becomes visible once the image
+// is hidden; no portrait-existence check is needed up front, the browser's own onerror
+// tells us. A real portrait match (any Pal species name, whether the pin kept its original
+// name or was renamed to one) "swaps" to it automatically for free -- bountyBossIcon always
+// re-derives the image src from whatever name is current, so nothing extra is needed there.
+function bountyPortraitFallbackHtml(sizePx){
+  return '<div style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;color:#8a8f98;font-weight:700;font-size:'+Math.round(sizePx*0.5)+'px;">?</div>';
+}
 function bountyBossIcon(name,status,locked){
   var k='bb:'+name+'|'+status+'|'+(locked?1:0);
   if(_iconMemo[k]) return _iconMemo[k];
   var wash=(status==='found'||locked)?'filter:grayscale(1) brightness(.65);':'';
-  var img='<img src="'+palPortrait(name)+'" alt="" onerror="this.style.visibility=\'hidden\'" style="'+wash+'">';
+  var img=bountyPortraitFallbackHtml(BOUNTY_ICON_SZ)
+    +'<img src="'+palPortrait(name)+'" alt="" onerror="this.style.display=\'none\';" style="position:relative;z-index:2;'+wash+'">';
   if(!locked) return _iconMemo[k]=statusRingIcon(img,status,BOUNTY_ICON_SZ);
   var color=STATUS_RING_COLOR[status]||STATUS_RING_COLOR.unconfirmed;
   var html='<div style="position:relative;width:'+BOUNTY_ICON_SZ+'px;height:'+BOUNTY_ICON_SZ+'px;">'
-    +'<div class="status-ring" style="border:2px solid '+color+';">'+img+'</div>'
+    +'<div class="status-ring" style="border:2px solid '+color+';position:relative;">'+img+'</div>'
     +bountyLockOverlayHtml(BOUNTY_ICON_SZ)
     +'</div>';
   return _iconMemo[k]=L.divIcon({className:'eff-map-marker',html:html,iconSize:[BOUNTY_ICON_SZ,BOUNTY_ICON_SZ],iconAnchor:[BOUNTY_ICON_SZ/2,BOUNTY_ICON_SZ/2]});
