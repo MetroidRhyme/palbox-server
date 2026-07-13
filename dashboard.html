@@ -593,6 +593,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
         </div>
         <div id="eff-filter-body" style="display:flex;flex-direction:column;gap:5px;">
         <button id="eff-filt-found" onclick="toggleEffigyFilter('found')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide effigies you have already found"><span style="color:#3fb950;">&#9679;</span> Found</button>
+        <button id="eff-filt-unconfirmed" onclick="toggleEffigyFilter('unconfirmed')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide unconfirmed (red) icons across every category; turn off to see only icons you've confirmed, tracked, or found"><span style="color:#f85149;">&#9679;</span> Unconfirmed</button>
         <div style="display:flex;align-items:center;gap:6px;">
           <button id="eff-filt-new" onclick="toggleEffigyFilter('new')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide Lifmunk Effigy locations (yellow = manually logged, blue = picked up in-save but not yet manually logged, red = unconfirmed; combine with Found to also hide the ones you've already picked up)"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:conic-gradient(#e3b341 0 50%, #f85149 50% 100%);vertical-align:-1px;"></span> Lifmunk Effigies</button>
           <span id="effigy-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Lifmunk Effigies you've picked up, out of the full roster"></span>
@@ -3812,7 +3813,7 @@ function toggleTowerKeyVerified(towerName,field,checked){
 // hid unfound effigies, leaving found ones visible via effigyShowFound alone, which was
 // inconsistent with every other category's toggle). This is a VIEW filter only -- it never
 // changes a Pal's actual found state (which comes solely from the save). Both default on.
-var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowSam=true, effigyShowPlayers=true;
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowSam=true, effigyShowPlayers=true, effigyShowUnconfirmed=true;
 // Layer filter toggles are remembered per-browser via localStorage (independent of the
 // server-side /api/prefs sync above, which is public-site-only) so admin AND public both
 // keep a hidden category hidden across refreshes. Loaded once at script parse time, same
@@ -3829,11 +3830,12 @@ try{
     if(_savedMapFilters.tower!==undefined)effigyShowTower=!!_savedMapFilters.tower;
     if(_savedMapFilters.sam!==undefined)effigyShowSam=!!_savedMapFilters.sam;
     if(_savedMapFilters.players!==undefined)effigyShowPlayers=!!_savedMapFilters.players;
+    if(_savedMapFilters.unconfirmed!==undefined)effigyShowUnconfirmed=!!_savedMapFilters.unconfirmed;
   }
 }catch(e){}
 function saveMapFilters(){
   try{
-    localStorage.setItem('palbox_map_filters',JSON.stringify({found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,tower:effigyShowTower,sam:effigyShowSam,players:effigyShowPlayers}));
+    localStorage.setItem('palbox_map_filters',JSON.stringify({found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,tower:effigyShowTower,sam:effigyShowSam,players:effigyShowPlayers,unconfirmed:effigyShowUnconfirmed}));
   }catch(e){}
 }
 
@@ -3852,8 +3854,9 @@ function initFilterPanelCollapse(){
 }
 
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bs=document.getElementById('eff-filt-sam'), bpl=document.getElementById('eff-filt-players');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bs=document.getElementById('eff-filt-sam'), bpl=document.getElementById('eff-filt-players'), bu=document.getElementById('eff-filt-unconfirmed');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
+  if(bu) bu.style.opacity=effigyShowUnconfirmed?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
   if(bj) bj.style.opacity=effigyShowJournal?'1':'0.4';
   if(bb) bb.style.opacity=effigyShowBounty?'1':'0.4';
@@ -3865,6 +3868,7 @@ function setEffigyFilterBtns(){
 }
 function toggleEffigyFilter(which){
   if(which==='found') effigyShowFound=!effigyShowFound;
+  else if(which==='unconfirmed') effigyShowUnconfirmed=!effigyShowUnconfirmed;
   else if(which==='journal') effigyShowJournal=!effigyShowJournal;
   else if(which==='players') effigyShowPlayers=!effigyShowPlayers;
   else if(which==='bounty') effigyShowBounty=!effigyShowBounty;
@@ -6563,6 +6567,7 @@ function renderEffigyMapNow(){
     // always key-mapped by construction, so on the public site (MAP_STATUS_TWO_STATE) this
     // reduces to plain found-or-not -- see mapStatus().
     var status=mapStatus(confirmed,got,true);
+    if(status==='unconfirmed'&&!effigyShowUnconfirmed) return;
     effDesire('e:'+id,status+'|'+confirmed,function(){
       return _effDotMode
         ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(pos,got,confirmed,status))
@@ -6594,6 +6599,7 @@ function renderEffigyMapNow(){
       // already had a real key mapped -- see the palbox-journal-overlay skill. Public site
       // (MAP_STATUS_TWO_STATE) drops that middle state -- see mapStatus().
       var jStatus=mapStatus(confirmed,jGot,trackable);
+      if(jStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
       effDesire('j:'+(j.key||idx),jStatus+'|'+confirmed,function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(j.x,j.y),'journal',jStatus,'<b style="color:#1673d1">'+j.name+'</b><br>'+journalTipBody(j,confirmed,jGot,jStatus,trackable))
@@ -6640,6 +6646,7 @@ function renderEffigyMapNow(){
       // Admin: trackable also promotes to at least 'confirmed' -- see the journal block above
       // for the reasoning. Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var bStatus=mapStatus(confirmed,bGot,trackable);
+      if(bStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
       var clickable=PREFS_ENABLED&&!bAuto&&!!bpGuid;
       var prereqSpecies=bossPrereqArr(b);
       var bLocked=prereqSpecies.length>0&&prereqSpecies.some(function(p){return !bossGotMap[(p||'').toUpperCase()];});
@@ -6673,6 +6680,7 @@ function renderEffigyMapNow(){
       // Admin: trackable also promotes to at least 'confirmed' -- see the journal block above.
       // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var hStatus=mapStatus(confirmed,hGot,trackable);
+      if(hStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
       effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed,function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b>'+(h.lv?(' <span style="color:var(--muted)">(Lv '+h.lv+')</span>'):'')+'<br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
@@ -6694,6 +6702,7 @@ function renderEffigyMapNow(){
       // Admin: trackable also promotes to at least 'confirmed' -- see the journal block above.
       // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var esStatus=mapStatus(confirmed,esGot,trackable);
+      if(esStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
       effDesire('es:'+(es.key||es.name||idx),esStatus+'|'+confirmed,function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(es.x,es.y),'eagle',esStatus,'<b style="color:#111;">'+es.name+'</b><br>'+eagleTipBody(es,confirmed,esGot,esStatus))
@@ -6763,6 +6772,7 @@ function renderEffigyMapNow(){
       var confirmed=!!s.m;
       var sGot=!!(s.key&&samDestroyedSet.has(s.key.toUpperCase()));
       var sStatus=mapStatus(confirmed,sGot,!!s.key);
+      if(sStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
       effDesire('sam:'+(s.name||idx),sStatus+'|'+confirmed,function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(s.x,s.y),'sam',sStatus,'<b style="color:#111;">'+s.name+'</b><br>'+samTipBody(s,confirmed,sGot,sStatus))
