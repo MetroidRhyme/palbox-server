@@ -3610,25 +3610,19 @@ function eagleStatueIcon(status){
   if(_iconMemo[k]) return _iconMemo[k];
   return _iconMemo[k]=statusRingIcon(EAGLE_STATUE_IMG,status,EFF_ACORN_SZ);
 }
-// Tower marker (added 2026-07-07): composite icon, NOT a single statusRingIcon, since a
-// Tower now carries two independent per-player signals -- TowerBossDefeatFlag (raid-boss
-// cleared) and FastTravelPointUnlockFlag (Eagle Statue unlocked, same flag/icon as the
-// standalone Eagle Statue category above). Anthony's own request: main ring = boss status,
-// small badge overlapping the top-right edge = eagle status. The badge sits in its own
-// status-ring div positioned OUTSIDE the main ring's div (a sibling, not a child) because
-// .status-ring has overflow:hidden -- nesting the badge inside it would clip the
-// "slightly overlapping the edge" look this is going for.
-var TOWER_BADGE_SZ=Math.round(EFF_ACORN_SZ*0.58);
-var TOWER_BADGE_OFFSET=Math.round(TOWER_BADGE_SZ*0.3);
-function towerIcon(bossStatus,eagleStatus,locked){
-  var k='tw:'+bossStatus+'|'+eagleStatus+'|'+(locked?1:0);
+// Tower marker (added 2026-07-07; eagle badge removed 2026-07-13): the towers no longer have
+// an Eagle Statue / fast-travel point on top in-game, so the marker now tracks a SINGLE signal
+// -- TowerBossDefeatFlag (raid-boss cleared), shown as the ring color. The old small
+// top-right eagle-status badge and its FastTravelPointUnlockFlag tracking are gone; the row's
+// "key" field (a leftover FastTravelPointUnlockFlag key) is kept only as a stable pin identity
+// for confirm/edit, not rendered or treated as a "collected" signal anymore.
+function towerIcon(bossStatus,locked){
+  var k='tw:'+bossStatus+'|'+(locked?1:0);
   if(_iconMemo[k]) return _iconMemo[k];
   var bossColor=STATUS_RING_COLOR[bossStatus]||STATUS_RING_COLOR.unconfirmed;
-  var eagleColor=STATUS_RING_COLOR[eagleStatus]||STATUS_RING_COLOR.unconfirmed;
   var bossImg='<img src="icons/compass_tower.webp" alt="">';
   var html='<div style="position:relative;width:'+EFF_ACORN_SZ+'px;height:'+EFF_ACORN_SZ+'px;">'
     +'<div class="status-ring" style="border:2px solid '+bossColor+';">'+bossImg+'</div>'
-    +'<div class="status-ring" style="position:absolute;top:-'+TOWER_BADGE_OFFSET+'px;right:-'+TOWER_BADGE_OFFSET+'px;width:'+TOWER_BADGE_SZ+'px;height:'+TOWER_BADGE_SZ+'px;border:2px solid '+eagleColor+';">'+EAGLE_STATUE_IMG+'</div>'
     // Required-boss lock overlay (2026-07-10), same convention as bountyBossIcon's --
     // stays up regardless of selection until every prereq is defeated.
     +(locked?bountyLockOverlayHtml(EFF_ACORN_SZ):'')
@@ -3804,9 +3798,10 @@ function toggleMapConfirm(category,ident,checked,nameFallback){
     .catch(function(){ toast('Failed to update confirm status.','error'); });
 }
 
-// Tower's two independent per-key verification checkboxes (added 2026-07-07) -- separate
-// from toggleMapConfirm's location "verified" above. field is 'eagleVerified' or
-// 'bossVerified'; see Set-TowerKeyVerified's server-side whitelist.
+// Tower's per-key verification checkbox (added 2026-07-07) -- separate from toggleMapConfirm's
+// location "verified" above. field is 'bossVerified' (the 'eagleVerified' path is retained
+// server-side in Set-TowerKeyVerified's whitelist but no longer wired to any UI as of
+// 2026-07-13, when eagle-statue tracking was removed from towers).
 function toggleTowerKeyVerified(towerName,field,checked){
   if(!EFFIGY_CONFIRM_ENABLED)return;
   fetch('/api/tower-key-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:towerName,field:field,verified:checked})})
@@ -4543,7 +4538,7 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
 // Body + level-suffix tooltip pieces, shared by the divIcon builder and the
 // low-zoom dot marker. Returns both since the level suffix sits between the
 // name header and the body in the composed tooltip string.
-function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails){
+function towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails){
   var _g=worldToGrid(t.x,t.y), cx=_g.cx, cy=_g.cy;
   var bLabel=bStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Boss cleared</span>' : '<span style="color:#3fb950">&#10003; Boss cleared & key verified</span>')
@@ -4551,12 +4546,6 @@ function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bS
     : bGot ? '<b style="color:#58a6ff">Boss cleared (key not yet verified)</b>'
     : bossVerified ? '<b style="color:#e3b341">Key verified (boss not yet cleared)</b>'
     : '<b style="color:#f85149">Boss key unverified</b>';
-  var esLabel=esStatus==='found'
-    ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Eagle Statue unlocked</span>' : '<span style="color:#3fb950">&#10003; Eagle Statue unlocked & key verified</span>')
-    : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Eagle Statue not yet unlocked</b>'
-    : esGot ? '<b style="color:#58a6ff">Eagle Statue unlocked (key not yet verified)</b>'
-    : esVerified ? '<span style="color:#8a8f98;">Key verified (not yet unlocked)</span>'
-    : '<b style="color:#f85149">Eagle key unverified</b>';
   var tLvl=t.lv?(' <span style="color:var(--muted)">(Lv '+t.lv+')</span>'):'';
   var tBoss=(t.boss||t.bossPal)?('<br><span style="color:#111;">'+esc(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+esc(t.bossPal||'')+'</span>'):'';
   var lockLine='';
@@ -4566,13 +4555,13 @@ function towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bS
     }).join(', ');
     lockLine='<br><b style="color:#f85149;">Locked</b> <span style="color:#333;font-size:11px;">- requires '+reqList+'</span>';
   }
-  var tTip=bLabel+'<br>'+esLabel+tBoss+lockLine+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(t);
+  var tTip=bLabel+tBoss+lockLine+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(t);
   return {lvl:tLvl,body:tTip};
 }
-function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails){
+function buildTowerMarker(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails){
   var twIdent='tw:'+(t.name||'').toUpperCase();
-  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(bStatus,esStatus,tLocked),interactive:true});
-  var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails);
+  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(bStatus,tLocked),interactive:true});
+  var _tt=towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails);
   var tLvl=_tt.lvl, tTip=_tt.body;
   tm.bindTooltip('<b style="color:#111;">'+t.name+'</b>'+tLvl+'<br>'+tTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
@@ -4586,27 +4575,21 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
   });
   if(EFFIGY_CONFIRM_ENABLED){
     var tChkId='tower-confirm-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
-    var esChkId='tower-eagle-verify-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
     var bChkId='tower-boss-verify-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
     tm.on('click',function(){
       _bossPrereqActive=twIdent;
       renderEffigyMap();
       var _tg=worldToGrid(t.x,t.y);
       var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:t.lv!=null?t.lv:null,gx:_tg.cx,gy:_tg.cy,label:t.name};
-      var tKeys='<br><span style="color:#5a6573;font-size:11px;">Eagle key: <code>'+(t.key?esc(t.key):'none')+'</code></span>'
-        +'<br><span style="color:#5a6573;font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
+      var tKeys='<br><span style="color:#5a6573;font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
       var bodyHtml='<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+tKeys
         +detailConfirmHtml(tChkId,confirmed)
         +'<label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
-        +'<input type="checkbox" id="'+esChkId+'"'+(esVerified?' checked':'')+'> Verify Eagle Statue key</label>'
-        +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
         +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'
         +caveAddButtonHtml()+prereqAddButtonHtml();
       openIconDetail('Tower',t.name,bodyHtml,ident,tm,function(el){
         var box=el.querySelector('#'+tChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('tower',t.key||null,box.checked,t.name); };
-        var esBox=el.querySelector('#'+esChkId);
-        if(esBox) esBox.onchange=function(){ toggleTowerKeyVerified(t.name,'eagleVerified',esBox.checked); };
         var bBox=el.querySelector('#'+bChkId);
         if(bBox) bBox.onchange=function(){ toggleTowerKeyVerified(t.name,'bossVerified',bBox.checked); };
         wireCaveAdd(el,{category:'tower',key:t.key||null,name:t.name,label:t.name});
@@ -6729,31 +6712,25 @@ function renderEffigyMapNow(){
   }
   // Tower (raid bosses) -- OVERLAYS the 7-entry paldb-scraped towers.json roster (added
   // 2026-07-06, see Merge-ConfirmedTowers). Split out of Eagle Statues -- Anthony had been
-  // confirming these under that bucket since walking up to one behaves like a fast-travel
-  // point. Tracks TWO fully independent per-player signals (added 2026-07-07, refined
-  // 2026-07-08 into independent verification -- Anthony went off memory for the bossKey
-  // mapping and wants each ring colored on its OWN verified+got, not shared "confirmed"):
-  // "key"/"eagleVerified" is a real FastTravelPointUnlockFlag key (Eagle Statue unlock,
-  // reuses eagleCollected -- same data the Eagle Statue block above already fetches) and
-  // "bossKey"/"bossVerified" is a TowerBossDefeatFlag key (raid-boss cleared,
-  // towerBossCollected -- see fetchTowerBossPlayer). The main tower icon reflects
-  // boss-clear status; the small overlapping badge (see towerIcon) reflects eagle-unlock
-  // status -- so bStatus, not esStatus, is what gates the effigyShowFound hide-when-done
-  // toggle below. "confirmed" (t.m, the pin's own location) is unrelated to either ring
-  // now -- it only drives the separate "Confirm location" checkbox in the popup.
+  // confirming these under that bucket since walking up to one used to behave like a
+  // fast-travel point. Now tracks ONE per-player signal: "bossKey"/"bossVerified" is a
+  // TowerBossDefeatFlag key (raid-boss cleared, towerBossCollected -- see
+  // fetchTowerBossPlayer), which drives the ring color and gates the effigyShowFound
+  // hide-when-done toggle. (Eagle-statue tracking removed 2026-07-13 -- the towers no longer
+  // have a fast-travel point on top in-game; the leftover "key"/"eagleVerified" fields are
+  // untouched on disk but no longer read here, "key" only serving as a stable pin identity.)
+  // "confirmed" (t.m, the pin's own location) is unrelated to the ring -- it only drives the
+  // separate "Confirm location" checkbox in the detail panel.
   if(effigyShowTower&&towerLocations&&towerLocations.length){
-    var towerEagleSet=new Set((eagleCollected||[]).map(function(s){return s.toUpperCase();}));
     var towerBossSet=new Set((towerBossCollected||[]).map(function(s){return s.toUpperCase();}));
     towerLocations.forEach(function(t,idx){
       var confirmed=!!t.m;
-      var esVerified=t.eagleVerified!==false;
       var bossVerified=!!t.bossVerified;
-      var esGot=!!(t.key&&towerEagleSet.has(t.key.toUpperCase()));
       var bGot=!!(t.bossKey&&towerBossSet.has(t.bossKey.toUpperCase()));
-      // Both tower tracks are key-mapped by construction (see the class comment above), so
-      // on the public site (MAP_STATUS_TWO_STATE) each reduces to plain found-or-not,
-      // independent of es/bossVerified -- see mapStatus().
-      var esStatus=mapStatus(esVerified,esGot,true);
+      // Tower's boss track is key-mapped by construction (see the class comment above), so
+      // on the public site (MAP_STATUS_TWO_STATE) it reduces to plain found-or-not,
+      // independent of bossVerified -- see mapStatus(). (Eagle-statue tracking removed
+      // 2026-07-13 -- the towers no longer have a fast-travel point on top.)
       var bStatus=mapStatus(bossVerified,bGot,true);
       if(bStatus==='found'&&!effigyShowFound) return;
       // Required-boss lock (2026-07-10, same convention as Field Boss -- see the shared
@@ -6766,12 +6743,12 @@ function renderEffigyMapNow(){
         var pb=bossLocations&&bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
         return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
       });
-      effDesire('tw:'+(t.name||idx),bStatus+'|'+esStatus+'|'+confirmed+'|'+tLocked+'|'+t.x+'|'+t.y+'|'+(t.name||'')+'|'+(t.lv||''),function(){
+      effDesire('tw:'+(t.name||idx),bStatus+'|'+confirmed+'|'+tLocked+'|'+t.x+'|'+t.y+'|'+(t.name||'')+'|'+(t.lv||''),function(){
         if(_effDotMode){
-          var _tt=towerTipBody(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails);
+          var _tt=towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails);
           return buildDotMarker(effigyRposToLatLng(t.x,t.y),'tower',bStatus,'<b style="color:#111;">'+t.name+'</b>'+_tt.lvl+'<br>'+_tt.body);
         }
-        return buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGot,bStatus,tLocked,prereqDetails);
+        return buildTowerMarker(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails);
       });
       if(t.entrances) desireEntrances('tw:'+(t.name||idx),{category:'tower',name:t.name,label:t.name},t,effigyRposToLatLng(t.x,t.y),bStatus);
       desireBossPrereqLines(twIdent,effigyRposToLatLng(t.x,t.y),prereqSpecies,bossLLBySpecies,bossGotMap);
