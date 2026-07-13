@@ -5850,6 +5850,107 @@ async function applyIconKeyMapping(catLabel,name,gx,gy,key){
   await cat.refetch();
 }
 
+// --- "Record next key" for keyless map pins (added 2026-07-13) --------------------------
+// Anthony opens a keyless pin (Field Boss / Wanted Fugitive / Eagle Statue / Journal / SAM
+// Site), hits Record, then performs the matching action in-game (defeat the boss, unlock the
+// statue, destroy the turret...). We snapshot every currently-UNMAPPED save key for that
+// pin's save-flag property, then poll the live save (dmFetchAndApply re-reads it; the server
+// reader cache invalidates on the save file's mtime, so a newly-written flag shows up once
+// PalWorld flushes it to disk -- there's an inherent flush delay, hence the long timeout) and
+// watch for a brand-new unmapped key to appear. Exactly one new key -> auto-mapped to this
+// pin (applyIconKeyMapping, the same route/effect as the "Map to key..." dropdown). More than
+// one new key in a single tick -> we can't tell which is which, so we show them as a
+// pick-list instead of guessing. Property-scoped, so a flag from any OTHER property never
+// interferes. Reuses the exact datamine infrastructure the Map-to-key dropdown already uses.
+var RECORD_CAT_LABEL={bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',journal:'Journal',sam:'SAM Site'};
+var RECORD_POLL_MS=7000;      // how often to re-read the save while recording
+var RECORD_TIMEOUT_MS=300000; // give up after 5 min with no new key
+var _keyRecord=null;          // {property,catLabel,name,gx,gy,snapshot,timer,started} while active
+
+function isRecordableKeyless(ident){
+  return !!(ident&&!ident.key&&RECORD_CAT_LABEL.hasOwnProperty(ident.category));
+}
+function recordStatusEl(){ return document.getElementById('icon-detail-record-status'); }
+function recordSetStatus(html){ var el=recordStatusEl(); if(el) el.innerHTML=html; }
+function recordRenderIdle(){
+  recordSetStatus('<button type="button" class="btn btn-ghost" id="icon-detail-record-btn" style="font-size:12px;">Record next key</button>'
+    +'<div class="hint" style="margin-top:2px;">Hit Record, then trigger this location in-game -- the next new save key is mapped to this pin.</div>');
+  var btn=document.getElementById('icon-detail-record-btn');
+  if(btn) btn.onclick=function(){ if(_iconDetailIdent) startKeyRecording(_iconDetailIdent); };
+}
+function recordRenderActive(){
+  recordSetStatus('<span style="color:#58a6ff;">&#9679; Recording -- now trigger this location in-game...</span> '
+    +'<button type="button" class="btn btn-ghost" id="icon-detail-record-stop" style="font-size:12px;margin-left:4px;">Stop</button>');
+  var stop=document.getElementById('icon-detail-record-stop');
+  if(stop) stop.onclick=function(){ stopKeyRecording(); };
+}
+async function startKeyRecording(ident){
+  if(!EFFIGY_CONFIRM_ENABLED) return;
+  if(_keyRecord){ toast('Already recording a key -- stop that first.','error'); return; }
+  var catLabel=RECORD_CAT_LABEL[ident.category];
+  var cat=catLabel&&dmIconCatByLabel(catLabel);
+  if(!cat){ toast('This category cannot record a key.','error'); return; }
+  recordSetStatus('<span style="color:var(--muted);">Loading current save keys...</span>');
+  try{ await ensureDatamineDataLoaded(); }
+  catch(e){ recordSetStatus('<span style="color:#f85149;">Failed to load save keys: '+esc(String(e&&e.message||e))+'</span>'); return; }
+  // Re-check: a Stop/close could have fired while we awaited the initial load.
+  if(!_iconDetailIdent||_iconDetailIdent.category!==ident.category||_iconDetailIdent.name!==ident.name){ recordRenderIdle(); return; }
+  var snapshot={};
+  dmUnmappedKeysFor(cat.property).forEach(function(k){ snapshot[k.toUpperCase()]=true; });
+  _keyRecord={property:cat.property,catLabel:catLabel,name:ident.name,gx:ident.gx,gy:ident.gy,
+    snapshot:snapshot,started:Date.now(),timer:null};
+  recordRenderActive();
+  _keyRecord.timer=setInterval(keyRecordTick,RECORD_POLL_MS);
+}
+function stopKeyRecording(silent){
+  if(!_keyRecord) return;
+  if(_keyRecord.timer) clearInterval(_keyRecord.timer);
+  _keyRecord=null;
+  if(!silent) recordRenderIdle();
+}
+async function keyRecordTick(){
+  var rec=_keyRecord;
+  if(!rec) return;
+  if(Date.now()-rec.started>RECORD_TIMEOUT_MS){
+    stopKeyRecording(true);
+    recordSetStatus('<span style="color:#f85149;">No new key seen after 5 min.</span> '
+      +'<button type="button" class="btn btn-ghost" id="icon-detail-record-btn" style="font-size:12px;margin-left:4px;">Record again</button>');
+    var rb=document.getElementById('icon-detail-record-btn');
+    if(rb) rb.onclick=function(){ if(_iconDetailIdent) startKeyRecording(_iconDetailIdent); };
+    return;
+  }
+  try{ await dmFetchAndApply(); }catch(e){ return; } // transient fetch error -- retry next tick
+  if(_keyRecord!==rec) return; // stopped/replaced while awaiting
+  var fresh=dmUnmappedKeysFor(rec.property).filter(function(k){ return !rec.snapshot[k.toUpperCase()]; });
+  if(!fresh.length) return;
+  if(fresh.length===1){ recordCommitKey(rec,fresh[0]); return; }
+  // Ambiguous -- more than one new unmapped key of this property appeared. Pause polling and
+  // let Anthony pick which one belongs to this pin.
+  clearInterval(rec.timer); rec.timer=null;
+  var opts=fresh.map(function(k){ return '<button type="button" class="btn btn-ghost record-pick" data-key="'+esc(k)+'" style="font-size:12px;margin:2px 4px 0 0;">'+esc(k)+'</button>'; }).join('');
+  recordSetStatus('<span style="color:#e3b341;">'+fresh.length+' new keys appeared -- pick the one for this pin:</span><br>'+opts
+    +'<br><button type="button" class="btn btn-ghost" id="icon-detail-record-cancel" style="font-size:12px;margin-top:4px;">Cancel</button>');
+  var el=recordStatusEl();
+  if(el){
+    el.querySelectorAll('.record-pick').forEach(function(b){ b.onclick=function(){ recordCommitKey(rec,b.getAttribute('data-key')); }; });
+    var cx=el.querySelector('#icon-detail-record-cancel'); if(cx) cx.onclick=function(){ stopKeyRecording(); };
+  }
+}
+async function recordCommitKey(rec,key){
+  if(rec.timer){ clearInterval(rec.timer); rec.timer=null; }
+  _keyRecord=null;
+  recordSetStatus('<span style="color:var(--muted);">Mapping '+esc(key)+'...</span>');
+  try{
+    await applyIconKeyMapping(rec.catLabel,rec.name,rec.gx,rec.gy,key);
+    toast('Recorded "'+rec.name+'" -> '+key+'.','success');
+    closeIconDetail();
+    renderEffigyMap();
+  }catch(e){
+    recordSetStatus('<span style="color:#f85149;">Failed to map '+esc(key)+': '+esc(String(e&&e.message||e))+'</span>');
+    toast('Failed to record key.','error');
+  }
+}
+
 async function saveDatamineIconKey(catLabel,name,gx,gy,rowId){
   var keyEl=document.getElementById(rowId+'-key');
   if(!keyEl){ toast('Could not find that row -- try reloading.','error'); return; }
@@ -6109,16 +6210,22 @@ function detailConfirmHtml(chkId,confirmed){
 // which has no name concept -- see Get-MapCategoryJson's effigy dict shape), save key,
 // level (bounty/fugitive/tower -- see Edit-MapEntry's generic $fields.lv), coordinates, and
 // Save/Delete buttons. Values are filled in by wireIconDetailFooter once the HTML exists.
-function iconDetailFooterHtml(category){
+function iconDetailFooterHtml(ident){
+  var category=ident.category;
   var nameField=category==='effigy' ? '' :
     '<div class="ai-field"><label>Display name</label><input id="icon-detail-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name"></div>';
   // Level input for the three categories that carry a level: bounty (typed in by hand -- never
   // scraped), fugitive (scraped), and tower (2026-07-13 -- towerTipBody already displays it).
   var lvField=(category==='bounty'||category==='fugitive'||category==='tower') ?
     '<div class="ai-field"><label>Level</label><input id="icon-detail-lv" class="pf-input" style="width:140px;" type="number" min="1" placeholder="Level"></div>' : '';
+  // Record-from-gameplay control, only for a keyless pin in a category with a real save-flag
+  // property (see isRecordableKeyless/startKeyRecording). Populated by wireIconDetailFooter.
+  var recordField=isRecordableKeyless(ident) ?
+    '<div class="ai-field" id="icon-detail-record-wrap"><label>Record key from gameplay</label><div id="icon-detail-record-status"></div></div>' : '';
   return '<div class="pm-sec" style="margin-top:16px;"><div class="pm-sec-h">Edit</div>'
     +nameField
     +'<div class="ai-field"><label>Save key</label><input id="icon-detail-key" class="pf-input" style="width:100%;" type="text" placeholder="Raw save-flag key"></div>'
+    +recordField
     +lvField
     +'<div class="ai-field"><label>Coordinates (gx / gy)</label><div style="display:flex;gap:8px;">'
     +'<input id="icon-detail-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">'
@@ -6143,6 +6250,7 @@ function wireIconDetailFooter(el,ident,marker){
   if(saveBtn) saveBtn.onclick=function(){ saveIconDetailEdits(ident,marker); };
   var delBtn=el.querySelector('#icon-detail-delete-btn');
   if(delBtn) delBtn.onclick=function(){ deleteMapIcon(ident,marker); };
+  if(isRecordableKeyless(ident)) recordRenderIdle();
 }
 // categoryLabel/title are display-only; ident carries the pin's CURRENT identity (see
 // Find-ConfirmedRow) so Save/Delete resolve the right row even after a rename/re-key.
@@ -6153,18 +6261,22 @@ function wireIconDetailFooter(el,ident,marker){
 // e.popup.getElement(). onClose runs once, right before the panel actually closes (e.g. to
 // clear a hover-selected prereq-line state).
 function openIconDetail(categoryLabel,title,bodyHtml,ident,marker,wireExtra,onClose){
+  // Opening any pin invalidates a record still in progress on a previous one -- its status
+  // div is about to be destroyed by the innerHTML rebuild below, so cancel it silently first.
+  stopKeyRecording(true);
   _iconDetailIdent=ident;
   _iconDetailMarker=marker||null;
   _iconDetailOnClose=onClose||null;
   document.getElementById('icon-detail-category').textContent=categoryLabel;
   document.getElementById('icon-detail-title').textContent=title;
   var body=document.getElementById('icon-detail-body');
-  body.innerHTML=bodyHtml+iconDetailFooterHtml(ident.category);
+  body.innerHTML=bodyHtml+iconDetailFooterHtml(ident);
   wireIconDetailFooter(body,ident,marker);
   if(typeof wireExtra==='function') wireExtra(body);
   document.getElementById('icon-detail-overlay').style.display='block';
 }
 window.closeIconDetail=function(){
+  stopKeyRecording(true); // a record in progress is tied to this panel -- cancel on close
   document.getElementById('icon-detail-overlay').style.display='none';
   if(typeof _iconDetailOnClose==='function') _iconDetailOnClose();
   _iconDetailIdent=null; _iconDetailMarker=null; _iconDetailOnClose=null;
