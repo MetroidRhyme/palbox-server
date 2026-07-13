@@ -19,6 +19,9 @@ maintenance.log
 .palbox_r2_sync_state.json
 .palbox_msg_push_state.json
 .palbox_offmachine_backup_state.json
+# Rotating timestamped safety backups the dashboard writes before rewriting the canonical
+# map store -- local artifacts, not source (e.g. confirmed_locations.backup_20260710_125944.json).
+confirmed_locations.backup_*.json
 manager-config.json
 sync_public_data.log
 prefs/
