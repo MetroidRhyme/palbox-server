@@ -9658,19 +9658,19 @@
         "origin":  "manual"
     },
     {
-        "lv":  null,
         "species":  "CatVampire",
         "source":  "NormalBossDefeatFlag",
-        "verified":  false,
         "category":  "bounty",
         "origin":  "manual",
+        "verified":  true,
         "name":  "Foxsparks Cryst",
         "key":  null,
         "gx":  -411,
         "gy":  -55,
         "x":  null,
         "y":  null,
-        "z":  null
+        "z":  null,
+        "lv":  null
     },
     {
         "key":  "81_1_GRASS_FBOSS_16",
