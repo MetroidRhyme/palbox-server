@@ -574,6 +574,7 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <div class="panel-header">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <select id="effigy-player" onchange="effigyPlayerChanged()" class="sel" style="min-width:120px;"></select>
+        <button id="eff-set-default-btn" class="btn btn-ghost" style="font-size:12px;padding:2px 8px;" onclick="toggleDefaultPlayer()" title="Make the selected player the map's default -- the dropdown starts on them and the map auto-zooms to them on load/reload">&#9734; Set Default</button>
         <span id="effigy-summary" style="color:var(--muted);font-size:12px;"></span>
       </div>
       <div style="display:flex;gap:8px;">
@@ -4722,12 +4723,24 @@ function renderPlayerMarkers(){
       _playerShown.delete(guid);
     }
   });
-  if(!_effInitialCentered&&playerLocations&&playerLocations.length===1&&typeof playerLocations[0].x==='number'&&typeof playerLocations[0].y==='number'){
-    // Start the map zoomed in on the logged-in player's own position instead of the default
-    // whole-map view (see initEffigyView's setView(...,1)) -- only once per page load, and
-    // only for the single-player scoped case, so it never fights a manual pan/zoom afterward.
-    _effInitialCentered=true;
-    effigyLeaflet.setView(effigyRposToLatLng(playerLocations[0].x,playerLocations[0].y),5);
+  if(!_effInitialCentered&&playerLocations&&effigyLeaflet){
+    // One-time initial zoom-to-player on this page load, instead of the default whole-map view
+    // (see initEffigyView's setView(...,1)). Prefer an explicit default player (Set Default
+    // button, stored in localStorage) so it works even on the admin's multi-player roster;
+    // otherwise fall back to the single-player scoped case (public own-player route). Fires only
+    // once a target is resolvable, and never again this load, so it can't fight a manual pan/zoom.
+    var _defGuid=getDefaultPlayerGuid();
+    var _target=null;
+    if(_defGuid){
+      _target=playerLocations.find(function(p){return p.guid===_defGuid&&typeof p.x==='number'&&typeof p.y==='number';});
+    }
+    if(!_target&&playerLocations.length===1&&typeof playerLocations[0].x==='number'&&typeof playerLocations[0].y==='number'){
+      _target=playerLocations[0];
+    }
+    if(_target){
+      _effInitialCentered=true;
+      effigyLeaflet.setView(effigyRposToLatLng(_target.x,_target.y),5);
+    }
   }
   centerOnFollowedPlayer();
 }
@@ -5083,7 +5096,53 @@ function effigyPlayerChanged(){
     followedPlayerGuid=sel?sel.value:null;
     updateFollowBtnState();
   }
+  updateDefaultBtnState();
   fetchEffigyPlayer();
+}
+// -- Default map player -------------------------------------------------------
+// Persists (localStorage) a chosen "default" player so the map dropdown starts on them and the
+// map auto-zooms to them on load/reload (see the initial-center block in renderPlayerMarkers and
+// the fallback in populateEffigyPlayerDropdown). Stored client-side because the admin dashboard
+// has PREFS_ENABLED=false -- no server-side prefs there -- so localStorage is the right store.
+var EFF_DEFAULT_PLAYER_KEY='eff-default-player';
+function getDefaultPlayerGuid(){
+  try{ return localStorage.getItem(EFF_DEFAULT_PLAYER_KEY)||''; }catch(e){ return ''; }
+}
+function setDefaultPlayerGuid(guid){
+  try{
+    if(guid) localStorage.setItem(EFF_DEFAULT_PLAYER_KEY,guid);
+    else localStorage.removeItem(EFF_DEFAULT_PLAYER_KEY);
+  }catch(e){}
+}
+// Toggle: make the dropdown's current player the default, or clear it if they're already default.
+// On set, re-arm the one-time initial-center (_effInitialCentered=false) so the map zooms to them
+// immediately rather than waiting for the next reload.
+function toggleDefaultPlayer(){
+  var sel=document.getElementById('effigy-player');
+  var guid=sel?sel.value:'';
+  if(!guid){ toast('Select a player first.','error'); return; }
+  var name=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].textContent:'player';
+  if(getDefaultPlayerGuid()===guid){
+    setDefaultPlayerGuid('');
+    toast('Cleared default player.','info');
+  }else{
+    setDefaultPlayerGuid(guid);
+    _effInitialCentered=false;   // re-arm initial zoom so the map centers on the new default now
+    renderPlayerMarkers();
+    toast('Default player set to '+name+'.','success');
+  }
+  updateDefaultBtnState();
+}
+function updateDefaultBtnState(){
+  var btn=document.getElementById('eff-set-default-btn');
+  if(!btn) return;
+  var sel=document.getElementById('effigy-player');
+  var isDefault=!!(sel&&sel.value&&sel.value===getDefaultPlayerGuid());
+  btn.classList.toggle('btn-primary',isDefault);
+  btn.innerHTML=isDefault?'&#9733; Default Player':'&#9734; Set Default';
+  btn.title=isDefault
+    ?'This player is the map default -- click to clear'
+    :"Make the selected player the map's default -- the dropdown starts on them and the map auto-zooms to them on load/reload";
 }
 function updateFollowBtnState(){
   var btn=document.getElementById('eff-follow-btn');
@@ -5235,8 +5294,18 @@ function populateEffigyPlayerDropdown(){
   });
   if(prev&&paldeckData.players.some(function(p){return p.guid===prev;})){
     sel.value=prev;
-  }else{if(paldeckData.players.length)sel.value=paldeckData.players[0].guid;}
+  }else{
+    // No live selection to preserve -- prefer the saved default player (Set Default button),
+    // then fall back to the first player in the roster.
+    var _def=getDefaultPlayerGuid();
+    if(_def&&paldeckData.players.some(function(p){return p.guid===_def;})){
+      sel.value=_def;
+    }else if(paldeckData.players.length){
+      sel.value=paldeckData.players[0].guid;
+    }
+  }
   maybeApplyEffigyPrefs();
+  updateDefaultBtnState();
   fetchEffigyPlayer();
 }
 
@@ -6891,11 +6960,10 @@ function renderEffigyMapNow(){
   syncEffigyLayer();
   renderPlayerMarkers();
 
-  var needed=Math.max(0,EFFIGY_MAX_RANK-collectedCount);
-  var pct=total>0?Math.round(collectedCount/total*100):0;
-  document.getElementById('effigy-summary').textContent=
-    collectedCount+' / '+total+' ('+pct+'%)'
-    +(needed>0?' \u2022 '+needed+' more for max rank':' \u2022 Max rank!');
+  // Effigy count / max-rank summary text removed per Anthony's request. The span is kept for
+  // transient loading/error status only (see fetchEffigyLocations etc.); collectedCount/total are
+  // still computed above because their assignments are byte-exact generator anchors -- do not remove.
+  document.getElementById('effigy-summary').textContent='';
   savePrefs();
   var _lo=document.getElementById('eff-map-loading');
   if(_lo) _lo.style.display='none';
@@ -6904,6 +6972,7 @@ function renderEffigyMapNow(){
 async function reloadEffigyView(){
   effigyLocations=null;
   effigyCollected=[];
+  _effInitialCentered=false;   // re-arm initial zoom so Reload re-centers on the default player
   _effCache.clear(); _effDesired.clear(); _effShown.clear(); _playerShown.clear();
   if(effigyMarkerLayer) effigyMarkerLayer.clearLayers();
   if(effigyPlayerLayer) effigyPlayerLayer.clearLayers();
