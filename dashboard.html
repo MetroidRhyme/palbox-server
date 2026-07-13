@@ -4204,13 +4204,15 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
   if(EFFIGY_CONFIRM_ENABLED){
     var chkId='eff-confirm-'+id;
     m.bindPopup(tip+saveKeyRow(id)+'<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>'+caveAddButtonHtml(),
+      +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>'+caveAddButtonHtml()+editDeleteButtonsHtml(),
       {className:'eff-tip'});
     m.on('popupopen',function(e){
       var el=e.popup.getElement(); if(!el) return;
       var box=el.querySelector('#'+chkId);
       if(box) box.onchange=function(){ toggleMapConfirm('effigy',id,box.checked); };
       wireCaveAdd(el,{category:'effigy',key:id,label:id});
+      var _g=worldToGrid(pos.x,pos.y);
+      wireEditDelete(el,{category:'effigy',key:id,label:id,gx:_g.cx,gy:_g.cy},m);
     });
   } else {
     m.bindPopup(tip+reportButtonHtml('effigy',id,id),{className:'eff-tip'});
@@ -4247,7 +4249,7 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
     } else {
       jPopup+=mapKeyButtonHtml(jMapBtnId);
     }
-    jPopup+=caveAddButtonHtml();
+    jPopup+=caveAddButtonHtml()+editDeleteButtonsHtml();
     jm.bindPopup(jPopup,effPopupOpts(!trackable,{className:'eff-tip'}));
     jm.on('popupopen',function(e){
       var el=e.popup.getElement();
@@ -4259,6 +4261,7 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
         wireMapKeyButton(el,jMapBtnId,'Journal',j.name,j.gx,j.gy,jm);
       }
       wireCaveAdd(el,{category:'journal',key:j.key,name:j.name,label:j.name});
+      wireEditDelete(el,{category:'journal',key:j.key,name:j.name,label:j.name,gx:j.gx,gy:j.gy},jm);
     });
   } else {
     jm.bindPopup('<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+reportButtonHtml('journal',j.key||j.name,j.name),{className:'eff-tip'});
@@ -4326,6 +4329,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
       }
       bPopup+=caveAddButtonHtml();
       bPopup+=prereqAddButtonHtml();
+      bPopup+=editDeleteButtonsHtml();
     } else {
       bPopup+=reportButtonHtml('bounty',sp,b.name);
     }
@@ -4357,6 +4361,8 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
       if(EFFIGY_CONFIRM_ENABLED){
         wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
         wirePrereqAdd(el,b,'bounty');
+        var _bg=worldToGrid(b.x,b.y);
+        wireEditDelete(el,{category:'bounty',species:b.species,name:b.name,label:b.name,gx:_bg.cx,gy:_bg.cy},bm);
       } else {
         wireReportButton(el,'bounty',sp,b.name);
       }
@@ -4394,19 +4400,20 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
       ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+hChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
       :mapKeyButtonHtml(hMapBtnId);
-    hPopup+=caveAddButtonHtml();
+    hPopup+=caveAddButtonHtml()+editDeleteButtonsHtml();
     hm.bindPopup(hPopup,effPopupOpts(!h.key,{className:'eff-tip'}));
     hm.on('popupopen',function(e){
       var el=e.popup.getElement();
       if(!el) return;
+      var g=worldToGrid(h.x,h.y);
       if(h.key){
         var box=el.querySelector('#'+hChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('fugitive',h.name,box.checked); };
       } else {
-        var g=worldToGrid(h.x,h.y);
         wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
       }
       wireCaveAdd(el,{category:'fugitive',name:h.name,label:h.name});
+      wireEditDelete(el,{category:'fugitive',name:h.name,label:h.name,gx:g.cx,gy:g.cy},hm);
     });
   } else {
     hm.bindPopup('<b style="color:#111;">'+esc(h.name)+'</b><br>'+hTip+reportButtonHtml('fugitive',h.name,h.name),{className:'eff-tip'});
@@ -4440,19 +4447,20 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
       ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+esChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
       :mapKeyButtonHtml(esMapBtnId);
-    esPopup+=caveAddButtonHtml();
+    esPopup+=caveAddButtonHtml()+editDeleteButtonsHtml();
     esm.bindPopup(esPopup,effPopupOpts(!es.key,{className:'eff-tip'}));
     esm.on('popupopen',function(e){
       var el=e.popup.getElement();
       if(!el) return;
+      var g=worldToGrid(es.x,es.y);
       if(es.key){
         var box=el.querySelector('#'+esChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('eagle',es.name,box.checked); };
       } else {
-        var g=worldToGrid(es.x,es.y);
         wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm);
       }
       wireCaveAdd(el,{category:'eagle',name:es.name,label:es.name});
+      wireEditDelete(el,{category:'eagle',name:es.name,label:es.name,gx:g.cx,gy:g.cy},esm);
     });
   } else {
     esm.bindPopup('<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+reportButtonHtml('eagle',es.name,es.name),{className:'eff-tip'});
@@ -4489,19 +4497,20 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
       ?('<br><label style="display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;">'
         +'<input type="checkbox" id="'+sChkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>')
       :mapKeyButtonHtml(sMapBtnId);
-    sPopup+=caveAddButtonHtml();
+    sPopup+=caveAddButtonHtml()+editDeleteButtonsHtml();
     sm.bindPopup(sPopup,effPopupOpts(!s.key,{className:'eff-tip'}));
     sm.on('popupopen',function(e){
       var el=e.popup.getElement();
       if(!el) return;
+      var g=worldToGrid(s.x,s.y);
       if(s.key){
         var box=el.querySelector('#'+sChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('sam',s.name,box.checked); };
       } else {
-        var g=worldToGrid(s.x,s.y);
         wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm);
       }
       wireCaveAdd(el,{category:'sam',name:s.name,label:s.name});
+      wireEditDelete(el,{category:'sam',name:s.name,label:s.name,gx:g.cx,gy:g.cy},sm);
     });
   } else {
     sm.bindPopup('<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+reportButtonHtml('sam',s.name,s.name),{className:'eff-tip'});
@@ -4566,7 +4575,7 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
       +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
       +'<input type="checkbox" id="'+esChkId+'"'+(esVerified?' checked':'')+'> Verify Eagle Statue key</label>'
       +'<br><label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
-      +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'+caveAddButtonHtml()+prereqAddButtonHtml(),
+      +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'+caveAddButtonHtml()+prereqAddButtonHtml()+editDeleteButtonsHtml(),
       {className:'eff-tip'});
     tm.on('popupopen',function(e){
       _bossPrereqActive=twIdent;
@@ -4581,6 +4590,8 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
       if(_tel){
         wireCaveAdd(_tel,{category:'tower',name:t.name,label:t.name});
         wirePrereqAdd(_tel,{name:t.name},'tower');
+        var _tg=worldToGrid(t.x,t.y);
+        wireEditDelete(_tel,{category:'tower',name:t.name,label:t.name,gx:_tg.cx,gy:_tg.cy},tm);
       }
     });
     tm.on('popupclose',function(){
@@ -6047,8 +6058,65 @@ window.closeEntranceModal=function(){
 // convention as saveAddIcon (never null-then-fetch, see /palbox-map-performance).
 function refetchMapCategory(category){
   var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
-    fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
+    fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations,sam:fetchSamSites}[category];
   if(typeof refetch==='function') refetch(true);
+}
+
+// -- Edit coordinates / Delete icon (2026-07-12, post-1.0 map cleanup) -------------
+// Admin-only "fix a shifted pin" / "remove a bad pin" controls for any of the 7 renderable
+// map categories -- unlike the cave-entrance/prereq/custom-icon features above, these work
+// on ANY row (scraped/live/custom alike), not just custom:true ones, since the whole point
+// is correcting real imported/live-captured data after the game's 1.0 update moved things.
+// Lives inside the "-- Data Mine tab --" JS block (same as every other admin map-edit
+// control) so gen_public_site.ps1 strips it from the public build; the modal's own HTML
+// gets a dedicated strip step, same pattern as entrance/prereq/addicon.
+var _editCoordsTarget=null;   // pin identity the Edit coordinates modal is currently editing
+function editDeleteButtonsHtml(){
+  return '<br><button type="button" class="btn btn-ghost eff-editcoords-btn" style="margin-top:6px;font-size:12px;">Edit coordinates</button> '
+    +'<button type="button" class="btn btn-ghost eff-delete-icon-btn" style="margin-top:6px;font-size:12px;color:#f85149;">Delete icon</button>';
+}
+function wireEditDelete(popupEl,ident,marker){
+  var eb=popupEl.querySelector('.eff-editcoords-btn');
+  if(eb) eb.onclick=function(){ openEditCoordsModal(ident); };
+  var db=popupEl.querySelector('.eff-delete-icon-btn');
+  if(db) db.onclick=function(){ deleteMapIcon(ident,marker); };
+}
+function openEditCoordsModal(ident){
+  _editCoordsTarget=ident;
+  document.getElementById('editcoords-parent-label').textContent=ident.label||ident.name||ident.key||'this pin';
+  document.getElementById('editcoords-gx').value=(ident.gx!=null?ident.gx:'');
+  document.getElementById('editcoords-gy').value=(ident.gy!=null?ident.gy:'');
+  document.getElementById('editcoords-modal-overlay').style.display='flex';
+}
+window.closeEditCoordsModal=function(){
+  document.getElementById('editcoords-modal-overlay').style.display='none';
+  _editCoordsTarget=null;
+};
+async function saveEditCoords(){
+  if(!_editCoordsTarget) return;
+  var t=_editCoordsTarget;
+  var gx=document.getElementById('editcoords-gx').value.trim();
+  var gy=document.getElementById('editcoords-gy').value.trim();
+  if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
+  try{
+    await api('/api/map-edit-coords','POST',{category:t.category,key:t.key||null,species:t.species||null,name:t.name||null,gx:gx,gy:gy});
+    closeEditCoordsModal();
+    toast('Coordinates updated.','success');
+    refetchMapCategory(t.category);
+  }catch(e){
+    toast('Failed to update coordinates: '+String(e&&e.message||e),'error');
+  }
+}
+async function deleteMapIcon(ident,marker){
+  if(!confirm('Delete '+(ident.label||ident.name||ident.key||'this pin')+'? This removes it from the map entirely (it can only come back if a future scraped-roster re-import re-adds it).')) return;
+  try{
+    await api('/api/map-delete-icon','POST',{category:ident.category,key:ident.key||null,species:ident.species||null,name:ident.name||null});
+    if(marker&&marker.closePopup) marker.closePopup();
+    toast('Icon deleted.','success');
+    refetchMapCategory(ident.category);
+  }catch(e){
+    toast('Failed to delete icon: '+String(e&&e.message||e),'error');
+  }
 }
 async function saveEntrance(){
   if(!_entranceTarget){ closeEntranceModal(); return; }
@@ -7570,6 +7638,23 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
       <button class="btn btn-ghost" onclick="closePrereqModal()">Close</button>
       <button class="btn btn-primary" onclick="savePrereqLink()">Add</button>
+    </div>
+  </div>
+</div>
+<div id="editcoords-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:2000;" onclick="if(event.target===this)closeEditCoordsModal()">
+  <div class="pal-modal" id="editcoords-modal-body" style="max-width:420px;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Edit coordinates</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">New location for <b id="editcoords-parent-label"></b></div>
+    <div class="ai-field">
+      <label>Coordinates (gx / gy)</label>
+      <div style="display:flex;gap:8px;">
+        <input id="editcoords-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">
+        <input id="editcoords-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="closeEditCoordsModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditCoords()">Save</button>
     </div>
   </div>
 </div>

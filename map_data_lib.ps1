@@ -403,6 +403,50 @@ function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species
     return $true
 }
 
+# The 7 map categories that actually render pins on the Map tab (npc/landmark are retired --
+# no marker/popup exists for them at all, see the palbox-confirmed-locations skill -- so
+# they're deliberately excluded here the same way they're excluded from
+# $script:CustomIconCategories above).
+$script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower', 'sam')
+
+# Corrects a pin's location -- added 2026-07-12 so Anthony can fix locations that shifted
+# after the Palworld 1.0 update, WITHOUT the custom:true guard Edit-CustomMapEntry enforces
+# (this must work on scraped/live rows too, not just hand-added ones). Always writes gx/gy
+# and nulls x/y/z so the corrected grid position actually takes effect -- Get-MapCategoryJson
+# prefers x/y over gx/gy when both are present (see its coordinate-precedence comment above),
+# so leaving a stale x/y in place would silently keep showing the OLD position. This is the
+# same x/y-null convention Add-CustomMapEntry already uses for a brand-new hand-typed pin.
+function Set-MapEntryCoords([string]$category, [string]$key, [string]$species, [string]$name, $gx, $gy) {
+    if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
+    if ($null -eq $gx -or $null -eq $gy) { throw "Coordinates (gx/gy) are required." }
+    $confirmed = @(Get-ConfirmedLocations)
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
+    if (-not $matched) { throw "No matching map entry found." }
+    Set-EntryProp $matched 'gx' $gx
+    Set-EntryProp $matched 'gy' $gy
+    Set-EntryProp $matched 'x' $null
+    Set-EntryProp $matched 'y' $null
+    Set-EntryProp $matched 'z' $null
+    Save-ConfirmedLocations $confirmed
+    return $matched
+}
+
+# Deletes ANY pin outright (scraped/live/custom, any of the 7 renderable categories) -- the
+# other half of the post-1.0 map-cleanup ask, alongside Set-MapEntryCoords above. Deliberately
+# a hard delete with no "blacklist" file: if the roster importer (import_scraped_rosters.ps1)
+# is ever re-run and the deleted pin is still in its source roster file, it can resurface as a
+# fresh verified:false row -- Anthony's explicit call (2026-07-12), simplest option, and easy
+# to just delete again if it happens.
+function Remove-MapEntry([string]$category, [string]$key, [string]$species, [string]$name) {
+    if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
+    $confirmed = @(Get-ConfirmedLocations)
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
+    if (-not $matched) { throw "No matching map entry found." }
+    $remaining = @($confirmed | Where-Object { $_ -ne $matched })
+    Save-ConfirmedLocations $remaining
+    return $true
+}
+
 # Cave-entrance sub-pins (2026-07-08): attaches a hand-typed {gx,gy} to an existing map
 # pin (resolved by the same category-appropriate identity Find-ConfirmedRow uses for every
 # other write). Purely additive location metadata -- unlike Edit/Remove-CustomMapEntry there

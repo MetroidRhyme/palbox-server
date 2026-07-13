@@ -2626,6 +2626,47 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/map-edit-coords' -and $method -eq 'POST') {
+                    # Map popup's "Edit coordinates" button (any of the 7 renderable
+                    # categories, not just custom:true rows -- added 2026-07-12 for post-1.0
+                    # location corrections). Body: { category, key?, species?, name?, gx, gy }.
+                    # See Set-MapEntryCoords in map_data_lib.ps1.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        if (-not $category) { throw "No category provided." }
+                        $key = if ($body.key) { [string]$body.key } else { $null }
+                        $species = if ($body.species) { [string]$body.species } else { $null }
+                        $name = if ($body.name) { [string]$body.name } else { $null }
+                        $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
+                        $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
+                        $updated = Set-MapEntryCoords $category $key $species $name $gx $gy
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/map-delete-icon' -and $method -eq 'POST') {
+                    # Map popup's "Delete icon" button (any of the 7 renderable categories,
+                    # hard delete -- see Remove-MapEntry's comment on the no-blacklist
+                    # tradeoff). Body: { category, key?, species?, name? }.
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $category = [string]$body.category
+                        if (-not $category) { throw "No category provided." }
+                        $key = if ($body.key) { [string]$body.key } else { $null }
+                        $species = if ($body.species) { [string]$body.species } else { $null }
+                        $name = if ($body.name) { [string]$body.name } else { $null }
+                        Remove-MapEntry $category $key $species $name | Out-Null
+                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/reports' -and $method -eq 'GET') {
                     # Data Mine tab's Reports section -- pulls player-submitted "this map data
                     # is wrong" flags from R2 (see site_src/_worker.js's handleReport, the only
