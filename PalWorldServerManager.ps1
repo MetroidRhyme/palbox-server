@@ -1353,7 +1353,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 $opl = if ($online.players) { @($online.players) } elseif ($online.Players) { @($online.Players) } else { @() }
                 foreach ($op in $opl) {
                     $uid = if ($op.playerid) { [string]$op.playerid } elseif ($op.playeruid) { [string]$op.playeruid } elseif ($op.userid) { [string]$op.userid } else { '' }
-                    if ($uid) { $onlinePrefixes[$uid.Replace('-', '').Substring(0, 8).ToUpper()] = $true }
+                    $uidClean = $uid.Replace('-', '')
+                    if ($uidClean.Length -ge 8) { $onlinePrefixes[$uidClean.Substring(0, 8).ToUpper()] = $true }
                 }
             } catch {}
 
@@ -2312,15 +2313,16 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         # over the in-save NickName, keyed by the 8-hex UID prefix.
                         $prefixToName = @{}
                         foreach ($entry in $script:playtime.GetEnumerator()) {
-                            $sid = $entry.Value.steamid
-                            if ($sid) { $prefixToName[$sid.Replace('-','').Substring(0,8).ToUpper()] = $entry.Key }
+                            $sid = if ($entry.Value.steamid) { ([string]$entry.Value.steamid).Replace('-','') } else { '' }
+                            if ($sid.Length -ge 8) { $prefixToName[$sid.Substring(0,8).ToUpper()] = $entry.Key }
                         }
                         try {
                             $online = Invoke-RestMethod -Uri "$PalApiBase/v1/api/players" -Method GET -Headers (Get-PalHeaders) -EA Stop
                             $onlinePlayers = if ($online.players) { @($online.players) } elseif ($online.Players) { @($online.Players) } else { @() }
                             foreach ($op in $onlinePlayers) {
                                 $uid = if ($op.playerid) { [string]$op.playerid } elseif ($op.playeruid) { [string]$op.playeruid } elseif ($op.userid) { [string]$op.userid } else { '' }
-                                if ($uid -and $op.name) { $prefixToName[$uid.Replace('-','').Substring(0,8).ToUpper()] = [string]$op.name }
+                                $uidClean = $uid.Replace('-','')
+                                if ($uidClean.Length -ge 8 -and $op.name) { $prefixToName[$uidClean.Substring(0,8).ToUpper()] = [string]$op.name }
                             }
                         } catch {}
                         foreach ($pl in @($data.players)) {
@@ -2350,8 +2352,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         # Resolve owner prefix -> display name (same source as /api/pals).
                         $prefixToName = @{}
                         foreach ($entry in $script:playtime.GetEnumerator()) {
-                            $sid = $entry.Value.steamid
-                            if ($sid) { $prefixToName[$sid.Replace('-','').Substring(0,8).ToUpper()] = $entry.Key }
+                            $sid = if ($entry.Value.steamid) { ([string]$entry.Value.steamid).Replace('-','') } else { '' }
+                            if ($sid.Length -ge 8) { $prefixToName[$sid.Substring(0,8).ToUpper()] = $entry.Key }
                         }
                         foreach ($egg in @($data.eggs)) {
                             $pfx = [string]$egg.owner
