@@ -1345,14 +1345,15 @@
     },
     {
         "key":  "F382ADAE4259150BF994FF873ECF242B",
-        "name":  "Ice Wind Island",
-        "gx":  -352,
-        "gy":  76,
         "verified":  false,
         "category":  "eagle",
         "origin":  "manual",
-        "y":  -4027,
-        "x":  -88545
+        "name":  "Isle of Murmurs",
+        "gx":  -352,
+        "gy":  76,
+        "x":  null,
+        "y":  null,
+        "z":  null
     },
     {
         "key":  "F6C005A14B38FE0B57F1C7869FD899CB",

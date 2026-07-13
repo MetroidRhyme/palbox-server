@@ -3326,5 +3326,293 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "CAPTAINPENGUIN_BLACK",
+        "name":  "Penking Lux",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FLUFFYBIRD",
+        "name":  "Muffly",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "GHOSTBLACKCAT",
+        "name":  "Wispaw",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "GRASSMINOTAUR",
+        "name":  "Elgrove",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "HADESBIRD",
+        "name":  "Helzephyr",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "MONKEY_FIRE",
+        "name":  "Tanzee Ignis",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "STUFFEDSHARK",
+        "name":  "Finsider",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "TENTACLETURTLE",
+        "name":  "Turtacle",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "CaptainPenguin_Black",
+        "name":  "Penking Lux",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FluffyBird",
+        "name":  "Muffly",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "GhostBlackCat",
+        "name":  "Wispaw",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "GrassMinotaur",
+        "name":  "Elgrove",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "HadesBird",
+        "name":  "Helzephyr",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Monkey_Fire",
+        "name":  "Tanzee Ignis",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "StuffedShark",
+        "name":  "Finsider",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "TentacleTurtle",
+        "name":  "Turtacle",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "CLIONETWINS",
+        "name":  "Amione",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "DARKCROW",
+        "name":  "Cawgnito",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FLOWERRABBIT",
+        "name":  "Flopie",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "JELLYFISHFAIRY",
+        "name":  "Jelliette",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "SWORDCUTLASSFISH",
+        "name":  "Skutlass",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "ClioneTwins",
+        "name":  "Amione",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "DarkCrow",
+        "name":  "Cawgnito",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FlowerRabbit",
+        "name":  "Flopie",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "JellyfishFairy",
+        "name":  "Jelliette",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "SwordCutlassfish",
+        "name":  "Skutlass",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "ELECPANDA",
+        "name":  "Grizzbolt",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "PLESIOSAUR",
+        "name":  "Braloha",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "WINDCHIMES_ICE",
+        "name":  "Hangyu Cryst",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "ElecPanda",
+        "name":  "Grizzbolt",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Plesiosaur",
+        "name":  "Braloha",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "WindChimes_Ice",
+        "name":  "Hangyu Cryst",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "NEGATIVEOCTOPUS_NEUTRAL",
+        "name":  "Killamari Primo",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "NegativeOctopus_Neutral",
+        "name":  "Killamari Primo",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "WINDCHIMES",
+        "name":  "Hangyu",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "WindChimes",
+        "name":  "Hangyu",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]
