@@ -2626,21 +2626,27 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
-                ($path -eq '/api/map-edit-coords' -and $method -eq 'POST') {
-                    # Map popup's "Edit coordinates" button (any of the 7 renderable
-                    # categories, not just custom:true rows -- added 2026-07-12 for post-1.0
-                    # location corrections). Body: { category, key?, species?, name?, gx, gy }.
-                    # See Set-MapEntryCoords in map_data_lib.ps1.
+                ($path -eq '/api/map-edit-icon' -and $method -eq 'POST') {
+                    # Map popup's "Edit" button (any of the 7 renderable categories, not just
+                    # custom:true rows -- added 2026-07-12 for post-1.0 location corrections,
+                    # extended same day to also allow renaming). Body: { category,
+                    # identityKey?, identitySpecies?, identityName?, name?, gx?, gy? } --
+                    # identity* resolves the row by its CURRENT key/species/name (same
+                    # convention as /api/map-custom-edit), name/gx/gy are the new values (gx
+                    # and gy must both be present together if either is). See Edit-MapEntry
+                    # in map_data_lib.ps1.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $category = [string]$body.category
                         if (-not $category) { throw "No category provided." }
-                        $key = if ($body.key) { [string]$body.key } else { $null }
-                        $species = if ($body.species) { [string]$body.species } else { $null }
-                        $name = if ($body.name) { [string]$body.name } else { $null }
-                        $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
-                        $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
-                        $updated = Set-MapEntryCoords $category $key $species $name $gx $gy
+                        $identKey = if ($body.identityKey) { [string]$body.identityKey } else { $null }
+                        $identSpecies = if ($body.identitySpecies) { [string]$body.identitySpecies } else { $null }
+                        $identName = if ($body.identityName) { [string]$body.identityName } else { $null }
+                        $fields = @{}
+                        if ($body.PSObject.Properties['name']) { $fields.name = if ($body.name) { [string]$body.name } else { $null } }
+                        if ($body.PSObject.Properties['gx']) { $fields.gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null } }
+                        if ($body.PSObject.Properties['gy']) { $fields.gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null } }
+                        $updated = Edit-MapEntry $category $identKey $identSpecies $identName $fields
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)

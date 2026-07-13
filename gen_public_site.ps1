@@ -160,7 +160,7 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
 if ($html -eq $before) { throw "Prerequisite bosses modal markup was not removed" }
 
 # (2a5) Remove the "Edit coordinates" modal -- admin-only pin-location correction (POSTs to
-# /api/map-edit-coords / /api/map-delete-icon, added 2026-07-12 for post-Palworld-1.0 map
+# /api/map-edit-icon / /api/map-delete-icon, added 2026-07-12 for post-Palworld-1.0 map
 # cleanup). Its JS (editDeleteButtonsHtml/wireEditDelete/openEditCoordsModal/saveEditCoords/
 # deleteMapIcon) also lives inside the "-- Data Mine tab --" block stripped in (3c) -- only
 # the modal markup needs stripping here.

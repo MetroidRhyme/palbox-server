@@ -409,30 +409,45 @@ function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species
 # $script:CustomIconCategories above).
 $script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower', 'sam')
 
-# Corrects a pin's location -- added 2026-07-12 so Anthony can fix locations that shifted
-# after the Palworld 1.0 update, WITHOUT the custom:true guard Edit-CustomMapEntry enforces
-# (this must work on scraped/live rows too, not just hand-added ones). Always writes gx/gy
-# and nulls x/y/z so the corrected grid position actually takes effect -- Get-MapCategoryJson
-# prefers x/y over gx/gy when both are present (see its coordinate-precedence comment above),
-# so leaving a stale x/y in place would silently keep showing the OLD position. This is the
-# same x/y-null convention Add-CustomMapEntry already uses for a brand-new hand-typed pin.
-function Set-MapEntryCoords([string]$category, [string]$key, [string]$species, [string]$name, $gx, $gy) {
+# Corrects a pin's location and/or display name -- added 2026-07-12 so Anthony can fix
+# locations that shifted after the Palworld 1.0 update, WITHOUT the custom:true guard
+# Edit-CustomMapEntry enforces (this must work on scraped/live rows too, not just hand-added
+# ones). $identKey/$identSpecies/$identName resolve the row via Find-ConfirmedRow using its
+# CURRENT identity (same convention as Edit-CustomMapEntry) -- $fields is what's changing,
+# so renaming a fugitive/eagle/tower/sam pin (identified BY name) still resolves correctly
+# since the old name is what's passed as the identity, not the new one. Providing gx
+# requires gy and vice versa (a coordinate pair, not two independent edits); when supplied,
+# always writes gx/gy and nulls x/y/z so the corrected grid position actually takes effect --
+# Get-MapCategoryJson prefers x/y over gx/gy when both are present (see its
+# coordinate-precedence comment above), so leaving a stale x/y in place would silently keep
+# showing the OLD position. This is the same x/y-null convention Add-CustomMapEntry already
+# uses for a brand-new hand-typed pin. Effigy pins have no display name at all (see
+# Get-MapCategoryJson's effigy dict shape -- {x,y,z,m}, no "name" field ever emitted), so a
+# name edit there is rejected rather than silently written and never read.
+function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields) {
     if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
-    if ($null -eq $gx -or $null -eq $gy) { throw "Coordinates (gx/gy) are required." }
     $confirmed = @(Get-ConfirmedLocations)
-    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
+    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName
     if (-not $matched) { throw "No matching map entry found." }
-    Set-EntryProp $matched 'gx' $gx
-    Set-EntryProp $matched 'gy' $gy
-    Set-EntryProp $matched 'x' $null
-    Set-EntryProp $matched 'y' $null
-    Set-EntryProp $matched 'z' $null
+    if ($fields.ContainsKey('name')) {
+        if ($category -eq 'effigy') { throw "Effigy pins have no display name to edit." }
+        if (-not $fields['name']) { throw "Display name cannot be blank." }
+        Set-EntryProp $matched 'name' $fields['name']
+    }
+    if ($fields.ContainsKey('gx') -or $fields.ContainsKey('gy')) {
+        if ($null -eq $fields['gx'] -or $null -eq $fields['gy']) { throw "Coordinates (gx/gy) are required together." }
+        Set-EntryProp $matched 'gx' $fields['gx']
+        Set-EntryProp $matched 'gy' $fields['gy']
+        Set-EntryProp $matched 'x' $null
+        Set-EntryProp $matched 'y' $null
+        Set-EntryProp $matched 'z' $null
+    }
     Save-ConfirmedLocations $confirmed
     return $matched
 }
 
 # Deletes ANY pin outright (scraped/live/custom, any of the 7 renderable categories) -- the
-# other half of the post-1.0 map-cleanup ask, alongside Set-MapEntryCoords above. Deliberately
+# other half of the post-1.0 map-cleanup ask, alongside Edit-MapEntry above. Deliberately
 # a hard delete with no "blacklist" file: if the roster importer (import_scraped_rosters.ps1)
 # is ever re-run and the deleted pin is still in its source roster file, it can resurface as a
 # fresh verified:false row -- Anthony's explicit call (2026-07-12), simplest option, and easy

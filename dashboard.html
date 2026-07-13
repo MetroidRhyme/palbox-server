@@ -6062,17 +6062,21 @@ function refetchMapCategory(category){
   if(typeof refetch==='function') refetch(true);
 }
 
-// -- Edit coordinates / Delete icon (2026-07-12, post-1.0 map cleanup) -------------
-// Admin-only "fix a shifted pin" / "remove a bad pin" controls for any of the 7 renderable
-// map categories -- unlike the cave-entrance/prereq/custom-icon features above, these work
-// on ANY row (scraped/live/custom alike), not just custom:true ones, since the whole point
-// is correcting real imported/live-captured data after the game's 1.0 update moved things.
-// Lives inside the "-- Data Mine tab --" JS block (same as every other admin map-edit
-// control) so gen_public_site.ps1 strips it from the public build; the modal's own HTML
-// gets a dedicated strip step, same pattern as entrance/prereq/addicon.
-var _editCoordsTarget=null;   // pin identity the Edit coordinates modal is currently editing
+// -- Edit (name/coordinates) / Delete icon (2026-07-12, post-1.0 map cleanup) ------
+// Admin-only "fix a shifted or misnamed pin" / "remove a bad pin" controls for any of the 7
+// renderable map categories -- unlike the cave-entrance/prereq/custom-icon features above,
+// these work on ANY row (scraped/live/custom alike), not just custom:true ones, since the
+// whole point is correcting real imported/live-captured data after the game's 1.0 update
+// moved things. Lives inside the "-- Data Mine tab --" JS block (same as every other admin
+// map-edit control) so gen_public_site.ps1 strips it from the public build; the modal's own
+// HTML gets a dedicated strip step, same pattern as entrance/prereq/addicon.
+// _editTarget carries the pin's CURRENT identity (key/species/name -- whichever the category
+// uses, see Find-ConfirmedRow) so a rename still resolves the right row; "name" doubles as
+// both identity and the pre-filled current display value for every category except effigy,
+// which has no display name at all (its ident has no .name field -- see buildEffigyMarker).
+var _editTarget=null;
 function editDeleteButtonsHtml(){
-  return '<br><button type="button" class="btn btn-ghost eff-editcoords-btn" style="margin-top:6px;font-size:12px;">Edit coordinates</button> '
+  return '<br><button type="button" class="btn btn-ghost eff-editcoords-btn" style="margin-top:6px;font-size:12px;">Edit</button> '
     +'<button type="button" class="btn btn-ghost eff-delete-icon-btn" style="margin-top:6px;font-size:12px;color:#f85149;">Delete icon</button>';
 }
 function wireEditDelete(popupEl,ident,marker){
@@ -6082,29 +6086,42 @@ function wireEditDelete(popupEl,ident,marker){
   if(db) db.onclick=function(){ deleteMapIcon(ident,marker); };
 }
 function openEditCoordsModal(ident){
-  _editCoordsTarget=ident;
+  _editTarget=ident;
   document.getElementById('editcoords-parent-label').textContent=ident.label||ident.name||ident.key||'this pin';
+  var nameField=document.getElementById('editcoords-name-field');
+  if(ident.category==='effigy'){
+    nameField.style.display='none';
+  } else {
+    nameField.style.display='';
+    document.getElementById('editcoords-name').value=ident.name||'';
+  }
   document.getElementById('editcoords-gx').value=(ident.gx!=null?ident.gx:'');
   document.getElementById('editcoords-gy').value=(ident.gy!=null?ident.gy:'');
   document.getElementById('editcoords-modal-overlay').style.display='flex';
 }
 window.closeEditCoordsModal=function(){
   document.getElementById('editcoords-modal-overlay').style.display='none';
-  _editCoordsTarget=null;
+  _editTarget=null;
 };
 async function saveEditCoords(){
-  if(!_editCoordsTarget) return;
-  var t=_editCoordsTarget;
+  if(!_editTarget) return;
+  var t=_editTarget;
   var gx=document.getElementById('editcoords-gx').value.trim();
   var gy=document.getElementById('editcoords-gy').value.trim();
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
+  var body={category:t.category,identityKey:t.key||null,identitySpecies:t.species||null,identityName:t.name||null,gx:gx,gy:gy};
+  if(t.category!=='effigy'){
+    var newName=document.getElementById('editcoords-name').value.trim();
+    if(!newName){ toast('Display name cannot be blank.','error'); return; }
+    body.name=newName;
+  }
   try{
-    await api('/api/map-edit-coords','POST',{category:t.category,key:t.key||null,species:t.species||null,name:t.name||null,gx:gx,gy:gy});
+    await api('/api/map-edit-icon','POST',body);
     closeEditCoordsModal();
-    toast('Coordinates updated.','success');
+    toast('Pin updated.','success');
     refetchMapCategory(t.category);
   }catch(e){
-    toast('Failed to update coordinates: '+String(e&&e.message||e),'error');
+    toast('Failed to update pin: '+String(e&&e.message||e),'error');
   }
 }
 async function deleteMapIcon(ident,marker){
@@ -7643,8 +7660,12 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
 </div>
 <div id="editcoords-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:2000;" onclick="if(event.target===this)closeEditCoordsModal()">
   <div class="pal-modal" id="editcoords-modal-body" style="max-width:420px;">
-    <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Edit coordinates</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">New location for <b id="editcoords-parent-label"></b></div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Edit pin</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Editing <b id="editcoords-parent-label"></b></div>
+    <div class="ai-field" id="editcoords-name-field">
+      <label>Display name</label>
+      <input id="editcoords-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name">
+    </div>
     <div class="ai-field">
       <label>Coordinates (gx / gy)</label>
       <div style="display:flex;gap:8px;">
