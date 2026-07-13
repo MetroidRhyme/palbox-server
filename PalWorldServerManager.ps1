@@ -2629,12 +2629,12 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/map-edit-icon' -and $method -eq 'POST') {
                     # Map popup's "Edit" button (any of the 7 renderable categories, not just
                     # custom:true rows -- added 2026-07-12 for post-1.0 location corrections,
-                    # extended same day to also allow renaming). Body: { category,
-                    # identityKey?, identitySpecies?, identityName?, name?, gx?, gy? } --
-                    # identity* resolves the row by its CURRENT key/species/name (same
-                    # convention as /api/map-custom-edit), name/gx/gy are the new values (gx
-                    # and gy must both be present together if either is). See Edit-MapEntry
-                    # in map_data_lib.ps1.
+                    # extended same day to also allow renaming and editing the raw save key).
+                    # Body: { category, identityKey?, identitySpecies?, identityName?, name?,
+                    # key?, gx?, gy? } -- identity* resolves the row by its CURRENT
+                    # key/species/name (same convention as /api/map-custom-edit), name/key/
+                    # gx/gy are the new values (gx and gy must both be present together if
+                    # either is). See Edit-MapEntry in map_data_lib.ps1.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $category = [string]$body.category
@@ -2644,6 +2644,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $identName = if ($body.identityName) { [string]$body.identityName } else { $null }
                         $fields = @{}
                         if ($body.PSObject.Properties['name']) { $fields.name = if ($body.name) { [string]$body.name } else { $null } }
+                        if ($body.PSObject.Properties['key']) { $fields.key = if ($body.key) { [string]$body.key } else { $null } }
                         if ($body.PSObject.Properties['gx']) { $fields.gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null } }
                         if ($body.PSObject.Properties['gy']) { $fields.gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null } }
                         $updated = Edit-MapEntry $category $identKey $identSpecies $identName $fields

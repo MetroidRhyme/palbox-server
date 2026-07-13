@@ -4362,7 +4362,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
         wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
         wirePrereqAdd(el,b,'bounty');
         var _bg=worldToGrid(b.x,b.y);
-        wireEditDelete(el,{category:'bounty',species:b.species,name:b.name,label:b.name,gx:_bg.cx,gy:_bg.cy},bm);
+        wireEditDelete(el,{category:'bounty',species:b.species,name:b.name,label:b.name,key:b.key||null,gx:_bg.cx,gy:_bg.cy},bm);
       } else {
         wireReportButton(el,'bounty',sp,b.name);
       }
@@ -4413,7 +4413,7 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
         wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
       }
       wireCaveAdd(el,{category:'fugitive',name:h.name,label:h.name});
-      wireEditDelete(el,{category:'fugitive',name:h.name,label:h.name,gx:g.cx,gy:g.cy},hm);
+      wireEditDelete(el,{category:'fugitive',name:h.name,label:h.name,key:h.key||null,gx:g.cx,gy:g.cy},hm);
     });
   } else {
     hm.bindPopup('<b style="color:#111;">'+esc(h.name)+'</b><br>'+hTip+reportButtonHtml('fugitive',h.name,h.name),{className:'eff-tip'});
@@ -4460,7 +4460,7 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
         wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm);
       }
       wireCaveAdd(el,{category:'eagle',name:es.name,label:es.name});
-      wireEditDelete(el,{category:'eagle',name:es.name,label:es.name,gx:g.cx,gy:g.cy},esm);
+      wireEditDelete(el,{category:'eagle',name:es.name,label:es.name,key:es.key||null,gx:g.cx,gy:g.cy},esm);
     });
   } else {
     esm.bindPopup('<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+reportButtonHtml('eagle',es.name,es.name),{className:'eff-tip'});
@@ -4510,7 +4510,7 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
         wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm);
       }
       wireCaveAdd(el,{category:'sam',name:s.name,label:s.name});
-      wireEditDelete(el,{category:'sam',name:s.name,label:s.name,gx:g.cx,gy:g.cy},sm);
+      wireEditDelete(el,{category:'sam',name:s.name,label:s.name,key:s.key||null,gx:g.cx,gy:g.cy},sm);
     });
   } else {
     sm.bindPopup('<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+reportButtonHtml('sam',s.name,s.name),{className:'eff-tip'});
@@ -4591,7 +4591,7 @@ function buildTowerMarker(t,confirmed,esVerified,esGot,esStatus,bossVerified,bGo
         wireCaveAdd(_tel,{category:'tower',name:t.name,label:t.name});
         wirePrereqAdd(_tel,{name:t.name},'tower');
         var _tg=worldToGrid(t.x,t.y);
-        wireEditDelete(_tel,{category:'tower',name:t.name,label:t.name,gx:_tg.cx,gy:_tg.cy},tm);
+        wireEditDelete(_tel,{category:'tower',name:t.name,label:t.name,key:t.key||null,gx:_tg.cx,gy:_tg.cy},tm);
       }
     });
     tm.on('popupclose',function(){
@@ -6062,18 +6062,20 @@ function refetchMapCategory(category){
   if(typeof refetch==='function') refetch(true);
 }
 
-// -- Edit (name/coordinates) / Delete icon (2026-07-12, post-1.0 map cleanup) ------
-// Admin-only "fix a shifted or misnamed pin" / "remove a bad pin" controls for any of the 7
-// renderable map categories -- unlike the cave-entrance/prereq/custom-icon features above,
-// these work on ANY row (scraped/live/custom alike), not just custom:true ones, since the
-// whole point is correcting real imported/live-captured data after the game's 1.0 update
-// moved things. Lives inside the "-- Data Mine tab --" JS block (same as every other admin
-// map-edit control) so gen_public_site.ps1 strips it from the public build; the modal's own
-// HTML gets a dedicated strip step, same pattern as entrance/prereq/addicon.
+// -- Edit (name/key/coordinates) / Delete icon (2026-07-12, post-1.0 map cleanup) --
+// Admin-only "fix a shifted, misnamed, or wrongly-keyed pin" / "remove a bad pin" controls
+// for any of the 7 renderable map categories -- unlike the cave-entrance/prereq/custom-icon
+// features above, these work on ANY row (scraped/live/custom alike), not just custom:true
+// ones, since the whole point is correcting real imported/live-captured data after the
+// game's 1.0 update moved things. Lives inside the "-- Data Mine tab --" JS block (same as
+// every other admin map-edit control) so gen_public_site.ps1 strips it from the public
+// build; the modal's own HTML gets a dedicated strip step, same pattern as
+// entrance/prereq/addicon.
 // _editTarget carries the pin's CURRENT identity (key/species/name -- whichever the category
-// uses, see Find-ConfirmedRow) so a rename still resolves the right row; "name" doubles as
-// both identity and the pre-filled current display value for every category except effigy,
-// which has no display name at all (its ident has no .name field -- see buildEffigyMarker).
+// uses, see Find-ConfirmedRow) so a rename/re-key still resolves the right row; "name" and
+// "key" both double as identity AND the pre-filled current value, except effigy has no
+// display name at all (its ident has no .name field -- see buildEffigyMarker) so the name
+// field is hidden there, and effigy's key is required (can't be blanked, see Edit-MapEntry).
 var _editTarget=null;
 function editDeleteButtonsHtml(){
   return '<br><button type="button" class="btn btn-ghost eff-editcoords-btn" style="margin-top:6px;font-size:12px;">Edit</button> '
@@ -6095,6 +6097,7 @@ function openEditCoordsModal(ident){
     nameField.style.display='';
     document.getElementById('editcoords-name').value=ident.name||'';
   }
+  document.getElementById('editcoords-key').value=ident.key||'';
   document.getElementById('editcoords-gx').value=(ident.gx!=null?ident.gx:'');
   document.getElementById('editcoords-gy').value=(ident.gy!=null?ident.gy:'');
   document.getElementById('editcoords-modal-overlay').style.display='flex';
@@ -6109,7 +6112,9 @@ async function saveEditCoords(){
   var gx=document.getElementById('editcoords-gx').value.trim();
   var gy=document.getElementById('editcoords-gy').value.trim();
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
-  var body={category:t.category,identityKey:t.key||null,identitySpecies:t.species||null,identityName:t.name||null,gx:gx,gy:gy};
+  var newKey=document.getElementById('editcoords-key').value.trim();
+  if(t.category==='effigy'&&!newKey){ toast('Effigy pins require a key.','error'); return; }
+  var body={category:t.category,identityKey:t.key||null,identitySpecies:t.species||null,identityName:t.name||null,key:newKey||null,gx:gx,gy:gy};
   if(t.category!=='effigy'){
     var newName=document.getElementById('editcoords-name').value.trim();
     if(!newName){ toast('Display name cannot be blank.','error'); return; }
@@ -7665,6 +7670,10 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     <div class="ai-field" id="editcoords-name-field">
       <label>Display name</label>
       <input id="editcoords-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name">
+    </div>
+    <div class="ai-field">
+      <label>Save key</label>
+      <input id="editcoords-key" class="pf-input" style="width:100%;" type="text" placeholder="Raw save-flag key">
     </div>
     <div class="ai-field">
       <label>Coordinates (gx / gy)</label>

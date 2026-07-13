@@ -424,6 +424,22 @@ $script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'ea
 # uses for a brand-new hand-typed pin. Effigy pins have no display name at all (see
 # Get-MapCategoryJson's effigy dict shape -- {x,y,z,m}, no "name" field ever emitted), so a
 # name edit there is rejected rather than silently written and never read.
+#
+# $fields.key (added 2026-07-12, same day): edits the row's raw save-flag key -- for effigy/
+# journal this doubles as their primary identity, for bounty/fugitive/eagle/tower/sam it's
+# the same key a keyless pin's "Map to key..." dropdown would otherwise set, just typed
+# freehand instead of picked from a dropdown of currently-unmapped keys (so this can ALSO
+# correct a wrong key, not just link a fresh one). Effigy requires a non-blank key --
+# Get-MapCategoryJson's effigy branch silently skips any row with no key at all, so blanking
+# it would make the pin vanish instead of erroring. A blank key on any other category clears
+# it (un-links the pin, e.g. to undo a bad mapping). Guards against two rows in the same
+# category sharing a key (would make Find-ConfirmedRow's key-branch match ambiguous). Bounty
+# gets the same anonymous_boss_keys.json upsert Add-CustomMapEntry already does at create
+# time (Test-SyndicateKeyShape decides whether a bounty key needs this species link at all),
+# so re-keying an existing bounty pin keeps defeat-status resolution working. Tower has TWO
+# independent keys ("key" = Eagle Statue link, "bossKey" = Boss Defeat link, see
+# Get-MapCategoryJson's tower branch) -- this generic field only ever touches "key" (matching
+# every other category's single-key model); bossKey is intentionally untouched/out of scope.
 function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields) {
     if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
     $confirmed = @(Get-ConfirmedLocations)
@@ -433,6 +449,19 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
         if ($category -eq 'effigy') { throw "Effigy pins have no display name to edit." }
         if (-not $fields['name']) { throw "Display name cannot be blank." }
         Set-EntryProp $matched 'name' $fields['name']
+    }
+    if ($fields.ContainsKey('key')) {
+        $newKey = $fields['key']
+        if ($category -eq 'effigy' -and -not $newKey) { throw "Effigy pins require a key." }
+        if ($newKey) {
+            $dupe = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and $_.key -and $_.key.ToUpper() -eq $newKey.ToUpper() } | Select-Object -First 1
+            if ($dupe) { throw "Another $category pin already uses that key." }
+        }
+        Set-EntryProp $matched 'key' $newKey
+        if ($category -eq 'bounty' -and $newKey -and -not (Test-SyndicateKeyShape $newKey)) {
+            $sp = if ($matched.species) { $matched.species } else { $matched.name }
+            Add-AnonymousBossKey $newKey $sp
+        }
     }
     if ($fields.ContainsKey('gx') -or $fields.ContainsKey('gy')) {
         if ($null -eq $fields['gx'] -or $null -eq $fields['gy']) { throw "Coordinates (gx/gy) are required together." }
