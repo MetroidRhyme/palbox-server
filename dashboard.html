@@ -4724,10 +4724,10 @@ function renderPlayerMarkers(){
   });
   if(!_effInitialCentered&&playerLocations&&playerLocations.length===1&&typeof playerLocations[0].x==='number'&&typeof playerLocations[0].y==='number'){
     // Start the map zoomed in on the logged-in player's own position instead of the default
-    // whole-map view (see initEffigyView's setView(...,-1)) -- only once per page load, and
+    // whole-map view (see initEffigyView's setView(...,1)) -- only once per page load, and
     // only for the single-player scoped case, so it never fights a manual pan/zoom afterward.
     _effInitialCentered=true;
-    effigyLeaflet.setView(effigyRposToLatLng(playerLocations[0].x,playerLocations[0].y),3);
+    effigyLeaflet.setView(effigyRposToLatLng(playerLocations[0].x,playerLocations[0].y),5);
   }
   centerOnFollowedPlayer();
 }
@@ -4877,7 +4877,7 @@ function initEffigyView(){
         var sw=effigyLeaflet.unproject([0,blockSize],8);
         var ne=effigyLeaflet.unproject([blockSize,0],8);
         var bounds=L.latLngBounds(sw,ne);
-        effigyLeaflet.setMaxBounds(bounds).setView(effigyLeaflet.unproject([blockSize/2,blockSize/2],8),-1);
+        effigyLeaflet.setMaxBounds(bounds).setView(effigyLeaflet.unproject([blockSize/2,blockSize/2],8),1);
         // minNativeZoom:0 -- the tile proxy only has real tiles from z0 up (see palmaptile
         // in PalWorldServerManager.ps1), so below that Leaflet must upsample the z0 tile
         // instead of requesting negative-z tiles that don't exist and would render blank.
