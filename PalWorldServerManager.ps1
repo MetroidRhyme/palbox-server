@@ -691,7 +691,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     # separate datamine_labels.json instead.
     $script:DatamineSpatialProperties = @(
         'NormalBossDefeatFlag', 'RelicObtainForInstanceFlag', 'NoteObtainForInstanceFlag',
-        'FastTravelPointUnlockFlag', 'DestroyedWeapon'
+        'FastTravelPointUnlockFlag', 'DestroyedWeapon', 'ItemPickupObtainForInstanceFlag'
     )
 
     # datamine_labels.json holds {property,key,name,gx,gy} for non-spatial properties --
@@ -2896,6 +2896,21 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/itempickups' -and $method -eq 'GET') {
+                    # "Schematic" pins -- locked-building blueprint chests etc., keyed by
+                    # ItemPickupObtainForInstanceFlag instance GUIDs (see the palbox-confirmed-
+                    # locations skill). Same generic read path as every other category; a keyless
+                    # pin (coords-first, key recorded by playing) emits pending:true + gx/gy so the
+                    # client can draw it untrackable and round-trip its grid identity for editing.
+                    try {
+                        $script:itemPickupData = Get-MapCategoryJson 'itempickup'
+                        Send-Response $res 200 "application/json" $script:itemPickupData
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/towers' -and $method -eq 'GET') {
                     # Named raid Tower locations -- see the /api/journals note above; served
                     # straight from the canonical store.
@@ -3004,6 +3019,28 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = Get-CachedReaderOutput "effigies:$guid" (Join-Path $saveDir "Players\$guid.sav") {
                             $j = & python "$ServerDir\pal_save_reader.py" $saveDir effigies $guid 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/player-itempickups' -and $method -eq 'GET') {
+                    # Per-player collected world item-pickup instance GUIDs (Schematic chests etc.),
+                    # from ItemPickupObtainForInstanceFlag -- drives the Map tab's found/tracked
+                    # status for the itempickup category. Same shape/caching as /api/player-effigies.
+                    try {
+                        $guid = $req.QueryString['guid']
+                        if (-not $guid) { throw "Missing guid parameter" }
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $rawJson = Get-CachedReaderOutput "itempickups:$guid" (Join-Path $saveDir "Players\$guid.sav") {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir itempickups $guid 2>$null
                             if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
                             ($j -join '')
                         }
@@ -3384,14 +3421,20 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $nameU = $name.ToUpper()
                                 $existing = $arr | Where-Object { -not $_.key -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1
                             }
-                            if (-not $existing -and $property -eq 'RelicObtainForInstanceFlag' -and $null -ne $gx -and $null -ne $gy) {
-                                # Effigies have no display name, so the name-fallback above can never
-                                # attach a freshly-recorded relic key to an existing keyless effigy
-                                # pin (2026-07-13's "Record next key" for effigies). Match by gx/gy
-                                # instead -- its only identity while keyless -- so recording re-keys
-                                # that pin in place rather than creating a visually-duplicate second
-                                # effigy at the same spot.
-                                $existing = $arr | Where-Object { -not $_.key -and $_.category -eq 'effigy' -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
+                            $coordCat = switch ($property) {
+                                'RelicObtainForInstanceFlag' { 'effigy' }
+                                'ItemPickupObtainForInstanceFlag' { 'itempickup' }
+                                default { $null }
+                            }
+                            if (-not $existing -and $coordCat -and $null -ne $gx -and $null -ne $gy) {
+                                # Effigy/itempickup pins can be keyless-and-nameless (a coords-first pin
+                                # you record the key for by playing), so the name-fallback above can't
+                                # attach a freshly-recorded key to the existing keyless pin. Match by
+                                # gx/gy instead -- its only identity while keyless (2026-07-13 effigy,
+                                # 2026-07-14 itempickup "Record next key") -- so recording re-keys that
+                                # pin in place rather than creating a visually-duplicate second pin at
+                                # the same spot.
+                                $existing = $arr | Where-Object { -not $_.key -and $_.category -eq $coordCat -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
                             }
                             # Species carried by a matched scraped row (bounty pins only) --
                             # captured BEFORE the update below so we still have it for the

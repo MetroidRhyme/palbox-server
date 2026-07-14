@@ -301,6 +301,17 @@ function Get-MapCategoryJson([string]$category) {
             if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
             else { $grid = ConvertTo-GridXY $xy.x $xy.y; $out.gx = $grid.gx; $out.gy = $grid.gy }
         }
+        if ($category -eq 'itempickup') {
+            # itempickup (Schematic) resolves a keyless pin by its gx/gy grid identity (like a
+            # keyless effigy). Emit the EXACT stored gx/gy so the client round-trips the same
+            # integer identity on edit/record rather than re-deriving it from x/y (which could
+            # rounding-drift off the stored value and fail the backend's gx/gy match). A keyless
+            # one is flagged pending so the client draws it untrackable + shows "Record next key",
+            # same signal the effigy dict shape's "pending" carries.
+            if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
+            else { $grid = ConvertTo-GridXY $xy.x $xy.y; $out.gx = $grid.gx; $out.gy = $grid.gy }
+            if (-not $c.key) { $out.pending = $true }
+        }
         $ents = ConvertTo-EntranceList $c
         if ($ents) { $out.entrances = @($ents) }
         $result += $out
@@ -318,11 +329,12 @@ function Find-ConfirmedRow($confirmed, [string]$category, [string]$key, [string]
     if ($key) {
         $keyU = $key.ToUpper()
         return $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $keyU -and $_.category -eq $category } | Select-Object -First 1
-    } elseif ($category -eq 'effigy' -and $null -ne $gx -and $null -ne $gy) {
-        # A keyless effigy has no key/species/name to match on -- its gx/gy grid position is its
-        # only identity (2026-07-13, see Get-MapCategoryJson's __PENDING__ branch). Checked
-        # before $species/$name since those are always empty for an effigy anyway.
-        return $confirmed | Where-Object { $_.category -eq 'effigy' -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
+    } elseif ($category -in $script:CoordIdentityCategories -and $null -ne $gx -and $null -ne $gy) {
+        # A keyless effigy/itempickup is identified by its gx/gy grid position (2026-07-13, see
+        # Get-MapCategoryJson's __PENDING__/pending branch). Checked before $species/$name --
+        # those are always empty for an effigy, and for an itempickup the name is a mutable
+        # display attribute, never its identity, so a keyless one still resolves purely by coords.
+        return $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
     } elseif ($species) {
         $spU = $species.ToUpper()
         $matched = $confirmed | Where-Object { $_.species -and $_.species.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
@@ -364,10 +376,20 @@ function Set-MapConfirmVerified([string]$category, [string]$key, [string]$specie
     return $true
 }
 
-# The 6 map categories the "Add Icon" manual-creation feature supports -- npc/landmark
+# Categories whose KEYLESS pins are identified solely by their gx/gy grid position (not by a
+# name or species). Effigy has no name at all; itempickup (Schematic) is created coords-first
+# and gets its key/name added later (Add Icon -> Record next key -> type a name), so its name
+# can't be its stable identity either. A keyless pin in one of these requires a gx/gy pair, and
+# two keyless ones can't share a spot (ambiguous to the key recorder). Every other category
+# resolves a keyless pin by name/species instead. Used by Find-ConfirmedRow / Add-CustomMapEntry
+# / Edit-MapEntry below.
+$script:CoordIdentityCategories = @('effigy', 'itempickup')
+
+# The 7 map categories the "Add Icon" manual-creation feature supports -- npc/landmark
 # stay retired (see Get-CategoryForEntry's note below on why), so they're deliberately
-# excluded here rather than silently accepted and then never rendered anywhere.
-$script:CustomIconCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower')
+# excluded here rather than silently accepted and then never rendered anywhere. itempickup
+# (Schematic) was added 2026-07-14 -- coords-first creation, key recorded by playing.
+$script:CustomIconCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower', 'itempickup')
 
 # Creates a brand-new, hand-typed confirmed_locations.json row for the "Add Icon"
 # dashboard feature (see the palbox-confirmed-locations skill) -- stamped custom:true so
@@ -383,10 +405,11 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
     # compute the stored key as an UNTYPED value below so a keyless pin serializes as "key": null
     # (the schema convention every -not $_.key / Find-ConfirmedRow check expects), not "key": "".
     $keyVal = if ([string]::IsNullOrEmpty($key)) { $null } else { $key }
-    # Effigy MAY now be keyless (2026-07-13) -- a hand-placed effigy pin you'll walk to and
-    # record the key for later. A keyless effigy is identified purely by its gx/gy (it has no
-    # name), so the coord-clash guard below refuses a second keyless effigy at the same spot.
-    if ($category -ne 'effigy' -and -not $name) { throw "Display name is required for this category." }
+    # Effigy and itempickup (Schematic) MAY be keyless -- a hand-placed pin you'll walk to and
+    # record the key for later. Their identity is purely gx/gy while keyless (effigy has no name;
+    # itempickup's name is added later), so a display name is optional and the coord-clash guard
+    # below refuses a second keyless pin of that category at the same spot.
+    if ($category -notin $script:CoordIdentityCategories -and -not $name) { throw "Display name is required for this category." }
     if ($null -eq $gx -or $null -eq $gy) { throw "Coordinates (gx/gy) are required." }
     if ($category -eq 'bounty' -and -not $species) { $species = $name }
 
@@ -394,9 +417,9 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
     if ($key) {
         $existing = Find-ConfirmedRow $confirmed $category $key $null $null
         if ($existing) { throw "A $category pin with that key already exists." }
-    } elseif ($category -eq 'effigy') {
-        $clash = $confirmed | Where-Object { $_.category -eq 'effigy' -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
-        if ($clash) { throw "Another keyless effigy is already at ($gx,$gy) -- move one first, or record its key." }
+    } elseif ($category -in $script:CoordIdentityCategories) {
+        $clash = $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
+        if ($clash) { throw "Another keyless $category pin is already at ($gx,$gy) -- move one first, or record its key." }
     }
 
     $newEntry = [pscustomobject]@{
@@ -452,7 +475,7 @@ function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species
 # no marker/popup exists for them at all, see the palbox-confirmed-locations skill -- so
 # they're deliberately excluded here the same way they're excluded from
 # $script:CustomIconCategories above).
-$script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower', 'sam')
+$script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower', 'sam', 'itempickup')
 
 # Corrects a pin's location and/or display name -- added 2026-07-12 so Anthony can fix
 # locations that shifted after the Palworld 1.0 update, WITHOUT the custom:true guard
@@ -506,12 +529,12 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
         # unresolvable), and only if no OTHER keyless effigy already sits at that exact spot
         # (two would be ambiguous to the recorder). Uses the incoming gx/gy edit if this same
         # call also moves the pin, else the row's current gx/gy.
-        if ($category -eq 'effigy' -and -not $newKey) {
+        if ($category -in $script:CoordIdentityCategories -and -not $newKey) {
             $egx = if ($fields.ContainsKey('gx')) { $fields['gx'] } else { $matched.gx }
             $egy = if ($fields.ContainsKey('gy')) { $fields['gy'] } else { $matched.gy }
-            if ($null -eq $egx -or $null -eq $egy) { throw "A keyless effigy needs grid coordinates (gx/gy) to stay on the map." }
-            $clash = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq 'effigy' -and -not $_.key -and $_.gx -eq $egx -and $_.gy -eq $egy } | Select-Object -First 1
-            if ($clash) { throw "Another keyless effigy is already at ($egx,$egy) -- move one first." }
+            if ($null -eq $egx -or $null -eq $egy) { throw "A keyless $category pin needs grid coordinates (gx/gy) to stay on the map." }
+            $clash = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and -not $_.key -and $_.gx -eq $egx -and $_.gy -eq $egy } | Select-Object -First 1
+            if ($clash) { throw "Another keyless $category pin is already at ($egx,$egy) -- move one first." }
         }
         if ($newKey) {
             $dupe = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and $_.key -and $_.key.ToUpper() -eq $newKey.ToUpper() } | Select-Object -First 1
@@ -820,6 +843,7 @@ function Get-CategoryForEntry($c) {
         'FastTravelPointUnlockFlag' { return 'eagle' }
         'NormalBossDefeatFlag' { if ($c.key -and (Test-SyndicateKeyShape $c.key)) { return 'fugitive' } else { return 'bounty' } }
         'DestroyedWeapon' { return 'sam' }
+        'ItemPickupObtainForInstanceFlag' { return 'itempickup' }
     }
     if ($c.key) {
         $k = $c.key.ToUpper()
