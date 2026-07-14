@@ -226,7 +226,17 @@ function Get-MapCategoryJson([string]$category) {
     if ($category -eq 'effigy') {
         $result = [ordered]@{}
         foreach ($c in $confirmed) {
-            if ($c.category -ne 'effigy' -or -not $c.key) { continue }
+            if ($c.category -ne 'effigy') { continue }
+            # A keyless effigy (2026-07-13) is one whose save-flag GUID Anthony cleared to
+            # re-record it by playing (see Edit-MapEntry / the "Record next key" feature). The
+            # effigy dict is keyed by that GUID and a keyless row has none, so it renders under a
+            # synthetic "__PENDING__:gx,gy" key instead, flagged pending + carrying its gx/gy so
+            # the client can draw it as untrackable and round-trip its grid identity back for
+            # edit/record. Grid coords ARE its only identity here (effigies have no name), so a
+            # row with neither key nor a gx/gy pair can't be identified at all -- skip it (this
+            # can't happen via the supported write paths: Add-CustomMapEntry/Edit-MapEntry both
+            # require a gx/gy pair on any keyless effigy).
+            if (-not $c.key -and ($null -eq $c.gx -or $null -eq $c.gy)) { continue }
             # Prefer scraped world x/y; fall back to Anthony's gx/gy grid via ConvertTo-WorldXY
             # (2026-07-13) -- mirrors the array-category branch below. Without this, any effigy
             # whose row has only gx/gy reads back as null coords and the pin vanishes. That path
@@ -239,7 +249,14 @@ function Get-MapCategoryJson([string]$category) {
             if ($c.custom -eq $true) { $entry.custom = $true }
             $ents = ConvertTo-EntranceList $c
             if ($ents) { $entry.entrances = @($ents) }
-            $result[$c.key] = $entry
+            if ($c.key) {
+                $result[$c.key] = $entry
+            } else {
+                $entry.pending = $true
+                $entry.gx = $c.gx
+                $entry.gy = $c.gy
+                $result["__PENDING__:$($c.gx),$($c.gy)"] = $entry
+            }
         }
         return (ConvertTo-Json -InputObject $result -Depth 6 -Compress)
     }
@@ -297,10 +314,15 @@ function Get-MapCategoryJson([string]$category) {
 # effigy/journal, species for bounty, name for tower/fugitive/eagle). $confirmed is the
 # array to search (caller's own Get-ConfirmedLocations() result, so a caller doing a
 # subsequent write reuses the same array instance rather than re-reading).
-function Find-ConfirmedRow($confirmed, [string]$category, [string]$key, [string]$species, [string]$name) {
+function Find-ConfirmedRow($confirmed, [string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null) {
     if ($key) {
         $keyU = $key.ToUpper()
         return $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $keyU -and $_.category -eq $category } | Select-Object -First 1
+    } elseif ($category -eq 'effigy' -and $null -ne $gx -and $null -ne $gy) {
+        # A keyless effigy has no key/species/name to match on -- its gx/gy grid position is its
+        # only identity (2026-07-13, see Get-MapCategoryJson's __PENDING__ branch). Checked
+        # before $species/$name since those are always empty for an effigy anyway.
+        return $confirmed | Where-Object { $_.category -eq 'effigy' -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
     } elseif ($species) {
         $spU = $species.ToUpper()
         $matched = $confirmed | Where-Object { $_.species -and $_.species.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
@@ -357,7 +379,13 @@ $script:CustomIconCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eag
 # identified by name/species instead, same convention Find-ConfirmedRow already uses.
 function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [string]$species, $gx, $gy) {
     if ($category -notin $script:CustomIconCategories) { throw "Unsupported category: $category" }
-    if ($category -eq 'effigy' -and -not $key) { throw "Effigy pins require a key -- pick one from the Unmapped Keys dropdown." }
+    # A [string]-typed param re-coerces $null to '' on assignment, so it can never hold $null --
+    # compute the stored key as an UNTYPED value below so a keyless pin serializes as "key": null
+    # (the schema convention every -not $_.key / Find-ConfirmedRow check expects), not "key": "".
+    $keyVal = if ([string]::IsNullOrEmpty($key)) { $null } else { $key }
+    # Effigy MAY now be keyless (2026-07-13) -- a hand-placed effigy pin you'll walk to and
+    # record the key for later. A keyless effigy is identified purely by its gx/gy (it has no
+    # name), so the coord-clash guard below refuses a second keyless effigy at the same spot.
     if ($category -ne 'effigy' -and -not $name) { throw "Display name is required for this category." }
     if ($null -eq $gx -or $null -eq $gy) { throw "Coordinates (gx/gy) are required." }
     if ($category -eq 'bounty' -and -not $species) { $species = $name }
@@ -366,10 +394,13 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
     if ($key) {
         $existing = Find-ConfirmedRow $confirmed $category $key $null $null
         if ($existing) { throw "A $category pin with that key already exists." }
+    } elseif ($category -eq 'effigy') {
+        $clash = $confirmed | Where-Object { $_.category -eq 'effigy' -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
+        if ($clash) { throw "Another keyless effigy is already at ($gx,$gy) -- move one first, or record its key." }
     }
 
     $newEntry = [pscustomobject]@{
-        key = $key; category = $category; name = $name; gx = $gx; gy = $gy
+        key = $keyVal; category = $category; name = $name; gx = $gx; gy = $gy
         x = $null; y = $null; z = $null; species = $species; lv = $null; source = $null
         origin = 'manual'; verified = $false; custom = $true
     }
@@ -454,10 +485,13 @@ $script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'ea
 # independent keys ("key" = Eagle Statue link, "bossKey" = Boss Defeat link, see
 # Get-MapCategoryJson's tower branch) -- this generic field only ever touches "key" (matching
 # every other category's single-key model); bossKey is intentionally untouched/out of scope.
-function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields) {
+function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields, $identGx = $null, $identGy = $null) {
     if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
     $confirmed = @(Get-ConfirmedLocations)
-    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName
+    # $identGx/$identGy resolve an ALREADY-keyless effigy (its gx/gy is its only identity) --
+    # needed when editing/deleting a pin whose key was previously cleared. A keyed pin still
+    # resolves by $identKey as before.
+    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName $identGx $identGy
     if (-not $matched) { throw "No matching map entry found." }
     if ($fields.ContainsKey('name')) {
         if ($category -eq 'effigy') { throw "Effigy pins have no display name to edit." }
@@ -466,7 +500,19 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
     }
     if ($fields.ContainsKey('key')) {
         $newKey = $fields['key']
-        if ($category -eq 'effigy' -and -not $newKey) { throw "Effigy pins require a key." }
+        # Clearing an effigy's key (2026-07-13) turns it into a "pending" pin you re-record by
+        # playing. Only allowed if it keeps a gx/gy pair (its sole identity once keyless -- see
+        # Get-MapCategoryJson's __PENDING__ branch; with no coords it would vanish AND be
+        # unresolvable), and only if no OTHER keyless effigy already sits at that exact spot
+        # (two would be ambiguous to the recorder). Uses the incoming gx/gy edit if this same
+        # call also moves the pin, else the row's current gx/gy.
+        if ($category -eq 'effigy' -and -not $newKey) {
+            $egx = if ($fields.ContainsKey('gx')) { $fields['gx'] } else { $matched.gx }
+            $egy = if ($fields.ContainsKey('gy')) { $fields['gy'] } else { $matched.gy }
+            if ($null -eq $egx -or $null -eq $egy) { throw "A keyless effigy needs grid coordinates (gx/gy) to stay on the map." }
+            $clash = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq 'effigy' -and -not $_.key -and $_.gx -eq $egx -and $_.gy -eq $egy } | Select-Object -First 1
+            if ($clash) { throw "Another keyless effigy is already at ($egx,$egy) -- move one first." }
+        }
         if ($newKey) {
             $dupe = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and $_.key -and $_.key.ToUpper() -eq $newKey.ToUpper() } | Select-Object -First 1
             if ($dupe) { throw "Another $category pin already uses that key." }
@@ -513,10 +559,11 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
 # is ever re-run and the deleted pin is still in its source roster file, it can resurface as a
 # fresh verified:false row -- Anthony's explicit call (2026-07-12), simplest option, and easy
 # to just delete again if it happens.
-function Remove-MapEntry([string]$category, [string]$key, [string]$species, [string]$name) {
+function Remove-MapEntry([string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null) {
     if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
     $confirmed = @(Get-ConfirmedLocations)
-    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
+    # $gx/$gy resolve a keyless effigy (its gx/gy is its only identity, see Edit-MapEntry).
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name $gx $gy
     if (-not $matched) { throw "No matching map entry found." }
     $remaining = @($confirmed | Where-Object { $_ -ne $matched })
     Save-ConfirmedLocations $remaining

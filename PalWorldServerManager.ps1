@@ -2644,13 +2644,17 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $identKey = if ($body.identityKey) { [string]$body.identityKey } else { $null }
                         $identSpecies = if ($body.identitySpecies) { [string]$body.identitySpecies } else { $null }
                         $identName = if ($body.identityName) { [string]$body.identityName } else { $null }
+                        # identityGx/identityGy resolve an already-keyless effigy by its grid
+                        # position (its only identity once the key is cleared, 2026-07-13).
+                        $identGx = if ($null -ne $body.identityGx -and [string]$body.identityGx -ne '') { [int]$body.identityGx } else { $null }
+                        $identGy = if ($null -ne $body.identityGy -and [string]$body.identityGy -ne '') { [int]$body.identityGy } else { $null }
                         $fields = @{}
                         if ($body.PSObject.Properties['name']) { $fields.name = if ($body.name) { [string]$body.name } else { $null } }
                         if ($body.PSObject.Properties['key']) { $fields.key = if ($body.key) { [string]$body.key } else { $null } }
                         if ($body.PSObject.Properties['gx']) { $fields.gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null } }
                         if ($body.PSObject.Properties['gy']) { $fields.gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null } }
                         if ($body.PSObject.Properties['lv']) { $fields.lv = if ($null -ne $body.lv -and [string]$body.lv -ne '') { [int]$body.lv } else { $null } }
-                        $updated = Edit-MapEntry $category $identKey $identSpecies $identName $fields
+                        $updated = Edit-MapEntry $category $identKey $identSpecies $identName $fields $identGx $identGy
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2669,7 +2673,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $key = if ($body.key) { [string]$body.key } else { $null }
                         $species = if ($body.species) { [string]$body.species } else { $null }
                         $name = if ($body.name) { [string]$body.name } else { $null }
-                        Remove-MapEntry $category $key $species $name | Out-Null
+                        # gx/gy resolve a keyless effigy by its grid position (2026-07-13).
+                        $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
+                        $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
+                        Remove-MapEntry $category $key $species $name $gx $gy | Out-Null
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -3337,6 +3344,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 # a duplicate, never-green Fenglope pin (2026-07-07).
                                 $nameU = $name.ToUpper()
                                 $existing = $arr | Where-Object { -not $_.key -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1
+                            }
+                            if (-not $existing -and $property -eq 'RelicObtainForInstanceFlag' -and $null -ne $gx -and $null -ne $gy) {
+                                # Effigies have no display name, so the name-fallback above can never
+                                # attach a freshly-recorded relic key to an existing keyless effigy
+                                # pin (2026-07-13's "Record next key" for effigies). Match by gx/gy
+                                # instead -- its only identity while keyless -- so recording re-keys
+                                # that pin in place rather than creating a visually-duplicate second
+                                # effigy at the same spot.
+                                $existing = $arr | Where-Object { -not $_.key -and $_.category -eq 'effigy' -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
                             }
                             # Species carried by a matched scraped row (bounty pins only) --
                             # captured BEFORE the update below so we still have it for the

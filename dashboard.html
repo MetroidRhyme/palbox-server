@@ -4233,12 +4233,22 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
   m.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   if(EFFIGY_CONFIRM_ENABLED){
+    // A pending effigy (2026-07-13) has had its GUID cleared to re-record it; its dict id is a
+    // synthetic "__PENDING__:gx,gy" placeholder, not a real key. It is identified by its gx/gy,
+    // so ident.key is null (this is what makes isRecordableKeyless fire and shows the "Record
+    // next key" control), and the confirm checkbox / cave-add button are hidden -- both resolve
+    // the row by key and would no-op, and confirmation happens automatically when the key lands.
+    var pending=!!pos.pending;
     var chkId='eff-confirm-'+id;
     m.on('click',function(){
       var _g=worldToGrid(pos.x,pos.y);
-      var ident={category:'effigy',key:id,species:null,name:null,lv:null,gx:_g.cx,gy:_g.cy,label:id};
-      var bodyHtml=tip+saveKeyRow(id)+detailConfirmHtml(chkId,confirmed)+caveAddButtonHtml();
-      openIconDetail('Effigy',id,bodyHtml,ident,m,function(el){
+      var effKey=pending?null:id;
+      var gx=pending?pos.gx:_g.cx, gy=pending?pos.gy:_g.cy;
+      var title=pending?'Effigy (pending key)':id;
+      var ident={category:'effigy',key:effKey,species:null,name:null,lv:null,gx:gx,gy:gy,label:title};
+      var bodyHtml=tip+saveKeyRow(effKey)+(pending?'':detailConfirmHtml(chkId,confirmed)+caveAddButtonHtml());
+      openIconDetail('Effigy',title,bodyHtml,ident,m,function(el){
+        if(pending) return;
         var box=el.querySelector('#'+chkId);
         if(box) box.onchange=function(){ toggleMapConfirm('effigy',id,box.checked); };
         wireCaveAdd(el,{category:'effigy',key:id,label:id});
@@ -6000,7 +6010,14 @@ var DM_ICON_CATEGORIES=[
       return {name:t.name+((t.boss||t.bossPal)?(' -- '+(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+(t.bossPal||'')):''),x:t.x,y:t.y,key:t.bossKey};
     });
   },getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchTowerLocations(true);}},
-  {label:'SAM Site',property:'DestroyedWeapon',getRoster:function(){return samSiteLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchSamSites(true);}}
+  {label:'SAM Site',property:'DestroyedWeapon',getRoster:function(){return samSiteLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchSamSites(true);}},
+  // Effigy is reached ONLY via dmIconCatByLabel (the "Record next key" path, 2026-07-13) -- it
+  // is deliberately absent from the Data Mine tab's "Map Icon Categories"/"Map to key" surfaces
+  // (RelicObtainForInstanceFlag is noName with a fully-upserted 605-entry roster; see
+  // dmUnmappedKeysForCategory's comment). Nothing iterates this array directly, so adding it here
+  // affects only byLabel lookups, none of which ever pass 'Effigy' except record. getRoster is
+  // unused for a noName record (name is null); refetch reloads /api/effigies after a re-key.
+  {label:'Effigy',property:'RelicObtainForInstanceFlag',getRoster:function(){return [];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){return fetchEffigyLocations(true);}}
 ];
 
 function dmIconCatByLabel(label){
@@ -6054,7 +6071,7 @@ async function applyIconKeyMapping(catLabel,name,gx,gy,key){
 // one new key in a single tick -> we can't tell which is which, so we show them as a
 // pick-list instead of guessing. Property-scoped, so a flag from any OTHER property never
 // interferes. Reuses the exact datamine infrastructure the Map-to-key dropdown already uses.
-var RECORD_CAT_LABEL={bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',journal:'Journal',sam:'SAM Site'};
+var RECORD_CAT_LABEL={bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',journal:'Journal',sam:'SAM Site',effigy:'Effigy'};
 var RECORD_POLL_MS=7000;      // how often to re-read the save while recording
 var RECORD_TIMEOUT_MS=300000; // give up after 5 min with no new key
 var _keyRecord=null;          // {property,catLabel,name,gx,gy,snapshot,timer,started} while active
@@ -6134,9 +6151,13 @@ async function recordCommitKey(rec,key){
   recordSetStatus('<span style="color:var(--muted);">Mapping '+esc(key)+'...</span>');
   try{
     await applyIconKeyMapping(rec.catLabel,rec.name,rec.gx,rec.gy,key);
-    toast('Recorded "'+rec.name+'" -> '+key+'.','success');
+    toast('Recorded "'+(rec.name||'effigy')+'" -> '+key+'.','success');
     closeIconDetail();
-    renderEffigyMap();
+    // Reload this category's roster so the pin picks up its new key immediately (an effigy
+    // flips from its synthetic __PENDING__ id to the real GUID; without this it lingers as a
+    // pending pin until the next 15s poll). refetch then re-renders the map itself.
+    var cat=dmIconCatByLabel(rec.catLabel);
+    if(cat&&cat.refetch) await cat.refetch(); else renderEffigyMap();
   }catch(e){
     recordSetStatus('<span style="color:#f85149;">Failed to map '+esc(key)+': '+esc(String(e&&e.message||e))+'</span>');
     toast('Failed to record key.','error');
@@ -6318,10 +6339,14 @@ function addIconCategoryChanged(){
   var keySel=document.getElementById('ai-key');
   var keyLabel=document.getElementById('ai-key-label');
   _aiKeyCandidates=dmUnmappedKeysForCategory(category);
-  var opts=(category==='effigy'?'':'<option value="">No key yet</option>')
+  // Effigy is now keyless-allowed too (2026-07-13) -- it has no key candidates of its own
+  // (RelicObtainForInstanceFlag is noName, so dmUnmappedKeysForCategory always returns []),
+  // so this creates a pending effigy you walk to and record; same "No key yet" flow as the
+  // other categories.
+  var opts='<option value="">No key yet</option>'
     +_aiKeyCandidates.map(function(r,i){return '<option value="'+i+'">'+esc(r.key)+' ('+esc(r.prop.name)+')</option>';}).join('');
-  keySel.innerHTML=opts||'<option value="">No unmapped keys available</option>';
-  keyLabel.textContent='Unmapped key'+(category==='effigy'?' (required)':' (optional)');
+  keySel.innerHTML=opts;
+  keyLabel.textContent='Unmapped key (optional)';
 }
 
 async function saveAddIcon(){
@@ -6332,7 +6357,6 @@ async function saveAddIcon(){
   var keyIdx=document.getElementById('ai-key').value;
   var key=(keyIdx!==''&&_aiKeyCandidates[parseInt(keyIdx,10)])?_aiKeyCandidates[parseInt(keyIdx,10)].key:null;
   if(category!=='effigy'&&!name){ toast('Display name is required.','error'); return; }
-  if(category==='effigy'&&!key){ toast('Effigy pins require a key -- pick one from the dropdown.','error'); return; }
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
   try{
     var resp=await api('/api/map-add-icon','POST',{category:category,name:name||null,gx:gx,gy:gy,key:key});
@@ -6502,8 +6526,11 @@ async function saveIconDetailEdits(ident,marker){
   var gy=document.getElementById('icon-detail-gy').value.trim();
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
   var newKey=document.getElementById('icon-detail-key').value.trim();
-  if(category==='effigy'&&!newKey){ toast('Effigy pins require a key.','error'); return; }
-  var body={category:category,identityKey:ident.key||null,identitySpecies:ident.species||null,identityName:ident.name||null,key:newKey||null,gx:gx,gy:gy};
+  // An effigy key MAY now be blanked (2026-07-13) to turn the pin into a "pending" one you
+  // re-record by playing. identityGx/identityGy let the server resolve an already-keyless
+  // effigy (whose ident.key is null) by its grid position; a keyed pin still resolves by key.
+  var body={category:category,identityKey:ident.key||null,identitySpecies:ident.species||null,identityName:ident.name||null,
+    identityGx:(ident.gx!=null?ident.gx:null),identityGy:(ident.gy!=null?ident.gy:null),key:newKey||null,gx:gx,gy:gy};
   var nameInput=document.getElementById('icon-detail-name');
   if(nameInput){
     var newName=nameInput.value.trim();
@@ -6527,7 +6554,8 @@ async function saveIconDetailEdits(ident,marker){
 async function deleteMapIcon(ident,marker){
   if(!confirm('Delete '+(ident.label||ident.name||ident.key||'this pin')+'? This removes it from the map entirely (it can only come back if a future scraped-roster re-import re-adds it).')) return;
   try{
-    await api('/api/map-delete-icon','POST',{category:ident.category,key:ident.key||null,species:ident.species||null,name:ident.name||null});
+    await api('/api/map-delete-icon','POST',{category:ident.category,key:ident.key||null,species:ident.species||null,name:ident.name||null,
+      gx:(ident.gx!=null?ident.gx:null),gy:(ident.gy!=null?ident.gy:null)});
     closeIconDetail();
     toast('Icon deleted.','success');
     refetchMapCategory(ident.category);
@@ -6879,7 +6907,11 @@ function renderEffigyMapNow(){
 
   ids.forEach(function(id){
     var pos=effigyLocations[id];
-    var got=collectedSet.has(id.toUpperCase());
+    // A pending (keyless, re-recording) effigy has no real save flag, so it can never be
+    // "found" and is untrackable -- mapStatus gets trackable=false below, same as any other
+    // keyless category, so it resolves to confirmed (if still verified) or unconfirmed/red.
+    var pending=!!pos.pending;
+    var got=!pending&&collectedSet.has(id.toUpperCase());
     if(got) collectedCount++;
     // Global view filter: effigyShowNew is the whole-category toggle (hides both found and
     // unfound when off, matching every other category); effigyShowFound then independently
@@ -6892,9 +6924,9 @@ function renderEffigyMapNow(){
     // either signal alone; red is neither -- see Anthony's 2026-07-05 correction. Effigies are
     // always key-mapped by construction, so on the public site (MAP_STATUS_TWO_STATE) this
     // reduces to plain found-or-not -- see mapStatus().
-    var status=mapStatus(confirmed,got,true);
+    var status=mapStatus(confirmed,got,!pending);
     if(status==='unconfirmed'&&!effigyShowUnconfirmed) return;
-    effDesire('e:'+id,status+'|'+confirmed+'|'+pos.x+'|'+pos.y,function(){
+    effDesire('e:'+id,status+'|'+confirmed+'|'+pending+'|'+pos.x+'|'+pos.y,function(){
       return _effDotMode
         ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(pos,got,confirmed,status))
         : buildEffigyMarker(id,pos,got,confirmed,status);
