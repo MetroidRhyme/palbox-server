@@ -38,6 +38,7 @@ $PubLocation = Join-Path $PubData 'player-location'
 $PubFugitives = Join-Path $PubData 'player-fugitives'
 $PubEagles = Join-Path $PubData 'player-eagles'
 $PubTowerBosses = Join-Path $PubData 'player-tower-bosses'
+$PubItemPickups = Join-Path $PubData 'player-itempickups'
 
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 
@@ -110,7 +111,7 @@ New-Item -ItemType Directory -Force -Path $PubData | Out-Null
 # player never lingers in the output set.
 # ════════════════════════════════════════════════════════════════════════════════
 if ($doFreq) {
-  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubLocation, $PubFugitives, $PubEagles, $PubTowerBosses)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+  foreach ($d in @($PubAll, $PubEffig, $PubNotes, $PubBounty, $PubLocation, $PubFugitives, $PubEagles, $PubTowerBosses, $PubItemPickups)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
   Get-ChildItem -LiteralPath $PubAll -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEffig -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubNotes -File -ErrorAction SilentlyContinue | Remove-Item -Force
@@ -119,6 +120,7 @@ if ($doFreq) {
   Get-ChildItem -LiteralPath $PubFugitives -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubEagles -File -ErrorAction SilentlyContinue | Remove-Item -Force
   Get-ChildItem -LiteralPath $PubTowerBosses -File -ErrorAction SilentlyContinue | Remove-Item -Force
+  Get-ChildItem -LiteralPath $PubItemPickups -File -ErrorAction SilentlyContinue | Remove-Item -Force
   if (Test-Path -LiteralPath $PubByPlayer) { Remove-Item -LiteralPath $PubByPlayer -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $PubByPlayer | Out-Null
 
@@ -255,6 +257,7 @@ if ($doFreq) {
       $PubFugitives   = $pa.fugitives
       $PubEagles      = $pa.eagles
       $PubTowerBosses = $pa.towerBosses
+      $PubItemPickups = $pa.itemPickups
     }
     foreach ($dir in $sections.Keys) {
       $body = [ordered]@{ guid = $guid; collected = $sections[$dir] } | ConvertTo-Json -Compress
@@ -357,6 +360,9 @@ if ($doStatic) {
 
   Write-Step "building data/sam-sites.json"
   [System.IO.File]::WriteAllText((Join-Path $PubData 'sam-sites.json'), (Get-MapCategoryJson 'sam'), $utf8)
+
+  Write-Step "building data/itempickups.json"
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'itempickups.json'), (Get-MapCategoryJson 'itempickup'), $utf8)
 
   # Destroyed SAM Site (fixed weapon) keys -- world-scoped (Level.sav), from
   # pal_save_reader.py's "destroyed-weapons" mode, not map_data_lib.ps1 (this isn't

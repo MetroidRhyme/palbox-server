@@ -369,6 +369,7 @@ $html = $html.Replace("'/api/wanted-fugitives'", "'data/wanted-fugitives.json'")
 $html = $html.Replace("'/api/eagle-statues'", "'data/eagle-statues.json'")
 $html = $html.Replace("'/api/towers'", "'data/towers.json'")
 $html = $html.Replace("'/api/sam-sites'", "'data/sam-sites.json'")
+$html = $html.Replace("'/api/itempickups'", "'data/itempickups.json'")
 $html = $html.Replace("'/api/destroyed-weapons'", "'data/destroyed-weapons.json'")
 $html = $html.Replace("'/api/effigy-types'", "'data/effigy-types.json'")
 $html = $html.Replace("'/api/pal-species'", "'data/pal-species.json'")
@@ -398,6 +399,9 @@ $html = $html.Replace(
 $html = $html.Replace(
   "'/api/player-tower-bosses?guid='+encodeURIComponent(guid)",
   "'data/player-tower-bosses/'+encodeURIComponent(guid)+'.json'")
+$html = $html.Replace(
+  "'/api/player-itempickups?guid='+encodeURIComponent(guid)",
+  "'data/player-itempickups/'+encodeURIComponent(guid)+'.json'")
 
 # (5b) Player locations (PUBLIC ONLY). The admin build's fetchPlayerLocations() calls one
 # unscoped route returning EVERY player's live position, for the "all players on the map"
@@ -437,8 +441,8 @@ if ($html -eq $before) { throw "player-locations: fetchPlayerLocations override 
 # of the effigy-player dropdown actually being populated/selected on first load.
 $before = $html
 $html = $html.Replace(
-  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);return;}",
-  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);fetchPlayerLocations();return;}")
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);fetchItemPickupPlayer(guid);return;}",
+  "if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);fetchItemPickupPlayer(guid);fetchPlayerLocations();return;}")
 if ($html -eq $before) { throw "player-locations: fetchEffigyPlayer empty-guid hook not found" }
 $before = $html
 $html = $html.Replace(
@@ -706,11 +710,11 @@ $expectedDataRefs = @(
   'data/pals.json', 'data/eggs.json', 'data/server-messages.json', 'data/paldeck.json',
   'data/effigies.json', 'data/journals.json', 'data/bounty-bosses.json',
   'data/wanted-fugitives.json', 'data/eagle-statues.json', 'data/towers.json',
-  'data/sam-sites.json', 'data/destroyed-weapons.json', 'data/effigy-types.json', 'data/pal-species.json', 'data/pal-skills.json',
+  'data/sam-sites.json', 'data/itempickups.json', 'data/destroyed-weapons.json', 'data/effigy-types.json', 'data/pal-species.json', 'data/pal-skills.json',
   'data/pal-passives.json', 'data/settings.json', 'data/meta.json',
   'data/player-location/', 'data/player-effigies/', 'data/player-notes/',
   'data/player-bounties/', 'data/player-fugitives/', 'data/player-eagles/',
-  'data/player-tower-bosses/'
+  'data/player-tower-bosses/', 'data/player-itempickups/'
 )
 foreach ($ref in $expectedDataRefs) {
   if (-not $html.Contains($ref)) { throw "expected data reference missing from output: $ref" }

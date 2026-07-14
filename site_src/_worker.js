@@ -439,6 +439,16 @@ export default {
       return noStore(json({ collected: [] }, 200));
     }
 
+    // Per-player Schematic (itempickup) collection state: same scoping as player-effigies above.
+    if (path.startsWith('/data/player-itempickups/')) {
+      const g = path.slice('/data/player-itempickups/'.length).replace(/\.json$/i, '');
+      if (scope === 'all' || (scope && g.toLowerCase() === scope.toLowerCase())) {
+        const keyGuid = (scope === 'all') ? g.toUpperCase() : scope;
+        return noStore(await r2Serve(env, 'player-itempickups/' + keyGuid + '.json', json({ collected: [] }, 200)));
+      }
+      return noStore(json({ collected: [] }, 200));
+    }
+
     // Per-player live world position (Translation/Rotation): same scoping as
     // player-effigies above. A scoped (non-admin) user can only ever request their own
     // guid anyway (the public page never shows anyone else's), but the Worker enforces
