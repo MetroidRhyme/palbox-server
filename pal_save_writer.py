@@ -154,6 +154,56 @@ def _find_map_property(node, target):
     return None
 
 
+def _find_array_property(node, target):
+    """Same as _find_map_property but for an ArrayProperty (mirrors its recursion)."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == target and isinstance(v, dict) and v.get("type") == "ArrayProperty":
+                return v
+        for v in node.values():
+            found = _find_array_property(v, target)
+            if found is not None:
+                return found
+    elif isinstance(node, list):
+        for item in node:
+            found = _find_array_property(item, target)
+            if found is not None:
+                return found
+    return None
+
+
+# RelicObtainForInstanceFlag (the flat, legacy Name->Bool map DATAMINE_PROPERTIES exposes) is
+# NOT the game's authoritative store for CapturePower-type effigies -- RelicObtainForInstance-
+# FlagByType is. Confirmed 2026-07-14 via a real before/after: deleting a key from ONLY the flat
+# map left ByType untouched, and the very next time the player loaded into the world the game
+# rebuilt the flat map from ByType, silently restoring the exact GUIDs that were just deleted
+# (see /palworld-dataminer's "RelicObtainForInstanceFlagByType" section -- the flat map is always
+# a subset of ByType's CapturePower entries). So a real delete has to remove the key from BOTH
+# stores, or it just comes back on the next server start.
+_RELIC_FLAT_PROPERTY = "RelicObtainForInstanceFlag"
+_RELIC_BYTYPE_PROPERTY = "RelicObtainForInstanceFlagByType"
+_RELIC_FLAT_TYPE = "CapturePower"
+
+
+def _relic_bytype_flags_map(properties, relic_type):
+    """Return the Flags MapProperty dict for one EPalRelicType kind inside
+    RelicObtainForInstanceFlagByType, or None if the array, or that type's element, isn't
+    present in this save (e.g. an older save from before ByType existed, or a player who has
+    never collected that relic type)."""
+    arr = _find_array_property(properties, _RELIC_BYTYPE_PROPERTY)
+    if arr is None:
+        return None
+    values = ((arr.get("value") or {}).get("values")) or []
+    wanted = "EPalRelicType::" + relic_type
+    for elem in values:
+        if not isinstance(elem, dict):
+            continue
+        enum_val = (((elem.get("Type") or {}).get("value")) or {}).get("value")
+        if enum_val == wanted:
+            return elem.get("Flags")
+    return None
+
+
 def delete_keys(sav_path, pairs):
     """Delete every (property, key) in `pairs` from one player's save in a SINGLE re-serialize
     and atomic write -- so a bulk delete does exactly ONE round-trip/compress/replace, not N.
@@ -211,6 +261,9 @@ def delete_keys(sav_path, pairs):
     total_removed = 0
     # Expected surviving state per (property, lowercased key) for the post-write verify below.
     to_verify = []
+    # (relic_type, lowercased key) pairs mirrored into RelicObtainForInstanceFlagByType, verified
+    # separately below since that store isn't a plain top-level MapProperty.
+    to_verify_bytype = []
     for pr in pairs:
         prop = pr["property"]
         key = pr["key"]
@@ -228,8 +281,18 @@ def delete_keys(sav_path, pairs):
         removed = before - len(kept)
         mapprop["value"] = kept  # live reference into gvas.properties -- mutation persists
         total_removed += removed
-        results.append({"property": prop, "key": key, "removed": removed,
-                        "note": "" if removed else "key not present"})
+        note = "" if removed else "key not present"
+        if removed and prop == _RELIC_FLAT_PROPERTY:
+            flags = _relic_bytype_flags_map(gvas.properties, _RELIC_FLAT_TYPE)
+            if flags is not None and isinstance(flags.get("value"), list):
+                fb_entries = flags["value"]
+                fb_kept = [e for e in fb_entries if str(e.get("key")).lower() != key_lc]
+                fb_removed = len(fb_entries) - len(fb_kept)
+                flags["value"] = fb_kept
+                if fb_removed:
+                    note = "also removed from " + _RELIC_BYTYPE_PROPERTY
+                    to_verify_bytype.append(key_lc)
+        results.append({"property": prop, "key": key, "removed": removed, "note": note})
         if removed:
             to_verify.append((prop, key_lc))
 
@@ -262,6 +325,12 @@ def delete_keys(sav_path, pairs):
                 _fail("post-write verify failed: %s vanished (no changes written)" % prop)
             if any(str(e.get("key")).lower() == key_lc for e in m2.get("value", [])):
                 _fail("post-write verify failed: a key still present in %s (no changes written)" % prop)
+        for key_lc in to_verify_bytype:
+            flags2 = _relic_bytype_flags_map(gvas2.properties, _RELIC_FLAT_TYPE)
+            if flags2 is not None and any(str(e.get("key")).lower() == key_lc
+                                           for e in flags2.get("value", [])):
+                _fail("post-write verify failed: a key still present in %s (no changes written)"
+                      % _RELIC_BYTYPE_PROPERTY)
     except SystemExit:
         raise
     except Exception as e:
