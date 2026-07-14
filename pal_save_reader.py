@@ -135,15 +135,92 @@ def parse_name_array(raw, pos):
     return result
 
 
-def extract_effigy_data(sav_path):
-    """Return list of uppercase hex GUID strings for collected effigies."""
-    raw = decompress_save(sav_path)
-    pos = find_property(raw, "RelicObtainForInstanceFlag")
+def parse_relic_by_type(raw):
+    """Decode RelicObtainForInstanceFlagByType -> {GUID_UPPER: short_relic_type} for every
+    COLLECTED (true) effigy across ALL relic types.
+
+    This is the COMPREHENSIVE effigy store. The flat RelicObtainForInstanceFlag map that
+    extract_effigy_data historically read holds ONLY EPalRelicType::CapturePower relics --
+    confirmed 2026-07-13 by a controlled before/after save diff (picking up a GliderSpeed
+    effigy appended solely to this by-type array + RelicPossessNumMap, never to the flat map;
+    see /palworld-dataminer). Every non-CapturePower relic (MoveSpeed/JumpPower/SphereHoming/
+    HungerReduction/GliderSpeed/...) lives ONLY here, so reading the flat map alone silently
+    dropped them from effigy tracking.
+
+    Layout (ArrayProperty of StructProperty, confirmed byte-exact): each element is a struct
+    with a `Type` EnumProperty (value "EPalRelicType::<Kind>") followed by a `Flags`
+    MapProperty (Name->Bool, the collected instance GUIDs of that type), terminated by "None".
+    We bound the scan to the array's own declared byte size and walk Type/Flags markers in
+    file order, so each Flags map is attributed to the Type that immediately precedes it.
+    Returns short kinds ("CapturePower", "GliderSpeed", ...), the part after "EPalRelicType::".
+    """
+    pos = find_property(raw, "RelicObtainForInstanceFlagByType")
     if pos == -1:
-        return []
-    _, p = read_fstring(raw, pos)
-    _, p = read_fstring(raw, p)
-    return parse_name_bool_map(raw, p)
+        return {}
+    _, p = read_fstring(raw, pos)   # property name
+    _, p = read_fstring(raw, p)     # "ArrayProperty"
+    size = struct.unpack_from("<q", raw, p)[0]
+    p += 8
+    end = min(len(raw), p + size + 32)  # +32 slack; bound keeps generic Type/Flags names local
+    # FString length-prefixed markers: "Type"=len 5 (4+null), "Flags"=len 6 (5+null).
+    TYPE_NEEDLE = b"\x05\x00\x00\x00Type\x00"
+    FLAGS_NEEDLE = b"\x06\x00\x00\x00Flags\x00"
+    out = {}
+    cur_type = None
+    scan = p
+    while scan < end:
+        t = raw.find(TYPE_NEEDLE, scan, end)
+        f = raw.find(FLAGS_NEEDLE, scan, end)
+        if t == -1 and f == -1:
+            break
+        if t != -1 and (f == -1 or t < f):
+            q = t + len(TYPE_NEEDLE)
+            _, q = read_fstring(raw, q)   # "EnumProperty"
+            q += 8                        # int64 size
+            _, q = read_fstring(raw, q)   # enum class ("EPalRelicType")
+            q += 1                        # HasPropertyGuid
+            val, q = read_fstring(raw, q)  # "EPalRelicType::<Kind>"
+            cur_type = val.split("::")[-1] if val else None
+            scan = q
+        else:
+            q = f + len(FLAGS_NEEDLE)
+            _, q = read_fstring(raw, q)   # "MapProperty"
+            entries = parse_name_bool_map_full(raw, q)  # {GUID_UPPER: bool}
+            if cur_type:
+                for guid, is_set in entries.items():
+                    if is_set:
+                        out[guid] = cur_type
+            scan = f + len(FLAGS_NEEDLE)   # advance past this marker; next find gets next element
+    return out
+
+
+def collected_effigies(raw):
+    """Uppercase GUID list of every collected effigy, unioning the comprehensive by-type store
+    (all relic types) with the legacy flat CapturePower-only map. Flat is a subset of by-type
+    in practice, but unioning is cheap and robust against an unusually old save. Given raw
+    decompressed bytes so per-player callers that already decompressed don't do it twice."""
+    result = set(parse_relic_by_type(raw).keys())
+    pos = find_property(raw, "RelicObtainForInstanceFlag")
+    if pos != -1:
+        _, p = read_fstring(raw, pos)
+        _, p = read_fstring(raw, p)
+        result.update(parse_name_bool_map(raw, p))
+    return sorted(result)
+
+
+def extract_effigy_data(sav_path):
+    """Return list of uppercase hex GUID strings for collected effigies, across ALL relic
+    types (see collected_effigies / parse_relic_by_type)."""
+    raw = decompress_save(sav_path)
+    return collected_effigies(raw)
+
+
+def extract_effigy_type_map(sav_path):
+    """{GUID_UPPER: short_relic_type} for the world's effigies, derived from this save's
+    RelicObtainForInstanceFlagByType. The world map is fixed, so a GUID's type is the same for
+    every player -- callers merge these across all players to build a global GUID->type map."""
+    raw = decompress_save(sav_path)
+    return parse_relic_by_type(raw)
 
 
 def extract_fast_travel_data(sav_path):
@@ -521,7 +598,7 @@ def main():
 
             print(json.dumps({
                 "guid": guid,
-                "effigies": flags_for("RelicObtainForInstanceFlag"),
+                "effigies": collected_effigies(raw),
                 "notes": flags_for("NoteObtainForInstanceFlag"),
                 "bounties": _bounty_from_flags(boss_flags),
                 "fugitives": boss_flags,
@@ -545,6 +622,32 @@ def main():
             print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
+        return
+
+    # effigy-types mode: python pal_save_reader.py <save_dir> effigy-types [guid]
+    # Emits the GUID->relic-type map from RelicObtainForInstanceFlagByType. World effigies are
+    # fixed, so this map is player-independent; with no guid it merges the map across EVERY
+    # player save in the world (so a type collected by any one of the Six is known globally).
+    if len(sys.argv) > 2 and sys.argv[2] == "effigy-types":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        try:
+            type_map = {}
+            if guid:
+                sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+                if os.path.isfile(sav_path):
+                    type_map = extract_effigy_type_map(sav_path)
+            else:
+                players_dir = os.path.join(save_dir, "Players")
+                if os.path.isdir(players_dir):
+                    for fn in os.listdir(players_dir):
+                        if fn.endswith(".sav") and not fn.endswith("_dps.sav"):
+                            try:
+                                type_map.update(extract_effigy_type_map(os.path.join(players_dir, fn)))
+                            except Exception:
+                                pass  # a single unreadable player save shouldn't drop the rest
+            print(json.dumps({"types": type_map}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"types": {}, "error": str(e)}))
         return
 
     # bounties mode: python pal_save_reader.py <save_dir> bounties <guid>
