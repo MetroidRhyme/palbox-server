@@ -628,6 +628,10 @@ tr.save-live-row>td:first-child{box-shadow:inset 3px 0 0 var(--green);}
           <button id="eff-filt-sam" onclick="toggleEffigyFilter('sam')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide Feybreak SAM Site (anti-air turret) locations"><span style="color:#ff7b54;">&#9679;</span> SAM Sites</button>
           <span id="sam-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="SAM Sites destroyed, out of the full roster (only counts pins already mapped to a save key -- use a pin's 'Map to key...' button to link one)"></span>
         </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="eff-filt-itempickup" onclick="toggleEffigyFilter('itempickup')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;flex:1;" title="Show / hide Schematic (locked-building blueprint chest) locations"><span style="color:#56b6c2;">&#9679;</span> Schematics</button>
+          <span id="itempickup-count" style="color:var(--muted);font-size:11px;white-space:nowrap;" title="Schematics collected by the selected player, out of the mapped roster (only counts pins already mapped to a save key -- record a pin's key by playing to link one)"></span>
+        </div>
         <button id="eff-filt-players" onclick="toggleEffigyFilter('players')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;text-align:left;" title="Show / hide every player's live position (from their own save's Translation/Rotation)"><span style="color:#58a6ff;">&#9679;</span> Players</button>
         </div>
       </div>
@@ -1400,7 +1404,7 @@ function updateKeyAvailableBadge(){
 async function refetchEffigyMapRosters(){
   await Promise.all([
     fetchEffigyLocations(true),fetchEffigyTypes(true),fetchJournalLocations(true),fetchBossLocations(true),fetchWantedFugitives(true),
-    fetchEagleStatues(true),fetchTowerLocations(true),fetchSamSites(true),fetchDestroyedWeapons(true)
+    fetchEagleStatues(true),fetchTowerLocations(true),fetchSamSites(true),fetchDestroyedWeapons(true),fetchItemPickupLocations(true)
   ]);
 }
 // "New content" pulse dot on a nav tab -- lit when a watch match (or other tracked
@@ -3661,6 +3665,21 @@ function samSiteIcon(status){
   if(_iconMemo[k]) return _iconMemo[k];
   return _iconMemo[k]=statusRingIcon(ROCKET_IMG,status,EFF_ACORN_SZ);
 }
+// Schematic (itempickup) marker (added 2026-07-14): locked-building blueprint chests. No paldb
+// compass icon exists, so a hand-drawn ASCII-only inline SVG (per the global no-non-ASCII rule)
+// -- a blueprint page (folded corner + line rulings), same statusRingIcon convention as SAM.
+var BLUEPRINT_IMG='<svg viewBox="0 0 24 24" width="15" height="15" style="display:block;margin:auto;">'
+  +'<path fill="#e6ebf2" d="M6 2h9l4 4v16H6z"></path>'
+  +'<path fill="#9aa4b5" d="M15 2l4 4h-4z"></path>'
+  +'<rect x="8" y="9" width="8" height="1.4" fill="#2f6fb0"></rect>'
+  +'<rect x="8" y="12" width="8" height="1.4" fill="#2f6fb0"></rect>'
+  +'<rect x="8" y="15" width="5" height="1.4" fill="#2f6fb0"></rect>'
+  +'</svg>';
+function itemPickupIcon(status){
+  var k='ip:'+status;
+  if(_iconMemo[k]) return _iconMemo[k];
+  return _iconMemo[k]=statusRingIcon(BLUEPRINT_IMG,status,EFF_ACORN_SZ);
+}
 // Live player position marker: a colored dot, plus (if the save has a current Rotation --
 // it's briefly absent right after a teleport/spawn, see /palworld-dataminer) a small
 // triangular "nose" showing facing direction, rotated by yawDeg. NOTE: yawDeg's mapping onto
@@ -3707,7 +3726,7 @@ var JOURNAL_MAX=49;
 // see extract_fast_travel_data), and Tower raid-boss defeat state (TowerBossDefeatFlag keys,
 // added 2026-07-07 -- see extract_tower_boss_data). Eagle/tower are independent per-player
 // signals for the SAME Tower marker -- see the Tower render block in renderEffigyMap.
-var fugitiveCollected=[], eagleCollected=[], towerBossCollected=[];
+var fugitiveCollected=[], eagleCollected=[], towerBossCollected=[], itemPickupCollected=[];
 
 // Static bounty-boss (named legendary Alpha) locations -- game-world fixed, not per-save,
 // loaded once from the bounty-bosses route (see bounty_bosses.json). Each entry has {species,
@@ -3805,6 +3824,11 @@ function toggleMapConfirm(category,ident,checked,nameFallback){
             : (s.name&&nameFallback&&s.name.toUpperCase()===nameFallback.toUpperCase());
         });
         if(sse) sse.m=checked;
+      } else if(category==='itempickup'){
+        // Only ever confirmed once keyed (a pending pin's confirm checkbox is hidden), so match
+        // by key -- there's no name-fallback path for itempickup (name isn't its identity).
+        var ipe=itemPickupLocations&&itemPickupLocations.find(function(p){return p.key&&ident&&p.key.toUpperCase()===ident.toUpperCase();});
+        if(ipe) ipe.m=checked;
       }
       renderEffigyMap();
       toast(checked?'Location confirmed.':'Location unconfirmed.','success');
@@ -3836,7 +3860,7 @@ function toggleTowerKeyVerified(towerName,field,checked){
 // hid unfound effigies, leaving found ones visible via effigyShowFound alone, which was
 // inconsistent with every other category's toggle). This is a VIEW filter only -- it never
 // changes a Pal's actual found state (which comes solely from the save). Both default on.
-var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowSam=true, effigyShowPlayers=true, effigyShowUnconfirmed=true;
+var effigyShowFound=true, effigyShowNew=true, effigyShowJournal=true, effigyShowBounty=true, effigyShowFugitive=true, effigyShowEagle=true, effigyShowTower=true, effigyShowSam=true, effigyShowItemPickup=true, effigyShowPlayers=true, effigyShowUnconfirmed=true;
 // Layer filter toggles are remembered per-browser via localStorage (independent of the
 // server-side /api/prefs sync above, which is public-site-only) so admin AND public both
 // keep a hidden category hidden across refreshes. Loaded once at script parse time, same
@@ -3852,13 +3876,14 @@ try{
     if(_savedMapFilters.eagle!==undefined)effigyShowEagle=!!_savedMapFilters.eagle;
     if(_savedMapFilters.tower!==undefined)effigyShowTower=!!_savedMapFilters.tower;
     if(_savedMapFilters.sam!==undefined)effigyShowSam=!!_savedMapFilters.sam;
+    if(_savedMapFilters.itempickup!==undefined)effigyShowItemPickup=!!_savedMapFilters.itempickup;
     if(_savedMapFilters.players!==undefined)effigyShowPlayers=!!_savedMapFilters.players;
     if(_savedMapFilters.unconfirmed!==undefined)effigyShowUnconfirmed=!!_savedMapFilters.unconfirmed;
   }
 }catch(e){}
 function saveMapFilters(){
   try{
-    localStorage.setItem('palbox_map_filters',JSON.stringify({found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,tower:effigyShowTower,sam:effigyShowSam,players:effigyShowPlayers,unconfirmed:effigyShowUnconfirmed}));
+    localStorage.setItem('palbox_map_filters',JSON.stringify({found:effigyShowFound,nw:effigyShowNew,journal:effigyShowJournal,bounty:effigyShowBounty,fugitive:effigyShowFugitive,eagle:effigyShowEagle,tower:effigyShowTower,sam:effigyShowSam,itempickup:effigyShowItemPickup,players:effigyShowPlayers,unconfirmed:effigyShowUnconfirmed}));
   }catch(e){}
 }
 
@@ -3877,7 +3902,7 @@ function initFilterPanelCollapse(){
 }
 
 function setEffigyFilterBtns(){
-  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bs=document.getElementById('eff-filt-sam'), bpl=document.getElementById('eff-filt-players'), bu=document.getElementById('eff-filt-unconfirmed');
+  var bf=document.getElementById('eff-filt-found'), bn=document.getElementById('eff-filt-new'), bj=document.getElementById('eff-filt-journal'), bb=document.getElementById('eff-filt-bounty'), bh=document.getElementById('eff-filt-fugitive'), be=document.getElementById('eff-filt-eagle'), bt=document.getElementById('eff-filt-tower'), bs=document.getElementById('eff-filt-sam'), bip=document.getElementById('eff-filt-itempickup'), bpl=document.getElementById('eff-filt-players'), bu=document.getElementById('eff-filt-unconfirmed');
   if(bf) bf.style.opacity=effigyShowFound?'1':'0.4';
   if(bu) bu.style.opacity=effigyShowUnconfirmed?'1':'0.4';
   if(bn) bn.style.opacity=effigyShowNew?'1':'0.4';
@@ -3887,6 +3912,7 @@ function setEffigyFilterBtns(){
   if(be) be.style.opacity=effigyShowEagle?'1':'0.4';
   if(bt) bt.style.opacity=effigyShowTower?'1':'0.4';
   if(bs) bs.style.opacity=effigyShowSam?'1':'0.4';
+  if(bip) bip.style.opacity=effigyShowItemPickup?'1':'0.4';
   if(bpl) bpl.style.opacity=effigyShowPlayers?'1':'0.4';
 }
 function toggleEffigyFilter(which){
@@ -3899,6 +3925,7 @@ function toggleEffigyFilter(which){
   else if(which==='eagle') effigyShowEagle=!effigyShowEagle;
   else if(which==='tower') effigyShowTower=!effigyShowTower;
   else if(which==='sam') effigyShowSam=!effigyShowSam;
+  else if(which==='itempickup') effigyShowItemPickup=!effigyShowItemPickup;
   else effigyShowNew=!effigyShowNew;
   setEffigyFilterBtns();
   saveMapFilters();
@@ -4561,6 +4588,56 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
   return sm;
 }
 
+// Schematic (itempickup, 2026-07-14): a hybrid of Eagle (array-shape roster + a display name)
+// and Effigy (coords-first, keyless-recordable). A pending pin (no key yet) is created by coords
+// alone, renders red/untrackable, and captures its key via "Record next key" in the detail
+// footer; a display name is added later. p.name may be null while pending -- show a placeholder.
+function itemPickupLabel(p){ return p&&p.name ? p.name : 'Schematic (unnamed)'; }
+function itemPickupTipBody(p,confirmed,pGot,pStatus){
+  var _g=worldToGrid(p.x,p.y), cx=_g.cx, cy=_g.cy;
+  var lbl=pStatus==='found'
+    ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Collected</span>' : '<span style="color:#3fb950">&#10003; Collected & confirmed</span>')
+    : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet collected</b>'
+    : pGot ? '<b style="color:#58a6ff">Collected (not yet confirmed)</b>'
+    : confirmed ? '<b style="color:#e3b341">Confirmed (not yet collected)</b>'
+    : p.pending ? '<span style="color:#8a8f98">Pending -- record its key</span>'
+    : '<b style="color:#f85149">Unconfirmed</b>';
+  return lbl+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(p);
+}
+function buildItemPickupMarker(p,confirmed,pGot,pStatus){
+  var lbl=itemPickupLabel(p);
+  var pm=L.marker(effigyRposToLatLng(p.x,p.y),{icon:itemPickupIcon(pStatus),interactive:true});
+  var pTip=itemPickupTipBody(p,confirmed,pGot,pStatus);
+  pm.bindTooltip('<b style="color:#111;">'+esc(lbl)+'</b><br>'+pTip,
+    {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
+  pm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
+  if(EFFIGY_CONFIRM_ENABLED){
+    var pending=!!p.pending;
+    var pChkId='itempickup-confirm-'+String(p.key||('c'+p.gx+'x'+p.gy)).replace(/[^a-zA-Z0-9]/g,'_');
+    pm.on('click',function(){
+      var g=worldToGrid(p.x,p.y);
+      // Keyless identity is gx/gy (like a pending effigy). Carry the EXACT stored gx/gy the
+      // backend emitted -- NOT the round-tripped worldToGrid -- so edit/record resolve the row.
+      var gx=(p.gx!=null?p.gx:g.cx), gy=(p.gy!=null?p.gy:g.cy);
+      var ident={category:'itempickup',key:p.key||null,species:null,name:p.name||null,lv:null,gx:gx,gy:gy,label:lbl};
+      // Pending (keyless): only the footer's "Record next key" applies -- confirm/cave resolve
+      // by an identity that doesn't exist yet, so hide them (same as a pending effigy).
+      var bodyHtml='<b style="color:#111;">'+esc(lbl)+'</b><br>'+pTip+saveKeyRow(p.key)
+        +(pending?'':detailConfirmHtml(pChkId,confirmed)+caveAddButtonHtml());
+      openIconDetail('Schematic',lbl,bodyHtml,ident,pm,function(el){
+        if(pending) return;
+        var box=el.querySelector('#'+pChkId);
+        if(box) box.onchange=function(){ toggleMapConfirm('itempickup',p.key||null,box.checked,p.name||null); };
+        wireCaveAdd(el,{category:'itempickup',key:p.key||null,name:p.name||null,label:lbl});
+      });
+    });
+  } else {
+    pm.bindPopup('<b style="color:#111;">'+esc(lbl)+'</b><br>'+pTip+reportButtonHtml('itempickup',p.key||lbl,lbl),{className:'eff-tip'});
+    pm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'itempickup',p.key||lbl,lbl); });
+  }
+  return pm;
+}
+
 // Body + level-suffix tooltip pieces, shared by the divIcon builder and the
 // low-zoom dot marker. Returns both since the level suffix sits between the
 // name header and the body in the composed tooltip string.
@@ -4969,6 +5046,7 @@ function initEffigyView(){
       fetchTowerLocations();
       fetchSamSites();
       fetchDestroyedWeapons();
+      fetchItemPickupLocations();
       fetchPlayerLocations();
     });
   });
@@ -5229,6 +5307,22 @@ async function fetchEagleStatues(force){
     if(!eagleStatueLocations) eagleStatueLocations=[];
   }
 }
+// "Schematic" (itempickup) pins -- static roster, same loading/caching convention as above.
+var itemPickupLocations=null;
+async function fetchItemPickupLocations(force){
+  if(itemPickupLocations&&!force)return;
+  try{
+    var r=await fetch('/api/itempickups');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=await r.text();
+    if(txt===_effRosterText.itempickup){ if(!itemPickupLocations){itemPickupLocations=JSON.parse(txt);if(effigyLeaflet)renderEffigyMap();} return; }
+    _effRosterText.itempickup=txt;
+    itemPickupLocations=JSON.parse(txt);
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){
+    if(!itemPickupLocations) itemPickupLocations=[];
+  }
+}
 // "Towers" (raid bosses) -- static, same loading convention as above. Split out of Eagle
 // Statues (see Merge-ConfirmedTowers).
 var towerLocations=null;
@@ -5355,7 +5449,7 @@ function populateEffigyPlayerDropdown(){
 async function fetchEffigyPlayer(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
-  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);return;}
+  if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);fetchItemPickupPlayer(guid);return;}
   if(guid!==_effLastPlayerGuid) document.getElementById('effigy-summary').textContent='Loading...';
   _effLastPlayerGuid=guid;
   try{
@@ -5371,6 +5465,7 @@ async function fetchEffigyPlayer(){
   fetchFugitivePlayer(guid);
   fetchEaglePlayer(guid);
   fetchTowerBossPlayer(guid);
+  fetchItemPickupPlayer(guid);
 }
 
 // Wanted Fugitive defeat state for the selected player (see fugitiveCollected comment above).
@@ -5393,6 +5488,18 @@ async function fetchEaglePlayer(guid){
     eagleCollected=data.collected||[];
   }catch(e){
     eagleCollected=[];
+  }
+  if(effigyLeaflet) renderEffigyMap();
+}
+
+// Schematic (itempickup) collection state for the selected player.
+async function fetchItemPickupPlayer(guid){
+  if(!guid){itemPickupCollected=[];if(effigyLeaflet)renderEffigyMap();return;}
+  try{
+    var data=await api('/api/player-itempickups?guid='+encodeURIComponent(guid));
+    itemPickupCollected=data.collected||[];
+  }catch(e){
+    itemPickupCollected=[];
   }
   if(effigyLeaflet) renderEffigyMap();
 }
@@ -5482,6 +5589,9 @@ function renderMapCounts(){
   // FixedWeaponDestroySaveData gives a real signal (2026-07-09) -- once a pin is mapped to a
   // key. Falls back to counting nothing destroyed for any still-keyless pin.
   set('sam-count', foundInRoster(samSiteLocations, destroyedWeaponKeys), samSiteLocations?samSiteLocations.length:0);
+  // Schematic: collected/total for the selected player, same shape as every other found-tracked
+  // category. foundInRoster only counts pins already mapped to a key (a pending pin has none).
+  set('itempickup-count', foundInRoster(itemPickupLocations, itemPickupCollected), itemPickupLocations?itemPickupLocations.length:0);
 }
 
 // -- Data Mine tab ------------------------------------------------------------
@@ -5505,6 +5615,7 @@ var DATAMINE_PROPERTIES=[
   {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Journal'],desc:'Journal / diary note pickups.'},
   {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,iconCategories:['Eagle Statue'],desc:'Eagle Statue (fast travel) unlocks.'},
   {name:'TowerBossDefeatFlag',kind:'bool_map',spatial:false,iconCategories:['Tower'],desc:'Tower raid-boss defeats (normal difficulty; hard-mode key not yet re-identified). Keys are matched against towers.json\'s own "bossKey" field, not written here -- shown read-only for visibility into any newly-discovered key (e.g. Feybreak Tower\'s, not yet known).'},
+  {name:'ItemPickupObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Schematic'],desc:'Schematic pickups -- locked-building blueprint chests etc., per-player world item-pickup instance GUIDs. Map a key to a Schematic pin here, or record it by playing from the pin\'s detail panel.'},
   {name:'PaldeckUnlockFlag',kind:'bool_map',spatial:false,noCoords:true,desc:'Paldeck species unlocks.'},
   {name:'PalCaptureBonusCount',kind:'int_map',spatial:false,noCoords:true,desc:'Lifetime per-species bonus-capture counts.'},
   {name:'DestroyedWeapon',kind:'name_array',spatial:true,iconCategories:['SAM Site'],desc:'Destroyed Feybreak SAM Site (fixed weapon) keys -- world-scoped (Level.sav), not per-player; same key list for every player.'}
@@ -6129,7 +6240,11 @@ var DM_ICON_CATEGORIES=[
   // dmUnmappedKeysForCategory's comment). Nothing iterates this array directly, so adding it here
   // affects only byLabel lookups, none of which ever pass 'Effigy' except record. getRoster is
   // unused for a noName record (name is null); refetch reloads /api/effigies after a re-key.
-  {label:'Effigy',property:'RelicObtainForInstanceFlag',getRoster:function(){return [];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){return fetchEffigyLocations(true);}}
+  {label:'Effigy',property:'RelicObtainForInstanceFlag',getRoster:function(){return [];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){return fetchEffigyLocations(true);}},
+  // Schematic (itempickup, 2026-07-14): like Effigy, reached ONLY via dmIconCatByLabel for the
+  // "Record next key" path -- itempickup pins are recorded by playing, not linked from the Data
+  // Mine "Map to key" surface. getGxGy reads the roster item's gx/gy (the backend emits them).
+  {label:'Schematic',property:'ItemPickupObtainForInstanceFlag',getRoster:function(){return itemPickupLocations||[];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){return fetchItemPickupLocations(true);}}
 ];
 
 function dmIconCatByLabel(label){
@@ -6183,7 +6298,7 @@ async function applyIconKeyMapping(catLabel,name,gx,gy,key){
 // one new key in a single tick -> we can't tell which is which, so we show them as a
 // pick-list instead of guessing. Property-scoped, so a flag from any OTHER property never
 // interferes. Reuses the exact datamine infrastructure the Map-to-key dropdown already uses.
-var RECORD_CAT_LABEL={bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',journal:'Journal',sam:'SAM Site',effigy:'Effigy'};
+var RECORD_CAT_LABEL={bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',journal:'Journal',sam:'SAM Site',effigy:'Effigy',itempickup:'Schematic'};
 var RECORD_POLL_MS=7000;      // how often to re-read the save while recording
 var RECORD_TIMEOUT_MS=300000; // give up after 5 min with no new key
 var _keyRecord=null;          // {property,catLabel,name,gx,gy,snapshot,timer,started} while active
@@ -6426,7 +6541,7 @@ function renderDataMine(){
 // See openAddIconModal below. Categories match Get-MapCategoryJson's 6 live map
 // categories -- npc/landmark stay retired (map_data_lib.ps1's Get-CategoryForEntry),
 // so they're deliberately not offered here.
-var ADDICON_CATEGORY_LABELS={effigy:'Effigy',journal:'Journal',bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',tower:'Tower'};
+var ADDICON_CATEGORY_LABELS={effigy:'Effigy',journal:'Journal',bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',tower:'Tower',itempickup:'Schematic'};
 var _aiKeyCandidates=[];
 
 // Unmapped-key candidates relevant to one Add Icon category, drawn from the same
@@ -6484,7 +6599,7 @@ async function saveAddIcon(){
   var gy=document.getElementById('ai-gy').value.trim();
   var keyIdx=document.getElementById('ai-key').value;
   var key=(keyIdx!==''&&_aiKeyCandidates[parseInt(keyIdx,10)])?_aiKeyCandidates[parseInt(keyIdx,10)].key:null;
-  if(category!=='effigy'&&!name){ toast('Display name is required.','error'); return; }
+  if(category!=='effigy'&&category!=='itempickup'&&!name){ toast('Display name is required.','error'); return; }
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
   try{
     var resp=await api('/api/map-add-icon','POST',{category:category,name:name||null,gx:gx,gy:gy,key:key});
@@ -6496,7 +6611,7 @@ async function saveAddIcon(){
     // badge can update immediately rather than waiting for the next 15s mapDataminePollTick.
     updateKeyAvailableBadge();
     var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
-      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
+      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations,sam:fetchSamSites,itempickup:fetchItemPickupLocations}[category];
     if(typeof refetch==='function') refetch(true);
   }catch(e){
     toast('Failed to add icon: '+String(e&&e.message||e),'error');
@@ -6533,7 +6648,7 @@ window.closeEntranceModal=function(){
 // convention as saveAddIcon (never null-then-fetch, see /palbox-map-performance).
 function refetchMapCategory(category){
   var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
-    fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations,sam:fetchSamSites}[category];
+    fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations,sam:fetchSamSites,itempickup:fetchItemPickupLocations}[category];
   if(typeof refetch==='function') refetch(true);
 }
 
@@ -6869,7 +6984,7 @@ async function saveCustomIcon(category,identKey,identSpecies,identName,rowId){
     toast('Saved.','success');
     renderDataMine();
     var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
-      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
+      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations,sam:fetchSamSites,itempickup:fetchItemPickupLocations}[category];
     if(typeof refetch==='function') refetch(true);
   }catch(e){
     toast('Failed to save: '+String(e&&e.message||e),'error');
@@ -6886,7 +7001,7 @@ async function deleteCustomIcon(category,identKey,identSpecies,identName){
     toast('Deleted.','success');
     renderDataMine();
     var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
-      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations}[category];
+      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations,sam:fetchSamSites,itempickup:fetchItemPickupLocations}[category];
     if(typeof refetch==='function') refetch(true);
   }catch(e){
     toast('Failed to delete: '+String(e&&e.message||e),'error');
@@ -7261,6 +7376,27 @@ function renderEffigyMapNow(){
           : buildSamMarker(s,confirmed,sGot,sStatus);
       });
       if(s.entrances) desireEntrances('sam:'+(s.name||idx),{category:'sam',name:s.name,label:s.name},s,effigyRposToLatLng(s.x,s.y),sStatus);
+    });
+  }
+  // Schematic (itempickup) -- locked-building blueprint chests, ItemPickupObtainForInstanceFlag
+  // instance GUIDs. Coords-first/keyless-recordable like effigy but array-shaped with a name; a
+  // pending (keyless) pin has no p.key, so it never resolves to found and stays red/recordable.
+  if(effigyShowItemPickup&&itemPickupLocations&&itemPickupLocations.length){
+    var itemPickupCollectedSet=new Set((itemPickupCollected||[]).map(function(s){return s.toUpperCase();}));
+    itemPickupLocations.forEach(function(p,idx){
+      var confirmed=!!p.m;
+      var trackable=!!p.key;
+      var pGot=!!(p.key&&itemPickupCollectedSet.has(p.key.toUpperCase()));
+      if(pGot&&!effigyShowFound) return;
+      var pStatus=mapStatus(confirmed,pGot,trackable);
+      if(pStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
+      var ipk='ip:'+(p.key||('c'+p.gx+','+p.gy)||idx);
+      effDesire(ipk,pStatus+'|'+confirmed+'|'+(p.pending?1:0)+'|'+p.x+'|'+p.y+'|'+(p.name||''),function(){
+        return _effDotMode
+          ? buildDotMarker(effigyRposToLatLng(p.x,p.y),'itempickup',pStatus,'<b style="color:#111;">'+esc(itemPickupLabel(p))+'</b><br>'+itemPickupTipBody(p,confirmed,pGot,pStatus))
+          : buildItemPickupMarker(p,confirmed,pGot,pStatus);
+      });
+      if(p.entrances) desireEntrances(ipk,{category:'itempickup',key:p.key||null,name:p.name||null,label:itemPickupLabel(p)},p,effigyRposToLatLng(p.x,p.y),pStatus);
     });
   }
   syncEffigyLayer();
@@ -8183,6 +8319,7 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
         <option value="fugitive">Wanted Fugitive</option>
         <option value="eagle">Eagle Statue</option>
         <option value="tower">Tower</option>
+        <option value="itempickup">Schematic</option>
       </select>
     </div>
     <div class="ai-field" id="ai-type-field" style="display:none;">
