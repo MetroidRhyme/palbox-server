@@ -5499,9 +5499,9 @@ function renderMapCounts(){
 // inputs are hidden entirely instead of just being optional (2026-07-10).
 var DATAMINE_PROPERTIES=[
   {name:'NormalBossDefeatFlag',kind:'bool_map',spatial:true,iconCategories:['Wanted Fugitive','Field Boss'],desc:'Boss / field-alpha defeat flags (Field Boss + Wanted Fugitive map categories).'},
-  {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,noName:true,
+  {name:'RelicObtainForInstanceFlag',kind:'bool_map',spatial:true,noName:true,showType:true,
     fullRosterKeys:function(){return effigyLocations?Object.keys(effigyLocations):[];},
-    desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab). Includes the full 605-entry effigies.json roster, not just keys a player has actually picked up.'},
+    desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab). Includes the full 605-entry effigies.json roster, not just keys a player has actually picked up. Type = relic kind from RelicObtainForInstanceFlagByType (all relic types), known only once some player has collected that effigy.'},
   {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Journal'],desc:'Journal / diary note pickups.'},
   {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,iconCategories:['Eagle Statue'],desc:'Eagle Statue (fast travel) unlocks.'},
   {name:'TowerBossDefeatFlag',kind:'bool_map',spatial:false,iconCategories:['Tower'],desc:'Tower raid-boss defeats (normal difficulty; hard-mode key not yet re-identified). Keys are matched against towers.json\'s own "bossKey" field, not written here -- shown read-only for visibility into any newly-discovered key (e.g. Feybreak Tower\'s, not yet known).'},
@@ -5840,6 +5840,15 @@ function dmPlayerCellHtml(prop,player,key){
 
 function dmEscJs(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
+// Relic-type cell for the effigy section's Type column (prop.showType). Reuses the Map tab's
+// GUID->type lookup (effigyTypes, loaded by dmFetchAndApply); a muted dash when the type isn't
+// known yet -- i.e. no player has collected that specific effigy, so it never appeared in any
+// save's RelicObtainForInstanceFlagByType. Never blocks the row; purely informational.
+function dmTypeCell(key){
+  var t=effigyTypeLabel(key);
+  return t?esc(t):'<span style="color:var(--muted);" title="Unknown until some player collects this effigy">&#8212;</span>';
+}
+
 function dmKeyRowHtml(prop,key,players){
   var m=dmMappingFor(prop.name,key);
   var rowId=dmRowId(prop.name,key);
@@ -5850,6 +5859,7 @@ function dmKeyRowHtml(prop,key,players){
       +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>')
     +(prop.noName?'':'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)">'
       +(m.fallback?' <span class="dm-kind-badge" title="Not yet in confirmed_locations.json -- shown from the existing scraped roster (effigies.json/journal_locations.json). Click Save to promote it.">roster</span>':'')+'</td>')
+    +(prop.showType?'<td>'+dmTypeCell(key)+'</td>':'')
     +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td>'
     +'<td class="syn-check">'+dmVerifiedCellHtml(prop,key,m)+'</td>'
     +(_dmPlayerFilter&&DM_DELETABLE_PROPS[prop.name]
@@ -5886,6 +5896,7 @@ function dmIconRowHtml(prop,row,players){
     +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span></td>'
     +'<td class="syn-key">X: '+esc(row.gx)+', Y: '+esc(row.gy)+'</td>'
     +(prop.noName?'':'<td>'+esc(row.name)+' <span class="dm-kind-badge" title="From the '+esc(row.catLabel)+' map roster -- no matching save key yet. Type the key once identified and Save.">roster</span></td>')
+    +(prop.showType?'<td style="color:var(--muted);text-align:center;">&#8212;</td>':'')
     +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineIconKey(\''+lJs+'\',\''+nJs+'\','+row.gx+','+row.gy+',\''+rowId+'\')">Save</button></td>'
     +'<td class="syn-check"><span style="color:var(--muted);" title="Nothing saved yet -- fill in the key first">&#8212;</span></td>'
     +players.map(function(){ return '<td class="syn-check"><span style="color:var(--muted);" title="No matching save key yet -- can\'t check per-player status">?</span></td>'; }).join('')
@@ -5936,7 +5947,8 @@ function dmTableHtml(prop,rows,players){
   if(!rows.length) return '<div class="empty-state">None found</div>';
   return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th>'
     +(prop.noCoords?'':'<th>Coordinates</th>')
-    +(prop.noName?'':'<th>Display Name</th>')+'<th></th><th>Verified</th>'
+    +(prop.noName?'':'<th>Display Name</th>')
+    +(prop.showType?'<th>Type</th>':'')+'<th></th><th>Verified</th>'
     +(_dmPlayerFilter&&DM_DELETABLE_PROPS[prop.name]?'<th style="text-align:center;"><input type="checkbox" class="dm-selall-cb" title="Select every key in this section" onchange="dmSelectAllForProp(\''+dmEscJs(prop.name)+'\',this.checked)"> Delete</th>':'')
     +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
     +'</tr></thead><tbody>'
@@ -5953,7 +5965,7 @@ async function dmFetchAndApply(){
   // eagleStatueLocations/wantedFugitiveLocations/bossLocations/towerLocations feed
   // dmPropertyRows' unmatched-icon rows (prop.iconCategories) -- all no-op if already
   // loaded elsewhere.
-  await Promise.all([fetchEffigyLocations(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations(),fetchTowerLocations()]);
+  await Promise.all([fetchEffigyLocations(),fetchEffigyTypes(),fetchJournalLocations(),fetchEagleStatues(),fetchWantedFugitives(),fetchBossLocations(),fetchTowerLocations()]);
   var roster=(paldeckData&&paldeckData.players)?paldeckData.players:[];
   var mappingsPromise=api('/api/datamine-mappings');
   var playerPromises=roster.map(function(p){
@@ -6451,6 +6463,7 @@ window.closeAddIconModal=function(){
 function addIconCategoryChanged(){
   var category=document.getElementById('ai-category').value;
   document.getElementById('ai-name-field').style.display=(category==='effigy')?'none':'';
+  document.getElementById('ai-type-field').style.display=(category==='effigy')?'':'none';
   var keySel=document.getElementById('ai-key');
   var keyLabel=document.getElementById('ai-key-label');
   _aiKeyCandidates=dmUnmappedKeysForCategory(category);
@@ -8171,6 +8184,10 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
         <option value="eagle">Eagle Statue</option>
         <option value="tower">Tower</option>
       </select>
+    </div>
+    <div class="ai-field" id="ai-type-field" style="display:none;">
+      <label>Relic type</label>
+      <div style="font-size:12px;color:var(--muted);line-height:1.4;">Detected automatically from the save when the effigy is collected -- every relic type (Capture Power, Glider Speed, Jump Power, Hunger Reduction, ...) is tracked. It can't be chosen by hand: the type comes from which effigy GUID the game records, so a manually-added pin shows its type once some player picks it up.</div>
     </div>
     <div class="ai-field" id="ai-name-field">
       <label>Display name</label>
