@@ -236,6 +236,21 @@ def extract_fast_travel_data(sav_path):
     return parse_name_bool_map(raw, p)
 
 
+def extract_item_pickup_data(sav_path):
+    """Return list of uppercase hex GUID strings for world item-pickup instances this player has
+    collected -- the schematic/blueprint chests inside locked buildings (and any other fixed-world
+    item pickup). ItemPickupObtainForInstanceFlag is a Name->Bool map, same layout as
+    RelicObtainForInstanceFlag/NoteObtainForInstanceFlag; per-player (each save records that
+    player's own pickups of the shared world instances)."""
+    raw = decompress_save(sav_path)
+    pos = find_property(raw, "ItemPickupObtainForInstanceFlag")
+    if pos == -1:
+        return []
+    _, p = read_fstring(raw, pos)
+    _, p = read_fstring(raw, p)
+    return parse_name_bool_map(raw, p)
+
+
 def extract_tower_boss_data(sav_path):
     """Return list of uppercase "BOSS_BATTLE_NAME_<ZONE>" keys for defeated Tower raid
     bosses. TowerBossDefeatFlag is a Name->Bool map, same layout as
@@ -444,6 +459,7 @@ DATAMINE_PROPERTIES = [
     ("NoteObtainForInstanceFlag", "bool_map"),
     ("FastTravelPointUnlockFlag", "bool_map"),
     ("TowerBossDefeatFlag", "bool_map"),
+    ("ItemPickupObtainForInstanceFlag", "bool_map"),
     ("PaldeckUnlockFlag", "bool_map"),
     ("PalCaptureBonusCount", "int_map"),
 ]
@@ -604,10 +620,11 @@ def main():
                 "fugitives": boss_flags,
                 "eagles": flags_for("FastTravelPointUnlockFlag"),
                 "towerBosses": flags_for("TowerBossDefeatFlag"),
+                "itemPickups": flags_for("ItemPickupObtainForInstanceFlag"),
             }, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"guid": guid, "effigies": [], "notes": [], "bounties": [],
-                               "fugitives": [], "eagles": [], "towerBosses": [], "error": str(e)}))
+                               "fugitives": [], "eagles": [], "towerBosses": [], "itemPickups": [], "error": str(e)}))
         return
 
     # effigies mode: python pal_save_reader.py <save_dir> effigies <guid>
@@ -648,6 +665,23 @@ def main():
             print(json.dumps({"types": type_map}, separators=(",", ":")))
         except Exception as e:
             print(json.dumps({"types": {}, "error": str(e)}))
+        return
+
+    # itempickups mode: python pal_save_reader.py <save_dir> itempickups <guid>
+    # Per-player collected world item-pickup instance GUIDs (schematic/blueprint chests etc.),
+    # from ItemPickupObtainForInstanceFlag. Same shape as the effigies mode -- backs the Map
+    # tab's /api/player-itempickups status polling.
+    if len(sys.argv) > 2 and sys.argv[2] == "itempickups":
+        guid = sys.argv[3] if len(sys.argv) > 3 else ""
+        sav_path = os.path.join(save_dir, "Players", guid + ".sav")
+        if not os.path.isfile(sav_path):
+            print(json.dumps({"error": f"Player save not found: {sav_path}"}))
+            return
+        try:
+            collected = extract_item_pickup_data(sav_path)
+            print(json.dumps({"guid": guid, "collected": collected}, separators=(",", ":")))
+        except Exception as e:
+            print(json.dumps({"guid": guid, "collected": [], "error": str(e)}))
         return
 
     # bounties mode: python pal_save_reader.py <save_dir> bounties <guid>
