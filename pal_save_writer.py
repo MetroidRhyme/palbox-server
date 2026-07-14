@@ -313,7 +313,9 @@ def main():
         if len(sys.argv) < 5:
             _fail("usage: pal_save_writer.py <save_dir> delete-keys <player_guid> <pairs_json_path>")
         try:
-            with open(sys.argv[4], encoding="utf-8") as f:
+            # utf-8-sig so a BOM the PowerShell caller may prepend (Set-Content -Encoding UTF8
+            # writes one under PS 5.1) is stripped transparently; decodes BOM-less UTF-8 too.
+            with open(sys.argv[4], encoding="utf-8-sig") as f:
                 data = json.load(f)
         except Exception as e:
             _fail("could not read pairs json: %s" % e)

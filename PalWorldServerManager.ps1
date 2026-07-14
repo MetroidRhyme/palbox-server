@@ -3245,7 +3245,11 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         # single-element-array-collapse quirk on the query string; the writer also
                         # normalizes a lone object -> list defensively).
                         $tmpPairs = [System.IO.Path]::GetTempFileName()
-                        (@{ keys = $pairs } | ConvertTo-Json -Depth 6) | Set-Content -LiteralPath $tmpPairs -Encoding UTF8
+                        # BOM-free UTF-8: Set-Content -Encoding UTF8 prepends a BOM under PS 5.1,
+                        # which pal_save_writer.py's json.load then rejected. The reader now uses
+                        # utf-8-sig too (defence in depth), but keep the write clean regardless.
+                        $pairsJson = (@{ keys = $pairs } | ConvertTo-Json -Depth 6)
+                        [System.IO.File]::WriteAllText($tmpPairs, $pairsJson, (New-Object System.Text.UTF8Encoding($false)))
 
                         # pal_save_writer.py prints its result JSON (ok:true, or ok:false+error) to
                         # stdout in every case, so discard stderr noise and judge by exit code.
