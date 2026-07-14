@@ -3258,7 +3258,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         # ever touch a file. The writer enforces the same list again as defence in depth.
                         $allowed = @(
                             'NormalBossDefeatFlag','RelicObtainForInstanceFlag','NoteObtainForInstanceFlag',
-                            'FastTravelPointUnlockFlag','TowerBossDefeatFlag','PaldeckUnlockFlag','PalCaptureBonusCount'
+                            'FastTravelPointUnlockFlag','TowerBossDefeatFlag','PaldeckUnlockFlag','PalCaptureBonusCount',
+                            'ItemPickupObtainForInstanceFlag'
                         )
                         foreach ($pr in $pairs) {
                             if ($allowed -notcontains [string]$pr.property) { throw "Property '$([string]$pr.property)' is not deletable." }

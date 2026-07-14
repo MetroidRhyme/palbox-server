@@ -67,6 +67,7 @@ ALLOWED_PROPERTIES = {
     "TowerBossDefeatFlag",
     "PaldeckUnlockFlag",
     "PalCaptureBonusCount",
+    "ItemPickupObtainForInstanceFlag",
 }
 
 
