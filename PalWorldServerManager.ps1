@@ -906,7 +906,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         players=$players; sizeMB=$sizeMB; auto=[bool]$meta.auto; pending=$pending;
                         parent=$parent;
                         hasSettings=[bool](Test-Path (Join-Path $d.FullName 'PalWorldSettings.ini'));
-                        note=$meta.note; isActive=($d.Name -eq $activeSlot) }
+                        note=$meta.note; isActive=($d.Name -eq $activeSlot);
+                        # isActive tracks the fragile .active-slot marker (can dangle if that
+                        # slot was deleted/restored - see 2026-07-13 revert incident). isLiveWorld
+                        # is the reliable signal: does this slot's world GUID match the world the
+                        # server actually has loaded? Multiple slots can be copies of the same live
+                        # world, so more than one row can be isLiveWorld=true - that's honest.
+                        isLiveWorld=($world.guid -and $world.guid -eq $activeGuid) }
         }
 
         return [ordered]@{ activeGuid=$activeGuid; activeSlot=$activeSlot; serverRunning=$running; slots=@($slots) }

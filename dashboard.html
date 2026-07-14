@@ -200,6 +200,11 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
 .tag-yellow{background:rgba(227,179,65,.15);color:var(--yellow);}
 .tag-blue{background:rgba(88,166,255,.15);color:var(--blue);}
 .tag-muted{background:rgba(139,148,158,.15);color:var(--muted);}
+.tag-live{background:rgba(63,185,80,.18);color:var(--green);font-weight:600;}
+.tag-live .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px;vertical-align:middle;animation:livepulse 1.6s ease-in-out infinite;}
+@keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+tr.save-live-row>td{background:rgba(63,185,80,.07);}
+tr.save-live-row>td:first-child{box-shadow:inset 3px 0 0 var(--green);}
 
 /* Toasts */
 #toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
@@ -7647,13 +7652,20 @@ function fmtSaved(ts){if(!ts)return '-';var d=new Date(ts);return isNaN(d.getTim
 async function fetchSaves(){
   try{
     var d=await api('/api/saves');
-    savesState={serverRunning:!!d.serverRunning, activeSlot:d.activeSlot};
+    savesState={serverRunning:!!d.serverRunning, activeSlot:d.activeSlot, activeGuid:d.activeGuid};
     savesList=d.slots||[];
     populateSettingsTarget();
     renderSaves(d.slots||[]);
     var b=document.getElementById('saves-active-badge');
-    var act=(d.slots||[]).filter(function(s){return s.isActive;})[0];
-    b.textContent=act?('Active: '+act.name):(d.activeGuid?('Active world: '+String(d.activeGuid).substring(0,8)):'No active save');
+    var g8=d.activeGuid?esc(String(d.activeGuid).substring(0,8)):'';
+    // Show the true running state + which world is loaded. The old "Active: <name>"
+    // relied on the .active-slot marker, which silently shows nothing when that marker
+    // dangles (deleted/restored slot) - so which world was running wasn't clear.
+    if(d.serverRunning){
+      b.innerHTML='<span style="color:var(--green)">&#9679; Server running</span>'+(g8?' &mdash; world '+g8:'');
+    }else{
+      b.innerHTML='<span style="color:var(--muted)">&#9675; Server stopped</span>'+(g8?' &mdash; world '+g8+' loaded':'');
+    }
   }catch(e){
     document.getElementById('saves-area').innerHTML='<div class="empty-state err">Could not load saves: '+esc(e.message)+'</div>';
   }
@@ -7667,7 +7679,13 @@ function backupsFor(id){
 function toggleBackups(id){ expandedBackups[id]=!expandedBackups[id]; renderSaves(savesList); }
 
 function saveRowHtml(s){
+  // "LIVE" = this slot is a copy of the world the server has loaded right now
+  // (guid match), and the server process is up. Reliable even when the .active-slot
+  // marker dangles. More than one slot can be a copy of the live world, so more than
+  // one row may show LIVE - honest: those are all copies of what's running.
+  var live=savesState.serverRunning && s.isLiveWorld;
   var tags='';
+  if(live)       tags+=' <span class="tag tag-live"><span class="dot"></span>LIVE</span>';
   if(s.isActive) tags+=' <span class="tag tag-green">Active</span>';
   if(s.pending)  tags+=' <span class="tag tag-blue">new</span>';
   if(s.auto)     tags+=' <span class="tag tag-muted">auto</span>';
@@ -7683,7 +7701,7 @@ function saveRowHtml(s){
   var delBtn=s.isActive
     ? '<button class="btn btn-danger" disabled title="Switch away before deleting">Delete</button>'
     : '<button class="btn btn-danger" onclick="deleteSave(\''+esc(s.id)+'\',\''+esc(s.name)+'\')" style="margin-left:4px">Delete</button>';
-  return '<tr>'
+  return '<tr'+(live?' class="save-live-row"':'')+'>'
     +'<td class="player-name">'+esc(s.name)+tags+(s.note?'<div class="hint">'+esc(s.note)+'</div>':'')+'</td>'
     +'<td style="font-family:monospace;font-size:11px">'+esc(String(s.guid||'').substring(0,8))+'</td>'
     +'<td>'+(s.players||0)+'</td>'
@@ -7765,7 +7783,15 @@ async function newWorld(){
 }
 async function activateSave(id,name){
   var restart=document.getElementById('restart-after').checked;
+  var slot=(savesList||[]).filter(function(x){return x.id===id;})[0];
+  // Loading a copy of the world that's running RIGHT NOW replaces live progress with
+  // this (possibly older) library snapshot - the 2026-07-13 revert incident. Warn hard.
+  var sameLive=slot && savesState.serverRunning && slot.guid && savesState.activeGuid
+    && String(slot.guid).toUpperCase()===String(savesState.activeGuid).toUpperCase();
   var warn='Load "'+name+'" as the active world?\n\n';
+  if(sameLive) warn+='WARNING: this is a copy of the world the server is running RIGHT NOW. '
+    +'Loading it will REPLACE current live progress with this snapshot, which may be older. '
+    +'Only do this if you mean to roll back.\n\n';
   if(savesState.serverRunning) warn+='- The running server will be stopped (players disconnected).\n';
   warn+='- A backup of the current world is saved to your library first.\n';
   warn+=restart?'- The server will restart on the loaded save.':'- The server will stay stopped after loading.';
