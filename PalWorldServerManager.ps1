@@ -3296,6 +3296,35 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/effigy-types' -and $method -eq 'GET') {
+                    # GUID -> relic type ("CapturePower"/"GliderSpeed"/...) for every effigy any
+                    # player has collected, from RelicObtainForInstanceFlagByType (ALL relic
+                    # types). The flat RelicObtainForInstanceFlag map is CapturePower-only (see
+                    # /palworld-dataminer), so this is the only source of a pin's type. The world
+                    # map is fixed, so the reader merges the map across every player save; cache
+                    # is stamped on all player .sav files so a newly-collected type invalidates it.
+                    try {
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $playersDir = Join-Path $saveDir "Players"
+                        $stampPaths = @()
+                        if (Test-Path $playersDir) {
+                            $stampPaths = @(Get-ChildItem $playersDir -Filter *.sav -File -ErrorAction SilentlyContinue |
+                                Where-Object { $_.Name -notlike '*_dps.sav' } | ForEach-Object { $_.FullName })
+                        }
+                        $rawJson = Get-CachedReaderOutput "effigy-types" $stampPaths {
+                            $j = & python "$ServerDir\pal_save_reader.py" $saveDir effigy-types 2>$null
+                            if ($LASTEXITCODE -ne 0 -or -not $j) { throw "pal_save_reader.py failed (exit $LASTEXITCODE)" }
+                            ($j -join '')
+                        }
+                        Send-Response $res 200 "application/json" $rawJson
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
                 ($path -eq '/api/datamine-mappings' -and $method -eq 'GET') {
                     # Current Display Name / Coordinates edits for the Data Mine browser --
                     # confirmedLocations for spatial properties (source-stamped subset of

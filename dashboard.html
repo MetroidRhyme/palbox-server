@@ -1394,7 +1394,7 @@ function updateKeyAvailableBadge(){
 // fetchX only re-parses/re-renders when its raw JSON text actually changed.
 async function refetchEffigyMapRosters(){
   await Promise.all([
-    fetchEffigyLocations(true),fetchJournalLocations(true),fetchBossLocations(true),fetchWantedFugitives(true),
+    fetchEffigyLocations(true),fetchEffigyTypes(true),fetchJournalLocations(true),fetchBossLocations(true),fetchWantedFugitives(true),
     fetchEagleStatues(true),fetchTowerLocations(true),fetchSamSites(true),fetchDestroyedWeapons(true)
   ]);
 }
@@ -3471,6 +3471,12 @@ function setPalMapTime(t){
 
 // -- Effigy Tracker ------------------------------------------------------------
 var effigyLeaflet=null, effigyMarkerLayer=null, effigyLocations=null, effigyCollected=[], effigyInited=false;
+// GUID -> relic type ("CapturePower"/"GliderSpeed"/...) for every effigy any player has
+// collected, from the effigy-types reader route (RelicObtainForInstanceFlagByType, all relic
+// types -- the flat RelicObtainForInstanceFlag map is CapturePower-only). World-fixed, so
+// shared by every player; used only to LABEL a pin's type, never for found/collected status.
+// (Route path spelled without the api prefix here so the public leak-scan stays clean.)
+var effigyTypes=null;
 var _effigyAwaitingRoster=false;
 var _effigyPrefsWaitTries=0;
 var EFFIGY_MAX_RANK=353;
@@ -4217,7 +4223,7 @@ function customPinBadge(entry){
 
 // Body-only tooltip text (no name header -- effigies have none), shared by the
 // divIcon builder and the low-zoom dot marker so both render identical text.
-function effigyTipBody(pos,got,confirmed,status){
+function effigyTipBody(id,pos,got,confirmed,status){
   var _g=worldToGrid(pos.x,pos.y), cx=_g.cx, cy=_g.cy;
   var tipLabel=status!=='found' ? (MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet found</b>'
       : got ? '<b style="color:#58a6ff">Found (not yet logged)</b>'
@@ -4225,10 +4231,12 @@ function effigyTipBody(pos,got,confirmed,status){
       : '<b style="color:#f85149">Unconfirmed</b>')
     : MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Found</span>'
     : '<span style="color:#3fb950">&#10003; Found & confirmed</span>';
-  return tipLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(pos);
+  var typeLbl=effigyTypeLabel(id);
+  return tipLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'
+    +(typeLbl?'<br><span style="color:#111">Type: '+typeLbl+'</span>':'')+customPinBadge(pos);
 }
 function buildEffigyMarker(id,pos,got,confirmed,status){
-  var tip=effigyTipBody(pos,got,confirmed,status);
+  var tip=effigyTipBody(id,pos,got,confirmed,status);
   var m=L.marker(effigyRposToLatLng(pos.x,pos.y),{icon:effigyAcornIcon(status),interactive:true});
   m.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   m.bindTooltip(tip,{direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
@@ -4948,6 +4956,7 @@ function initEffigyView(){
         effigyLeaflet.invalidateSize();
       }
       fetchEffigyLocations();
+      fetchEffigyTypes();
       fetchJournalLocations();
       fetchBossLocations();
       fetchWantedFugitives();
@@ -4997,6 +5006,23 @@ async function fetchEffigyLocations(force){
   }catch(e){
     if(!effigyLocations) document.getElementById('effigy-summary').textContent='Error loading effigy data: '+e.message;
   }
+}
+// Display label for an effigy's relic type, e.g. "CapturePower" -> "Capture Power". Empty
+// string when the type isn't known yet (types load async, and an effigy no player has ever
+// collected has no type on file) -- effigyTipBody omits the line entirely in that case.
+function effigyTypeLabel(id){
+  if(!effigyTypes||!id) return '';
+  var t=effigyTypes[String(id).toUpperCase()];
+  return t ? t.replace(/([a-z])([A-Z])/g,'$1 $2') : '';
+}
+async function fetchEffigyTypes(force){
+  try{
+    var r=await fetch('/api/effigy-types');
+    if(!r.ok) return;
+    var d=await r.json();
+    effigyTypes=(d&&d.types)?d.types:{};
+    if(effigyLeaflet) renderEffigyMap();
+  }catch(e){/* type labels are supplemental; never block the map on them */}
 }
 
 // Static, game-world-fixed journal/diary note locations. Loaded once and left in place for
@@ -7012,7 +7038,7 @@ function renderEffigyMapNow(){
     if(status==='unconfirmed'&&!effigyShowUnconfirmed) return;
     effDesire('e:'+id,status+'|'+confirmed+'|'+pending+'|'+pos.x+'|'+pos.y,function(){
       return _effDotMode
-        ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(pos,got,confirmed,status))
+        ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(id,pos,got,confirmed,status))
         : buildEffigyMarker(id,pos,got,confirmed,status);
     });
     if(pos.entrances) desireEntrances('e:'+id,{category:'effigy',key:id,label:id},pos,effigyRposToLatLng(pos.x,pos.y),status);

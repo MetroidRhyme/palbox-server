@@ -372,6 +372,15 @@ if ($doStatic) {
   $destroyedWeaponsJson = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $staticSaveDir, 'destroyed-weapons')
   [System.IO.File]::WriteAllText((Join-Path $PubData 'destroyed-weapons.json'), $destroyedWeaponsJson, $utf8)
 
+  # Effigy GUID -> relic type ("CapturePower"/"GliderSpeed"/...), from
+  # RelicObtainForInstanceFlagByType (ALL relic types; the flat RelicObtainForInstanceFlag is
+  # CapturePower-only). World-fixed, so the reader's no-guid effigy-types mode merges across
+  # every player save. Same static bucket / Get-ActiveSaveDir resolution as destroyed-weapons
+  # above -- purely a display label on the public map, not a found/collected signal.
+  Write-Step "building data/effigy-types.json"
+  $effigyTypesJson = Invoke-Reader @((Join-Path $Root 'pal_save_reader.py'), $staticSaveDir, 'effigy-types')
+  [System.IO.File]::WriteAllText((Join-Path $PubData 'effigy-types.json'), $effigyTypesJson, $utf8)
+
   # ── pal-species.json (curated species data: type/work/skills/stats) ──────────
   # Built once by build_pal_species.py; bundled as a static file. The dashboard serves
   # the same JSON at /api/pal-species, which the data-fetch repoint points here.
