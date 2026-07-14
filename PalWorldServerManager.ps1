@@ -3183,6 +3183,86 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
+                ($path -eq '/api/datamine-delete-keys' -and $method -eq 'POST') {
+                    # Deletes one OR MANY keys from a player's save in a single backup + atomic write
+                    # (Data Mine tab -- both the per-row Delete button and the multi-select "Delete
+                    # selected" button post here). This is the only save-MUTATING endpoint in the
+                    # dashboard; everything else only reads. The edit + all bit-count/size accounting
+                    # is done by pal_save_writer.py via the palworld_save_tools structural writer
+                    # (round-trip identity guard + atomic replace); see that file's header.
+                    # Body: { guid, keys:[{property,key}, ...] }.
+                    # HARD requirement: the server must be stopped. A running server rewrites player
+                    # .sav files every ~5s and on shutdown, so a live edit is silently clobbered (and
+                    # editing an in-use save risks corruption). We refuse with 409 here rather than
+                    # trust the UI's own guard.
+                    $tmpPairs = $null
+                    try {
+                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
+                        $guid = [string]$body.guid
+                        if (-not $guid) { throw "No player guid provided." }
+                        $pairs = @($body.keys)
+                        if (-not $pairs -or $pairs.Count -eq 0) { throw "No keys provided." }
+
+                        # Allowlist mirrors ALLOWED_PROPERTIES in pal_save_writer.py -- blocks the
+                        # world-scoped DestroyedWeapon (Level.sav) and anything unexpected before we
+                        # ever touch a file. The writer enforces the same list again as defence in depth.
+                        $allowed = @(
+                            'NormalBossDefeatFlag','RelicObtainForInstanceFlag','NoteObtainForInstanceFlag',
+                            'FastTravelPointUnlockFlag','TowerBossDefeatFlag','PaldeckUnlockFlag','PalCaptureBonusCount'
+                        )
+                        foreach ($pr in $pairs) {
+                            if ($allowed -notcontains [string]$pr.property) { throw "Property '$([string]$pr.property)' is not deletable." }
+                            if (-not [string]$pr.key) { throw "A key was empty." }
+                        }
+
+                        # Hard server-stopped gate (authoritative, process-based).
+                        if (Test-PrimaryServerRunning) {
+                            Send-Response $res 409 "application/json" (ConvertTo-Json @{ error="Server is running. Stop it from the Saves tab before deleting save keys." } -Compress)
+                            break
+                        }
+
+                        $activeGuid = Get-ActiveGuid
+                        if (-not $activeGuid) { throw "No active world loaded" }
+                        $saveDir = Join-Path $SaveGamesRoot $activeGuid
+                        $savPath = Join-Path $saveDir "Players\$guid.sav"
+                        if (-not (Test-Path -LiteralPath $savPath)) { throw "Player save not found: $guid" }
+
+                        # Back up ONCE before mutating (even for a multi-key delete): a whole-world
+                        # snapshot into SaveLibrary (which the existing revert/load UI understands)
+                        # plus a cheap single-file sidecar for a fast targeted restore of this player.
+                        $stamp = Get-Date -Format 'yyyy-MM-dd_HH_mm_ss'
+                        Save-WorldToLibrary "Auto-backup $stamp" "Snapshot before deleting $($pairs.Count) key(s) from player $guid" $true | Out-Null
+                        Copy-Item -LiteralPath $savPath -Destination "$savPath.bak-$stamp" -Force
+
+                        # Hand the pairs to the writer via a temp JSON file (avoids PowerShell's
+                        # single-element-array-collapse quirk on the query string; the writer also
+                        # normalizes a lone object -> list defensively).
+                        $tmpPairs = [System.IO.Path]::GetTempFileName()
+                        (@{ keys = $pairs } | ConvertTo-Json -Depth 6) | Set-Content -LiteralPath $tmpPairs -Encoding UTF8
+
+                        # pal_save_writer.py prints its result JSON (ok:true, or ok:false+error) to
+                        # stdout in every case, so discard stderr noise and judge by exit code.
+                        $out = & python "$ServerDir\pal_save_writer.py" $saveDir delete-keys $guid $tmpPairs 2>$null
+                        $outStr = ($out | Out-String).Trim()
+                        if ($LASTEXITCODE -ne 0) {
+                            if (-not $outStr) { $outStr = "pal_save_writer.py failed (exit $LASTEXITCODE)" }
+                            throw $outStr
+                        }
+
+                        # Drop the cached datamine reads so the tab reloads fresh at once (mtime-based
+                        # invalidation in Get-CachedReaderOutput would catch it on next fetch anyway).
+                        $script:readerCache.Remove("datamine-full:$guid") | Out-Null
+                        $script:readerCache.Remove("datamine:$guid") | Out-Null
+
+                        Send-Response $res 200 "application/json" $outStr
+                    } catch {
+                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
+                    } finally {
+                        if ($tmpPairs -and (Test-Path -LiteralPath $tmpPairs)) { Remove-Item -LiteralPath $tmpPairs -Force -ErrorAction SilentlyContinue }
+                    }
+                    break
+                }
+
                 ($path -eq '/api/destroyed-weapons' -and $method -eq 'GET') {
                     # Currently-destroyed SAM Site (fixed weapon) save keys -- world-scoped
                     # (Level.sav), same generic read path used by the Map tab's other collected-

@@ -654,6 +654,8 @@ input:checked+.tog-sl:before{transform:translateX(16px);background:#fff;}
     <div class="panel-header">
       <span>Data Mine</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="dm-player-filter" class="dm-edit-input" style="display:none;" onchange="dmSetPlayerFilter(this.value)" title="Pick a player to enable per-key deletion from that player's save (server must be stopped)."></select>
+        <button id="dm-delete-selected" class="btn btn-ghost" style="display:none;color:#f85149;" onclick="dmDeleteSelected()" title="Delete every checked key from the selected player's save (server must be stopped).">Delete selected (0)</button>
         <span id="dm-summary" style="color:var(--muted);font-size:12px;"></span>
         <button class="btn btn-ghost" onclick="fetchDataMine()">&#8635; Reload</button>
       </div>
@@ -5481,6 +5483,123 @@ var _dmLivePollTimer=null;
 // where nothing actually changed, and defer it if Anthony is mid-edit in an input.
 var _dmLastSnapshot=null;
 
+// Per-key delete feature. _dmPlayerFilter is null by default = "All players" read-only
+// overview (current behavior, NO delete buttons -- so a destructive action can never happen
+// from the default view). When set to a player's guid, every property table narrows to just
+// the keys THAT player has, shows only that player's column, and gives each row a Delete
+// button that wipes the key from that one player's save via /api/datamine-delete-key. The
+// server MUST be stopped (the endpoint hard-refuses with 409 otherwise, since a running server
+// rewrites player .sav files every autosave). DM_DELETABLE_PROPS mirrors ALLOWED_PROPERTIES in
+// pal_save_writer.py and the server route's allowlist -- DestroyedWeapon (world-scoped
+// Level.sav) is intentionally NOT deletable here.
+var _dmPlayerFilter=null;
+var DM_DELETABLE_PROPS={NormalBossDefeatFlag:1,RelicObtainForInstanceFlag:1,NoteObtainForInstanceFlag:1,
+  FastTravelPointUnlockFlag:1,TowerBossDefeatFlag:1,PaldeckUnlockFlag:1,PalCaptureBonusCount:1};
+// Multi-select set for bulk delete: keys are "property key". Survives renderDataMine()
+// rebuilds (checkboxes are restored from it) but is cleared whenever the selected player
+// changes -- a selection only means anything for one player's save.
+var _dmSelected={};
+function dmSelToken(prop,key){ return prop+' '+key; }
+function dmSelectedPairs(){
+  return Object.keys(_dmSelected).filter(function(k){return _dmSelected[k];}).map(function(k){
+    var i=k.indexOf(' '); return {property:k.slice(0,i),key:k.slice(i+1)};
+  });
+}
+
+function dmSetPlayerFilter(guid){ _dmPlayerFilter=guid||null; _dmSelected={}; renderDataMine(); }
+
+function dmToggleSelect(prop,key,checked){
+  var t=dmSelToken(prop,key);
+  if(checked) _dmSelected[t]=true; else delete _dmSelected[t];
+  dmUpdateDeleteSelectedBtn();
+}
+// Header "select all" for one property's table: flip every rendered row checkbox for that
+// property and sync the selection set. Property names are simple identifiers, safe in the
+// attribute selector.
+function dmSelectAllForProp(prop,checked){
+  var cbs=document.querySelectorAll('input.dm-sel-cb[data-dmprop="'+prop+'"]');
+  Array.prototype.forEach.call(cbs,function(cb){
+    cb.checked=checked; dmToggleSelect(prop,cb.getAttribute('data-dmkey'),checked);
+  });
+}
+function dmUpdateDeleteSelectedBtn(){
+  var btn=document.getElementById('dm-delete-selected');
+  if(!btn) return;
+  var n=dmSelectedPairs().length;
+  btn.style.display=(_dmPlayerFilter&&n>0)?'':'none';
+  btn.textContent='Delete selected ('+n+')';
+}
+
+// Delete cell for one row of the top "Unmapped Keys" table (which spans all properties/players).
+// Only meaningful in delete mode: shows a checkbox + Delete button when the filtered player
+// actually has this key AND the property is deletable; otherwise a muted dash (so the column
+// stays aligned). Reuses the SAME _dmSelected set as the property tables, so an unmapped key
+// checked here is included in the "Delete selected" bulk action too.
+function dmUnmappedDelCell(r,selP,pJs,kJs){
+  if(!_dmPlayerFilter) return '';
+  var canDel=DM_DELETABLE_PROPS[r.prop.name]&&selP&&dmPlayerHasKey(r.prop,selP,r.key);
+  if(!canDel) return '<td class="syn-check"><span style="color:var(--muted);" title="The selected player does not have this key, or it is not deletable">&#8212;</span></td>';
+  return '<td class="syn-check"><input type="checkbox" class="dm-sel-cb" data-dmprop="'+esc(r.prop.name)+'" data-dmkey="'+esc(r.key)+'"'+(_dmSelected[dmSelToken(r.prop.name,r.key)]?' checked':'')+' onchange="dmToggleSelect(\''+pJs+'\',\''+kJs+'\',this.checked)"> '
+    +'<button class="btn btn-ghost dm-save-btn" style="color:#f85149;" title="Delete this key from the selected player\'s save (server must be stopped)" onclick="dmDeleteKey(\''+pJs+'\',\''+kJs+'\')">Delete</button></td>';
+}
+
+// True if this player currently HAS this key (checkmark / nonzero count). Reused to decide
+// which rows survive the player filter and which get a Delete button -- mirrors the presence
+// logic in dmPlayerCellHtml so the button only appears where a checkmark/count does.
+function dmPlayerHasKey(prop,player,key){
+  var d=(player.properties||{})[prop.name];
+  if(!d) return false;
+  var entries=d.entries||(prop.kind==='name_array'?[]:{});
+  if(prop.kind==='name_array') return entries.indexOf(key)!==-1;
+  if(prop.kind==='int_map') return (entries[key]||0)>0;
+  return entries[key]===true;
+}
+
+async function dmDeleteKey(propName,key){
+  if(!_dmPlayerFilter){ toast('Pick a player first','error'); return; }
+  var player=(dmFullPlayers||[]).filter(function(p){return p.guid===_dmPlayerFilter;})[0];
+  var pname=player?player.name:_dmPlayerFilter;
+  if(!confirm('Delete the key "'+key+'" from '+pname+"'s save ("+propName+')?\n\n'
+    +'This permanently removes that entry. These are append-only "has this ever happened" flags, '
+    +'so the game will behave as if it NEVER happened (e.g. a boss un-defeated, a fast-travel '
+    +'point re-locked, a Paldeck entry re-locked).\n\n'
+    +'The SERVER MUST BE STOPPED first, or the next autosave will just rewrite it. This cannot be '
+    +'undone except by restoring the automatic backup taken just before.\n\nProceed?')) return;
+  try{
+    await api('/api/datamine-delete-keys','POST',{guid:_dmPlayerFilter,keys:[{property:propName,key:key}]});
+    toast('Deleted "'+key+'" from '+pname+' ('+propName+')','success');
+    delete _dmSelected[dmSelToken(propName,key)];
+    await fetchDataMine();
+  }catch(e){
+    toast('Delete failed: '+(e&&e.message||e),'error',12000);
+  }
+}
+
+// Bulk delete every checkbox-selected (property,key) for the filtered player in ONE request
+// (the server does a single backup + atomic write). A key that's already gone is reported by
+// the server as removed:0, not an error.
+async function dmDeleteSelected(){
+  if(!_dmPlayerFilter){ toast('Pick a player first','error'); return; }
+  var pairs=dmSelectedPairs();
+  if(!pairs.length){ toast('No keys selected','error'); return; }
+  var player=(dmFullPlayers||[]).filter(function(p){return p.guid===_dmPlayerFilter;})[0];
+  var pname=player?player.name:_dmPlayerFilter;
+  if(!confirm('Delete '+pairs.length+' selected key(s) from '+pname+"'s save?\n\n"
+    +'This permanently removes each entry. These are append-only "has this ever happened" flags, '
+    +'so the game will behave as if they NEVER happened.\n\n'
+    +'The SERVER MUST BE STOPPED first, or the next autosave will just rewrite them. This cannot '
+    +'be undone except by restoring the automatic backup taken just before.\n\nProceed?')) return;
+  try{
+    var r=await api('/api/datamine-delete-keys','POST',{guid:_dmPlayerFilter,keys:pairs});
+    _dmSelected={};
+    var total=(r&&r.removedTotal!=null)?r.removedTotal:pairs.length;
+    toast('Deleted '+total+' key(s) from '+pname,'success');
+    await fetchDataMine();
+  }catch(e){
+    toast('Bulk delete failed: '+(e&&e.message||e),'error',12000);
+  }
+}
+
 function toggleDmSection(id){
   var el=document.getElementById(id);
   if(el) el.classList.toggle('collapsed');
@@ -5624,6 +5743,9 @@ function dmKeyRowHtml(prop,key,players){
       +(m.fallback?' <span class="dm-kind-badge" title="Not yet in confirmed_locations.json -- shown from the existing scraped roster (effigies.json/journal_locations.json). Click Save to promote it.">roster</span>':'')+'</td>')
     +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\')">Save</button></td>'
     +'<td class="syn-check">'+dmVerifiedCellHtml(prop,key,m)+'</td>'
+    +(_dmPlayerFilter&&DM_DELETABLE_PROPS[prop.name]
+       ?'<td class="syn-check"><button class="btn btn-ghost dm-save-btn" style="color:#f85149;" title="Delete this key from the selected player\'s save (server must be stopped)" onclick="dmDeleteKey(\''+pJs+'\',\''+kJs+'\')">Delete</button></td>'
+       :'')
     +players.map(function(p){ return '<td class="syn-check">'+dmPlayerCellHtml(prop,p,key)+'</td>'; }).join('')
     +'</tr>';
 }
@@ -5705,6 +5827,7 @@ function dmTableHtml(prop,rows,players){
   return '<table class="syn-table"><thead><tr><th>Key</th><th>Key Value</th>'
     +(prop.noCoords?'':'<th>Coordinates</th>')
     +(prop.noName?'':'<th>Display Name</th>')+'<th></th><th>Verified</th>'
+    +(_dmPlayerFilter&&DM_DELETABLE_PROPS[prop.name]?'<th style="text-align:center;">Delete</th>':'')
     +players.map(function(p){return '<th style="text-align:center;">'+esc(p.name)+'</th>';}).join('')
     +'</tr></thead><tbody>'
     +rows.map(function(r){return dmRowHtml(prop,r,players);}).join('')
@@ -6061,6 +6184,15 @@ function renderDataMine(){
     return;
   }
 
+  // Populate the player-filter dropdown (drop a stale selection if that player vanished).
+  var filterSel=document.getElementById('dm-player-filter');
+  if(filterSel){
+    if(_dmPlayerFilter&&!dmFullPlayers.some(function(p){return p.guid===_dmPlayerFilter;})) _dmPlayerFilter=null;
+    filterSel.style.display='';
+    filterSel.innerHTML='<option value="">All players (read-only)</option>'
+      +dmFullPlayers.map(function(p){return '<option value="'+esc(p.guid)+'"'+(p.guid===_dmPlayerFilter?' selected':'')+'>Delete mode: '+esc(p.name)+'</option>';}).join('');
+  }
+
   var candidatesCache={};
   DATAMINE_PROPERTIES.forEach(function(prop){
     if(prop.iconCategories&&prop.iconCategories.length) candidatesCache[prop.name]=dmRosterCandidatesFor(prop.name);
@@ -6078,6 +6210,17 @@ function renderDataMine(){
     var rows=dmPropertyRows(prop);
     var iconCount=rows.length-keys.length;
     totalIconRows+=iconCount;
+    // When a player filter is active, narrow to just the keys THAT player has (dropping the
+    // keyless icon-roster rows, which have nothing to delete) and show only their column, so
+    // each row's Delete button is unambiguous about whose save it edits.
+    var effPlayers=dmFullPlayers;
+    if(_dmPlayerFilter){
+      var selP=dmFullPlayers.filter(function(p){return p.guid===_dmPlayerFilter;})[0];
+      if(selP){
+        effPlayers=[selP];
+        rows=rows.filter(function(r){return r.type==='key'&&dmPlayerHasKey(prop,selP,r.key);});
+      }
+    }
     var id='dm-sec-'+prop.name;
     return '<div class="dm-section" id="'+id+'">'
       +'<div class="dm-section-hdr" onclick="toggleDmSection(\''+id+'\')"><span class="dm-arrow">&#9660;</span>'+esc(prop.name)
@@ -6087,13 +6230,14 @@ function renderDataMine(){
         +(iconCount?', '+iconCount+' unmatched map pins':'')+')</span></div>'
       +'<div class="dm-section-body">'
       +'<div class="dm-section-sub">'+esc(prop.desc)+'</div>'
-      +'<div style="overflow:auto;">'+dmTableHtml(prop,rows,dmFullPlayers)+'</div>'
+      +'<div style="overflow:auto;">'+dmTableHtml(prop,rows,effPlayers)+'</div>'
       +'</div></div>';
   }).join('');
   sectionsEl.innerHTML=sectionsHtml;
 
+  var umSelP=_dmPlayerFilter?(dmFullPlayers.filter(function(p){return p.guid===_dmPlayerFilter;})[0]||null):null;
   unmappedArea.innerHTML=unmappedRows.length
-    ? '<table class="syn-table"><thead><tr><th>Property</th><th>Key</th><th>Key Value</th><th>Coordinates</th><th>Display Name</th><th></th></tr></thead><tbody>'
+    ? '<table class="syn-table"><thead><tr><th>Property</th><th>Key</th><th>Key Value</th><th>Coordinates</th><th>Display Name</th><th></th>'+(_dmPlayerFilter?'<th style="text-align:center;">Delete</th>':'')+'</tr></thead><tbody>'
       +unmappedRows.map(function(r){
         var m=dmMappingFor(r.prop.name,r.key);
         var rowId=dmRowId(r.prop.name,r.key,'um'), pJs=dmEscJs(r.prop.name), kJs=dmEscJs(r.key);
@@ -6118,13 +6262,15 @@ function renderDataMine(){
             :'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
             +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>')
           +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" placeholder="(unmapped)">'+mapSelect+'</td>'
-          +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\',\'um\')">Save</button></td></tr>';
+          +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\',\'um\')">Save</button></td>'
+          +dmUnmappedDelCell(r,umSelP,pJs,kJs)+'</tr>';
       }).join('')+'</tbody></table>'
     : '<div class="empty-state">Nothing unmapped</div>';
 
   sumEl.textContent=totalKeys+' keys across '+DATAMINE_PROPERTIES.length+' properties, '+unmappedRows.length+' unmapped, '
     +totalIconRows+' unmatched map pins, '+dmFullPlayers.length+' players';
 
+  dmUpdateDeleteSelectedBtn();
   dmRenderCustomIcons();
 }
 
