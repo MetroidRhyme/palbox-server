@@ -4252,14 +4252,6 @@ function dmUnmappedKeysFor(propName){
   return dmAllKeysFor(propName).filter(function(k){ return !dmMappingFor(propName,k).mapped; });
 }
 
-// Small badge shown on any map pin created via the "+ Add Icon" header button --
-// see the palbox-confirmed-locations skill's `custom` field. Purely informational
-// (a future scraped-roster re-import reconciles it automatically); not gated by
-// EFFIGY_CONFIRM_ENABLED since it's useful context on the public site too.
-function customPinBadge(entry){
-  return entry&&entry.custom ? '<br><span style="color:#a371f7;font-size:11px;font-weight:600;">&#9733; Custom (pending scrape match)</span>' : '';
-}
-
 // Body-only tooltip text (no name header -- effigies have none), shared by the
 // divIcon builder and the low-zoom dot marker so both render identical text.
 function effigyTipBody(id,pos,got,confirmed,status,panel){
@@ -4272,7 +4264,7 @@ function effigyTipBody(id,pos,got,confirmed,status,panel){
     : '<span style="color:#3fb950">&#10003; Found & confirmed</span>';
   var typeLbl=effigyTypeLabel(id);
   return tipLabel+tipCoordsHtml(cx,cy,panel)
-    +(typeLbl?'<br>Type: '+typeLbl:'')+customPinBadge(pos);
+    +(typeLbl?'<br>Type: '+typeLbl:'');
 }
 function buildEffigyMarker(id,pos,got,confirmed,status){
   var tip=effigyTipBody(id,pos,got,confirmed,status);
@@ -4319,7 +4311,7 @@ function journalTipBody(j,confirmed,jGot,jStatus,trackable,panel){
     : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
     : trackable ? '<b style="color:#f85149">Unconfirmed</b>'
     : '<span style="color:#8a8f98">Found status unknown</span>';
-  return jStatusLabel+tipCoordsHtml(j.gx,j.gy,panel)+customPinBadge(j);
+  return jStatusLabel+tipCoordsHtml(j.gx,j.gy,panel);
 }
 function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
   var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jStatus),interactive:true});
@@ -4367,7 +4359,7 @@ function bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails){
     }).join(', ');
     lockLine='<br><b style="color:#f85149;">Locked</b> <span style="font-size:11px;">- requires '+reqList+'</span>';
   }
-  return label+lockLine+customPinBadge(b);
+  return label+lockLine;
 }
 function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLocked,prereqDetails){
   var sp=(b.species||'').toUpperCase();
@@ -4476,7 +4468,7 @@ function fugitiveTipBody(h,confirmed,hGot,hStatus,panel){
     : hGot ? '<b style="color:#58a6ff">Defeated (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet defeated)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return hStatusLabel+tipCoordsHtml(cx,cy,panel)+customPinBadge(h);
+  return hStatusLabel+tipCoordsHtml(cx,cy,panel);
 }
 function buildFugitiveMarker(h,confirmed,hGot,hStatus){
   var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hStatus),interactive:true});
@@ -4520,7 +4512,7 @@ function eagleTipBody(es,confirmed,esGot,esStatus,panel){
     : esGot ? '<b style="color:#58a6ff">Unlocked (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet unlocked)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return esStatusLabel+tipCoordsHtml(cx,cy,panel)+customPinBadge(es);
+  return esStatusLabel+tipCoordsHtml(cx,cy,panel);
 }
 function buildEagleMarker(es,confirmed,esGot,esStatus){
   var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esStatus),interactive:true});
@@ -4563,7 +4555,7 @@ function samTipBody(s,confirmed,sGot,sStatus,panel){
     : sGot ? '<b style="color:#58a6ff">Destroyed (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet destroyed)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return sLabel+tipCoordsHtml(cx,cy,panel)+customPinBadge(s);
+  return sLabel+tipCoordsHtml(cx,cy,panel);
 }
 function buildSamMarker(s,confirmed,sGot,sStatus){
   var sm=L.marker(effigyRposToLatLng(s.x,s.y),{icon:samSiteIcon(sStatus),interactive:true});
@@ -4608,7 +4600,7 @@ function itemPickupTipBody(p,confirmed,pGot,pStatus,panel){
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet collected)</b>'
     : p.pending ? '<span style="color:#8a8f98">Pending -- record its key</span>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return lbl+tipCoordsHtml(cx,cy,panel)+customPinBadge(p);
+  return lbl+tipCoordsHtml(cx,cy,panel);
 }
 function buildItemPickupMarker(p,confirmed,pGot,pStatus){
   var lbl=itemPickupLabel(p);
@@ -4672,7 +4664,7 @@ function towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetail
     }).join(', ');
     lockLine='<br><b style="color:#f85149;">Locked</b> <span style="font-size:11px;">- requires '+reqList+'</span>';
   }
-  var tTip=bLabel+tBoss+lockLine+tipCoordsHtml(cx,cy,panel)+customPinBadge(t);
+  var tTip=bLabel+tBoss+lockLine+tipCoordsHtml(cx,cy,panel);
   return {lvl:tLvl,body:tTip};
 }
 function buildTowerMarker(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails){

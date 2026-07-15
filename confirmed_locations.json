@@ -829,7 +829,6 @@
         "boss":  "Zoe",
         "bossPal":  "Grizzbolt",
         "bossKey":  "BOSS_BATTLE_NAME_GRASSBOSS",
-        "bossVerified":  false,
         "name":  "Tower of the Rayne Syndicate",
         "key":  null,
         "gx":  111,
@@ -837,7 +836,8 @@
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  10
+        "lv":  10,
+        "bossVerified":  false
     },
     {
         "key":  null,
@@ -1844,7 +1844,7 @@
         "source":  "NormalBossDefeatFlag",
         "category":  "bounty",
         "origin":  "manual",
-        "verified":  true,
+        "verified":  false,
         "name":  "Foxparks Cryst",
         "key":  null,
         "gx":  -411,
@@ -2217,19 +2217,19 @@
         "origin":  "manual"
     },
     {
-        "lv":  null,
         "species":  "LazyDragon_Electric",
         "source":  "NormalBossDefeatFlag",
         "category":  "bounty",
         "origin":  "manual",
-        "verified":  true,
+        "verified":  false,
         "name":  "Bushi",
-        "key":  "81_1_GRASS_FBOSS_6",
+        "key":  null,
         "gx":  -203,
         "gy":  -346,
         "x":  null,
         "y":  null,
-        "z":  null
+        "z":  null,
+        "lv":  null
     },
     {
         "key":  null,
