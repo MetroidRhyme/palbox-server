@@ -6445,19 +6445,36 @@ async function startKeyRecording(ident){
   var catLabel=RECORD_CAT_LABEL[ident.category];
   var cat=catLabel&&dmIconCatByLabel(catLabel);
   if(!cat){ toast('This category cannot record a key.','error'); return; }
+  // The player whose save this recording watches -- captured ONCE, here, rather than read live
+  // per tick: the whole point is to close the dashboard and go play, so a poll that repopulates
+  // the dropdown (or Anthony idly switching it) must not silently retarget a live recording.
+  var recGuid=(document.getElementById('effigy-player')||{}).value||'';
+  if(!recGuid){ toast('Pick a player on the map before recording a key.','error'); return; }
   recordSetStatus('<span style="color:var(--muted);">Loading current save keys...</span>');
   var startId=++_keyRecordStartSeq;
-  try{ await ensureDatamineDataLoaded(); }
+  // dmFetchAndApply, NOT ensureDatamineDataLoaded: the latter no-ops when the dataset is already
+  // in memory, which on the Map tab means the snapshot could be up to 15s stale (see
+  // mapDataminePollTick). A stale baseline is exactly wrong here -- anything triggered in that
+  // window is either already baked into the snapshot (so the real key is never seen as new) or
+  // shows up as a phantom "new" key that gets committed to this pin. The snapshot has to be the
+  // save as of the moment Record was pressed, so pay for one real fetch.
+  try{ await dmFetchAndApply(); }
   catch(e){ recordSetStatus('<span style="color:#f85149;">Failed to load save keys: '+esc(String(e&&e.message||e))+'</span>'); return; }
   // Superseded by a Stop or a second Record click while we awaited the initial load. NOT
   // gated on the panel still showing this pin -- recording is meant to survive a panel close
   // (2026-07-14, see closeIconDetail), including one that happens before this load finishes.
   if(startId!==_keyRecordStartSeq) return;
+  // Scoped to recGuid's OWN keys, not dmUnmappedKeysFor's union across every player (2026-07-15):
+  // "the Six" share one world, so any boss/statue another player had already triggered was
+  // ALREADY in the union -- Anthony triggering it himself then added nothing new, `fresh` stayed
+  // empty, and recording ran silently to its 5-min timeout. That's the "record sometimes doesn't
+  // pick up the new key" report; confirmed against the live saves for both pins he named
+  // (Chillet, Fort Ruins Eagle Statue) -- all three players already held those keys.
   var snapshot={};
-  dmUnmappedKeysFor(cat.property).forEach(function(k){ snapshot[k.toUpperCase()]=true; });
+  dmUnmappedKeysForPlayer(cat.property,recGuid).forEach(function(k){ snapshot[k.toUpperCase()]=true; });
   // gx/gy normalized at capture so the recording's stored target compares cleanly against both
   // roster (number) and input-field (string) identities -- see _sameRecordTarget.
-  _keyRecord={property:cat.property,catLabel:catLabel,name:ident.name,gx:Number(ident.gx),gy:Number(ident.gy),
+  _keyRecord={property:cat.property,catLabel:catLabel,guid:recGuid,name:ident.name,gx:Number(ident.gx),gy:Number(ident.gy),
     snapshot:snapshot,started:Date.now(),timer:null};
   recordRenderActive(_keyRecord);
   _keyRecord.timer=setInterval(keyRecordTick,RECORD_POLL_MS);
@@ -6490,7 +6507,9 @@ async function keyRecordTick(){
   }
   try{ await dmFetchAndApply(); }catch(e){ return; } // transient fetch error -- retry next tick
   if(_keyRecord!==rec) return; // stopped/replaced while awaiting
-  var fresh=dmUnmappedKeysFor(rec.property).filter(function(k){ return !rec.snapshot[k.toUpperCase()]; });
+  // Same per-player scope the snapshot was taken with (rec.guid) -- see startKeyRecording. A
+  // union diff here against a per-player snapshot would report every OTHER player's keys as new.
+  var fresh=dmUnmappedKeysForPlayer(rec.property,rec.guid).filter(function(k){ return !rec.snapshot[k.toUpperCase()]; });
   if(!fresh.length) return;
   if(fresh.length===1){ recordCommitKey(rec,fresh[0]); return; }
   // Ambiguous -- more than one new unmapped key of this property appeared (e.g. looting
