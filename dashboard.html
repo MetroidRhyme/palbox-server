@@ -6480,7 +6480,10 @@ async function recordCommitKey(rec,key){
     // recovery was hunting it down by hand in the Data Mine tab.
     if(_keyRecord===rec) _keyRecord=null;
     toast('Recorded "'+(rec.name||rec.catLabel)+'" -> '+key+'.','success');
-    if(panelIsThisPin) closeIconDetail();
+    // Re-checked rather than reusing panelIsThisPin from before the await: the open panel may
+    // have changed while the POST was in flight, and closing then would yank away a panel
+    // Anthony has just deliberately opened.
+    if(_sameRecordTarget(rec.catLabel,rec.name,rec.gx,rec.gy,_iconDetailIdent)) closeIconDetail();
     // Reload this category's roster so the pin picks up its new key immediately (an effigy
     // flips from its synthetic __PENDING__ id to the real GUID; without this it lingers as a
     // pending pin until the next 15s poll). refetch then re-renders the map itself.
