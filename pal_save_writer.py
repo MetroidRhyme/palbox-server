@@ -204,6 +204,25 @@ def _relic_bytype_flags_map(properties, relic_type):
     return None
 
 
+def _relic_bytype_all(properties):
+    """Yield (relic_type, flags_dict) for every EPalRelicType element present inside
+    RelicObtainForInstanceFlagByType in this save (empty if the array, or the save,
+    predates it). Used to locate a non-CapturePower relic key for deletion -- unlike
+    _relic_bytype_flags_map, the caller doesn't know the type up front."""
+    arr = _find_array_property(properties, _RELIC_BYTYPE_PROPERTY)
+    if arr is None:
+        return
+    values = ((arr.get("value") or {}).get("values")) or []
+    for elem in values:
+        if not isinstance(elem, dict):
+            continue
+        enum_val = (((elem.get("Type") or {}).get("value")) or {}).get("value")
+        relic_type = enum_val.split("::")[-1] if enum_val else None
+        flags = elem.get("Flags")
+        if relic_type and isinstance(flags, dict):
+            yield relic_type, flags
+
+
 def delete_keys(sav_path, pairs):
     """Delete every (property, key) in `pairs` from one player's save in a SINGLE re-serialize
     and atomic write -- so a bulk delete does exactly ONE round-trip/compress/replace, not N.
@@ -291,7 +310,25 @@ def delete_keys(sav_path, pairs):
                 flags["value"] = fb_kept
                 if fb_removed:
                     note = "also removed from " + _RELIC_BYTYPE_PROPERTY
-                    to_verify_bytype.append(key_lc)
+                    to_verify_bytype.append((_RELIC_FLAT_TYPE, key_lc))
+        elif not removed and prop == _RELIC_FLAT_PROPERTY:
+            # Non-CapturePower relics (GliderSpeed/MoveSpeed/JumpPower/SphereHoming/
+            # HungerReduction/...) never appear in the flat map at all -- see
+            # extract_all_datamine_properties' read-side union fix (2026-07-14). Fall back to
+            # scanning every relic type's own Flags map in ByType directly for this key.
+            for relic_type, flags in _relic_bytype_all(gvas.properties):
+                fb_entries = flags.get("value")
+                if not isinstance(fb_entries, list):
+                    continue
+                fb_kept = [e for e in fb_entries if str(e.get("key")).lower() != key_lc]
+                fb_removed = len(fb_entries) - len(fb_kept)
+                if fb_removed:
+                    flags["value"] = fb_kept
+                    removed = fb_removed
+                    total_removed += fb_removed
+                    note = "removed from " + _RELIC_BYTYPE_PROPERTY + " (" + relic_type + ")"
+                    to_verify_bytype.append((relic_type, key_lc))
+                    break
         results.append({"property": prop, "key": key, "removed": removed, "note": note})
         if removed:
             to_verify.append((prop, key_lc))
@@ -325,12 +362,12 @@ def delete_keys(sav_path, pairs):
                 _fail("post-write verify failed: %s vanished (no changes written)" % prop)
             if any(str(e.get("key")).lower() == key_lc for e in m2.get("value", [])):
                 _fail("post-write verify failed: a key still present in %s (no changes written)" % prop)
-        for key_lc in to_verify_bytype:
-            flags2 = _relic_bytype_flags_map(gvas2.properties, _RELIC_FLAT_TYPE)
+        for relic_type, key_lc in to_verify_bytype:
+            flags2 = _relic_bytype_flags_map(gvas2.properties, relic_type)
             if flags2 is not None and any(str(e.get("key")).lower() == key_lc
                                            for e in flags2.get("value", [])):
-                _fail("post-write verify failed: a key still present in %s (no changes written)"
-                      % _RELIC_BYTYPE_PROPERTY)
+                _fail("post-write verify failed: a key still present in %s (%s) (no changes written)"
+                      % (_RELIC_BYTYPE_PROPERTY, relic_type))
     except SystemExit:
         raise
     except Exception as e:
