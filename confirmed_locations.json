@@ -216,26 +216,29 @@
         "x":  29877
     },
     {
-        "key":  null,
-        "name":  "Plateau of Beginnings",
+        "name":  "Hill of Beginnings",
+        "key":  "6E03F8464BAD9E458B843AA30BE1CC8F",
         "gx":  240,
-        "gy":  -513,
-        "verified":  false,
+        "gy":  -512,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
         "category":  "eagle",
-        "origin":  "manual",
-        "y":  268160,
-        "x":  -358896
+        "origin":  "manual"
     },
     {
-        "key":  null,
+        "key":  "CD9FE0D4490874187ED9919D0E4D2A09",
         "name":  "Ruined Fortress City",
-        "gx":  -561,
-        "gy":  -247,
-        "verified":  false,
-        "category":  "eagle",
-        "origin":  "manual",
+        "gx":  -562,
+        "gy":  -246,
         "y":  -99958,
-        "x":  -236802
+        "x":  -236802,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -696,16 +699,17 @@
         "x":  -219360
     },
     {
-        "key":  null,
+        "key":  "BOSS_FEMALE_SOLDIER03",
         "name":  "Aloha",
         "gx":  -592,
         "gy":  -235,
-        "verified":  false,
-        "category":  "fugitive",
-        "origin":  "manual",
         "y":  -113728,
         "x":  -231753,
-        "lv":  39
+        "lv":  39,
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "fugitive",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -819,20 +823,21 @@
         "lv":  58
     },
     {
-        "key":  null,
-        "name":  "Tower of the Rayne Syndicate",
-        "gx":  111,
-        "gy":  -431,
         "verified":  false,
         "category":  "tower",
         "origin":  "manual",
-        "y":  208949,
-        "x":  -321717,
-        "lv":  10,
         "boss":  "Zoe",
         "bossPal":  "Grizzbolt",
         "bossKey":  "BOSS_BATTLE_NAME_GRASSBOSS",
-        "bossVerified":  true
+        "bossVerified":  false,
+        "name":  "Tower of the Rayne Syndicate",
+        "key":  null,
+        "gx":  111,
+        "gy":  -431,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "lv":  10
     },
     {
         "key":  null,
@@ -857,15 +862,16 @@
         "verified":  false
     },
     {
-        "key":  null,
+        "key":  "DAY2",
         "name":  "Castaway\u0027s Journal - Day 2",
         "gx":  239,
         "gy":  -506,
-        "verified":  false,
-        "category":  "journal",
-        "origin":  "manual",
         "x":  -355683,
-        "y":  268160
+        "y":  268160,
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -890,15 +896,16 @@
         "y":  187376
     },
     {
-        "key":  null,
+        "key":  "DDBBFFAF43D9219AE68DF98744DF0831",
         "name":  "Grassy Behemoth Hills",
         "gx":  172,
         "gy":  -475,
-        "verified":  false,
-        "category":  "eagle",
-        "origin":  "manual",
         "y":  236948,
-        "x":  -341913
+        "x":  -341913,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  "DF9FB9CB41B43052A9C74FA79A826A50",
@@ -1187,7 +1194,7 @@
         "verified":  false
     },
     {
-        "key":  null,
+        "key":  "DAY13",
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -1197,7 +1204,7 @@
         "y":  -100876,
         "name":  "Castaway\u0027s Journal - Day 13",
         "source":  "NoteObtainForInstanceFlag",
-        "verified":  false,
+        "verified":  true,
         "category":  "journal",
         "origin":  "manual"
     },
@@ -1337,19 +1344,19 @@
         "verified":  false
     },
     {
-        "category":  "journal",
-        "z":  null,
         "species":  null,
         "lv":  null,
-        "source":  null,
-        "origin":  "scraped",
-        "gy":  -554,
-        "key":  null,
-        "gx":  168,
-        "x":  -378174,
-        "y":  235112,
         "name":  "Zoe Rayne\u0027s Diary - 2",
-        "verified":  false
+        "key":  "GRASSBOSS2",
+        "gx":  168,
+        "gy":  -554,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -3162,7 +3169,7 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
+        "key":  "27508F284B175C5C2B9BFC85AD773E4F",
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -3172,7 +3179,7 @@
         "y":  -249133,
         "name":  "Phantom Isle",
         "source":  "FastTravelPointUnlockFlag",
-        "verified":  false,
+        "verified":  true,
         "category":  "eagle",
         "origin":  "manual"
     },
@@ -4049,6 +4056,102 @@
         "source":  "FastTravelPointUnlockFlag",
         "verified":  true,
         "category":  "eagle",
+        "origin":  "manual"
+    },
+    {
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "source":  "ItemPickupObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "itempickup",
+        "origin":  "manual",
+        "name":  "Ring of Water Resistance Schematic",
+        "key":  "91949CFB4F1FA9195B478FBAEB04BB67",
+        "gx":  -495,
+        "gy":  -45,
+        "x":  null,
+        "y":  null,
+        "z":  null
+    },
+    {
+        "key":  null,
+        "category":  "bounty",
+        "name":  "Knocklem",
+        "gx":  -585,
+        "gy":  -250,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  "Knocklem",
+        "lv":  null,
+        "source":  null,
+        "origin":  "manual",
+        "verified":  false,
+        "custom":  true
+    },
+    {
+        "key":  "8A90507C4072E64608261F823D164154",
+        "name":  null,
+        "gx":  -611,
+        "gy":  -225,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
+    },
+    {
+        "key":  "79B2BAD94DD28D37ED8278B48D7EE38D",
+        "name":  null,
+        "gx":  -724,
+        "gy":  -218,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "source":  "ItemPickupObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "itempickup",
+        "origin":  "manual"
+    },
+    {
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "name":  "Feathered Hair Band Schematic 3",
+        "key":  "FE3CBE6743714E658AD0548B78FA7E78",
+        "gx":  169,
+        "gy":  -586,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "source":  "ItemPickupObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "itempickup",
+        "origin":  "manual"
+    },
+    {
+        "key":  "F5F7532A41E4FA4A5AEA8DA23FD8C927",
+        "name":  null,
+        "gx":  169,
+        "gy":  -596,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "effigy",
         "origin":  "manual"
     }
 ]

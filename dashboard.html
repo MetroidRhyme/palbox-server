@@ -4242,7 +4242,7 @@ function ensureDatamineDataLoaded(){
   return _dmMapLoadPromise;
 }
 function dmUnmappedKeysFor(propName){
-  return dmAllKeysFor(propName).filter(function(k){ return !dmMappingFor(propName,k).name; });
+  return dmAllKeysFor(propName).filter(function(k){ return !dmMappingFor(propName,k).mapped; });
 }
 
 // Small badge shown on any map pin created via the "+ Add Icon" header button --
@@ -5841,7 +5841,7 @@ function dmPropByName(name){
 // upserts every roster entry unconditionally), so fallback can only ever be true for the
 // non-spatial branch below.
 function dmMappingFor(propName,key){
-  if(!dmMappings) return {name:null,gx:null,gy:null,fallback:false,verified:null};
+  if(!dmMappings) return {name:null,gx:null,gy:null,fallback:false,verified:null,mapped:false};
   var prop=dmPropByName(propName);
   // Case-insensitive on purpose: raw save keys always come back UPPERCASE (every bool_map/
   // int_map parser in pal_save_reader.py upper()s them), but some scraped roster files (e.g.
@@ -5853,13 +5853,19 @@ function dmMappingFor(propName,key){
   var keyU=key?key.toUpperCase():key;
   if(prop&&prop.spatial){
     var m=(dmMappings.confirmedLocations||[]).filter(function(c){return c.key&&c.key.toUpperCase()===keyU;})[0];
-    return {name:m?m.name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false,verified:m?m.verified!==false:null};
+    // "mapped" (2026-07-14) is deliberately keyed off a row EXISTING, not off it having a
+    // name -- itempickup (Schematic) rows are name-optional by design (key recorded by
+    // playing, display name typed in later or never, see the palbox-confirmed-locations
+    // skill's Schematic section). Gating on m.name used to leave a fully-recorded, correctly-
+    // pinned Schematic sitting in the Unmapped Keys table (and re-offered by the Add Icon
+    // "unmapped key" dropdown) forever just because no one had typed a name in yet.
+    return {name:m?m.name:null,gx:m?m.gx:null,gy:m?m.gy:null,fallback:false,verified:m?m.verified!==false:null,mapped:!!m};
   }
   var m2=(dmMappings.labels||[]).filter(function(l){return l.property===propName&&l.key&&l.key.toUpperCase()===keyU;})[0];
-  if(m2&&m2.name) return {name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false,verified:m2.verified!==false};
+  if(m2&&m2.name) return {name:m2.name,gx:m2.gx,gy:m2.gy,fallback:false,verified:m2.verified!==false,mapped:true};
   var fb2=dmRosterFallback(propName,key);
-  if(fb2) return {name:fb2.name,gx:(m2&&m2.gx!=null?m2.gx:null),gy:(m2&&m2.gy!=null?m2.gy:null),fallback:true,verified:false};
-  return {name:null,gx:m2?m2.gx:null,gy:m2?m2.gy:null,fallback:false,verified:m2?m2.verified!==false:null};
+  if(fb2) return {name:fb2.name,gx:(m2&&m2.gx!=null?m2.gx:null),gy:(m2&&m2.gy!=null?m2.gy:null),fallback:true,verified:false,mapped:false};
+  return {name:null,gx:m2?m2.gx:null,gy:m2?m2.gy:null,fallback:false,verified:m2?m2.verified!==false:null,mapped:false};
 }
 
 // PAL_LIST (species roster already used by the Pals/Paldeck tab) doubles as a name lookup
@@ -6307,6 +6313,16 @@ var _keyRecord=null;          // {property,catLabel,name,gx,gy,snapshot,timer,st
 function isRecordableKeyless(ident){
   return !!(ident&&!ident.key&&RECORD_CAT_LABEL.hasOwnProperty(ident.category));
 }
+// True when an in-progress recording belongs to the SAME pin ident describes -- used both to
+// decide whether opening a pin's panel should cancel a stale recording (a DIFFERENT pin) or
+// just re-render the existing one's live state (2026-07-14: recording used to always die when
+// its panel closed, silently, even though the whole point is to close the dashboard and go
+// play the game -- see the "survives panel close" rewrite below).
+function _keyRecordMatchesIdent(ident){
+  if(!_keyRecord||!ident) return false;
+  return RECORD_CAT_LABEL[ident.category]===_keyRecord.catLabel
+    && ident.name===_keyRecord.name && ident.gx===_keyRecord.gx && ident.gy===_keyRecord.gy;
+}
 function recordStatusEl(){ return document.getElementById('icon-detail-record-status'); }
 function recordSetStatus(html){ var el=recordStatusEl(); if(el) el.innerHTML=html; }
 function recordRenderIdle(){
@@ -6321,6 +6337,25 @@ function recordRenderActive(){
   var stop=document.getElementById('icon-detail-record-stop');
   if(stop) stop.onclick=function(){ stopKeyRecording(); };
 }
+// Redraws the "N new keys appeared, pick one" state -- factored out of keyRecordTick so
+// reopening the panel on a pin whose recording is paused in this state (rec.pendingChoices,
+// 2026-07-14) can redraw it too, instead of only ever rendering it once at the moment the
+// ambiguity was first detected (which is easy to miss if the panel was closed at that exact
+// moment -- see the toast keyRecordTick also fires now).
+function recordRenderPickList(rec){
+  var fresh=rec.pendingChoices||[];
+  recordSetStatus('<span style="color:#e3b341;">'+fresh.length+' new keys appeared -- pick the one for this pin:</span><br>'
+    +fresh.map(function(k){ return '<button type="button" class="btn btn-ghost record-pick" data-key="'+esc(k)+'" style="font-size:12px;margin:2px 4px 0 0;">'+esc(k)+'</button>'; }).join('')
+    +'<br><button type="button" class="btn btn-ghost" id="icon-detail-record-cancel" style="font-size:12px;margin-top:4px;">Cancel</button>');
+  var el=recordStatusEl();
+  if(el){
+    el.querySelectorAll('.record-pick').forEach(function(b){ b.onclick=function(){ recordCommitKey(rec,b.getAttribute('data-key')); }; });
+    var cx=el.querySelector('#icon-detail-record-cancel'); if(cx) cx.onclick=function(){ stopKeyRecording(); };
+  }
+}
+var _keyRecordStartSeq=0; // bumped by stopKeyRecording so a start still awaiting its initial
+                           // load can tell it was superseded/cancelled, without relying on the
+                           // panel still being open (closing it no longer cancels -- see below).
 async function startKeyRecording(ident){
   if(!EFFIGY_CONFIRM_ENABLED) return;
   if(_keyRecord){ toast('Already recording a key -- stop that first.','error'); return; }
@@ -6328,10 +6363,13 @@ async function startKeyRecording(ident){
   var cat=catLabel&&dmIconCatByLabel(catLabel);
   if(!cat){ toast('This category cannot record a key.','error'); return; }
   recordSetStatus('<span style="color:var(--muted);">Loading current save keys...</span>');
+  var startId=++_keyRecordStartSeq;
   try{ await ensureDatamineDataLoaded(); }
   catch(e){ recordSetStatus('<span style="color:#f85149;">Failed to load save keys: '+esc(String(e&&e.message||e))+'</span>'); return; }
-  // Re-check: a Stop/close could have fired while we awaited the initial load.
-  if(!_iconDetailIdent||_iconDetailIdent.category!==ident.category||_iconDetailIdent.name!==ident.name){ recordRenderIdle(); return; }
+  // Superseded by a Stop or a second Record click while we awaited the initial load. NOT
+  // gated on the panel still showing this pin -- recording is meant to survive a panel close
+  // (2026-07-14, see closeIconDetail), including one that happens before this load finishes.
+  if(startId!==_keyRecordStartSeq) return;
   var snapshot={};
   dmUnmappedKeysFor(cat.property).forEach(function(k){ snapshot[k.toUpperCase()]=true; });
   _keyRecord={property:cat.property,catLabel:catLabel,name:ident.name,gx:ident.gx,gy:ident.gy,
@@ -6340,6 +6378,7 @@ async function startKeyRecording(ident){
   _keyRecord.timer=setInterval(keyRecordTick,RECORD_POLL_MS);
 }
 function stopKeyRecording(silent){
+  _keyRecordStartSeq++; // also invalidates a start still awaiting its initial load
   if(!_keyRecord) return;
   if(_keyRecord.timer) clearInterval(_keyRecord.timer);
   _keyRecord=null;
@@ -6350,6 +6389,10 @@ async function keyRecordTick(){
   if(!rec) return;
   if(Date.now()-rec.started>RECORD_TIMEOUT_MS){
     stopKeyRecording(true);
+    // Toast unconditionally (2026-07-14) -- the panel may well be closed right now (you're
+    // off playing the game, which is the whole point), and recordSetStatus below is a no-op
+    // when its element doesn't exist, so without this a timeout was previously 100% silent.
+    toast('No new key seen for "'+(rec.name||rec.catLabel)+'" after 5 min -- recording stopped.','error');
     recordSetStatus('<span style="color:#f85149;">No new key seen after 5 min.</span> '
       +'<button type="button" class="btn btn-ghost" id="icon-detail-record-btn" style="font-size:12px;margin-left:4px;">Record again</button>');
     var rb=document.getElementById('icon-detail-record-btn');
@@ -6361,26 +6404,29 @@ async function keyRecordTick(){
   var fresh=dmUnmappedKeysFor(rec.property).filter(function(k){ return !rec.snapshot[k.toUpperCase()]; });
   if(!fresh.length) return;
   if(fresh.length===1){ recordCommitKey(rec,fresh[0]); return; }
-  // Ambiguous -- more than one new unmapped key of this property appeared. Pause polling and
-  // let Anthony pick which one belongs to this pin.
+  // Ambiguous -- more than one new unmapped key of this property appeared (e.g. looting
+  // several Schematic chests in one sweep). Pause polling and let Anthony pick which one
+  // belongs to this pin. Stashed on rec.pendingChoices + toasted (2026-07-14) so reopening
+  // the panel later redraws the same picker (recordRenderPickList) instead of this being a
+  // silent, permanent dead end when it happens while the panel isn't open.
   clearInterval(rec.timer); rec.timer=null;
-  var opts=fresh.map(function(k){ return '<button type="button" class="btn btn-ghost record-pick" data-key="'+esc(k)+'" style="font-size:12px;margin:2px 4px 0 0;">'+esc(k)+'</button>'; }).join('');
-  recordSetStatus('<span style="color:#e3b341;">'+fresh.length+' new keys appeared -- pick the one for this pin:</span><br>'+opts
-    +'<br><button type="button" class="btn btn-ghost" id="icon-detail-record-cancel" style="font-size:12px;margin-top:4px;">Cancel</button>');
-  var el=recordStatusEl();
-  if(el){
-    el.querySelectorAll('.record-pick').forEach(function(b){ b.onclick=function(){ recordCommitKey(rec,b.getAttribute('data-key')); }; });
-    var cx=el.querySelector('#icon-detail-record-cancel'); if(cx) cx.onclick=function(){ stopKeyRecording(); };
-  }
+  rec.pendingChoices=fresh;
+  toast(fresh.length+' new "'+rec.catLabel+'" keys appeared -- open the pin to pick which one.','error');
+  recordRenderPickList(rec);
 }
 async function recordCommitKey(rec,key){
   if(rec.timer){ clearInterval(rec.timer); rec.timer=null; }
   _keyRecord=null;
+  // Only auto-close the panel if it's still showing THIS pin -- if Anthony has since closed
+  // it (fine, recording survives that) or opened a totally different pin's panel, closing
+  // here would yank that unrelated panel out from under him.
+  var panelIsThisPin=_iconDetailIdent && RECORD_CAT_LABEL[_iconDetailIdent.category]===rec.catLabel
+    && _iconDetailIdent.name===rec.name && _iconDetailIdent.gx===rec.gx && _iconDetailIdent.gy===rec.gy;
   recordSetStatus('<span style="color:var(--muted);">Mapping '+esc(key)+'...</span>');
   try{
     await applyIconKeyMapping(rec.catLabel,rec.name,rec.gx,rec.gy,key);
     toast('Recorded "'+(rec.name||'effigy')+'" -> '+key+'.','success');
-    closeIconDetail();
+    if(panelIsThisPin) closeIconDetail();
     // Reload this category's roster so the pin picks up its new key immediately (an effigy
     // flips from its synthetic __PENDING__ id to the real GUID; without this it lingers as a
     // pending pin until the next 15s poll). refetch then re-renders the map itself.
@@ -6415,7 +6461,7 @@ function dmComputeUnmappedRows(){
   DATAMINE_PROPERTIES.forEach(function(prop){
     if(prop.noName) return;
     dmAllKeysFor(prop.name).forEach(function(k){
-      if(!dmMappingFor(prop.name,k).name) rows.push({prop:prop,key:k});
+      if(!dmMappingFor(prop.name,k).mapped) rows.push({prop:prop,key:k});
     });
   });
   return rows;
@@ -6733,7 +6779,14 @@ function wireIconDetailFooter(el,ident,marker){
   if(saveBtn) saveBtn.onclick=function(){ saveIconDetailEdits(ident,marker); };
   var delBtn=el.querySelector('#icon-detail-delete-btn');
   if(delBtn) delBtn.onclick=function(){ deleteMapIcon(ident,marker); };
-  if(isRecordableKeyless(ident)) recordRenderIdle();
+  if(isRecordableKeyless(ident)){
+    // Reflect a recording already in progress for THIS pin (2026-07-14, e.g. reopening after
+    // closing to go play) instead of always resetting to the idle "Record next key" button --
+    // that reset used to make it look like nothing was happening even while the poll was
+    // (or, before this fix, wasn't) still running underneath.
+    if(_keyRecordMatchesIdent(ident)){ if(_keyRecord.pendingChoices) recordRenderPickList(_keyRecord); else recordRenderActive(); }
+    else recordRenderIdle();
+  }
 }
 // categoryLabel/title are display-only; ident carries the pin's CURRENT identity (see
 // Find-ConfirmedRow) so Save/Delete resolve the right row even after a rename/re-key.
@@ -6744,9 +6797,12 @@ function wireIconDetailFooter(el,ident,marker){
 // e.popup.getElement(). onClose runs once, right before the panel actually closes (e.g. to
 // clear a hover-selected prereq-line state).
 function openIconDetail(categoryLabel,title,bodyHtml,ident,marker,wireExtra,onClose){
-  // Opening any pin invalidates a record still in progress on a previous one -- its status
-  // div is about to be destroyed by the innerHTML rebuild below, so cancel it silently first.
-  stopKeyRecording(true);
+  // Opening a DIFFERENT pin than the one currently recording cancels that recording -- its
+  // status div is about to be destroyed by the innerHTML rebuild below. Reopening the SAME
+  // pin that's already recording must NOT cancel it (2026-07-14) -- recording survives a
+  // panel close now (see closeIconDetail below), so this just needs to redraw its current
+  // state instead, which wireIconDetailFooter does.
+  if(_keyRecord && !_keyRecordMatchesIdent(ident)) stopKeyRecording(true);
   _iconDetailIdent=ident;
   _iconDetailMarker=marker||null;
   _iconDetailOnClose=onClose||null;
@@ -6759,7 +6815,11 @@ function openIconDetail(categoryLabel,title,bodyHtml,ident,marker,wireExtra,onCl
   document.getElementById('icon-detail-overlay').style.display='block';
 }
 window.closeIconDetail=function(){
-  stopKeyRecording(true); // a record in progress is tied to this panel -- cancel on close
+  // A recording in progress deliberately keeps running after the panel closes (2026-07-14) --
+  // the whole point of "Record next key" is to close the dashboard and go trigger the pickup
+  // in-game, so cancelling here made that one thing impossible. A commit, an ambiguous
+  // multi-key pause, and a 5-min timeout all toast regardless of panel state now (see
+  // keyRecordTick/recordCommitKey), so nothing silently vanishes just because this closed.
   document.getElementById('icon-detail-overlay').style.display='none';
   if(typeof _iconDetailOnClose==='function') _iconDetailOnClose();
   _iconDetailIdent=null; _iconDetailMarker=null; _iconDetailOnClose=null;

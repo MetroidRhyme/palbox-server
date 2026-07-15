@@ -3630,5 +3630,37 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FIREKIRIN_DARK",
+        "name":  "Pyrin Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FireKirin_Dark",
+        "name":  "Pyrin Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "GHOSTANGLERFISH",
+        "name":  "Ghangler",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "GhostAnglerfish",
+        "name":  "Ghangler",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]
