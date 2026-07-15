@@ -4614,18 +4614,25 @@ function buildItemPickupMarker(p,confirmed,pGot,pStatus){
   if(EFFIGY_CONFIRM_ENABLED){
     var pending=!!p.pending;
     var pChkId='itempickup-confirm-'+String(p.key||('c'+p.gx+'x'+p.gy)).replace(/[^a-zA-Z0-9]/g,'_');
+    var pMapBtnId='itempickup-mapkey-'+String(p.key||('c'+p.gx+'x'+p.gy)).replace(/[^a-zA-Z0-9]/g,'_');
     pm.on('click',function(){
       var g=worldToGrid(p.x,p.y);
       // Keyless identity is gx/gy (like a pending effigy). Carry the EXACT stored gx/gy the
       // backend emitted -- NOT the round-tripped worldToGrid -- so edit/record resolve the row.
       var gx=(p.gx!=null?p.gx:g.cx), gy=(p.gy!=null?p.gy:g.cy);
       var ident={category:'itempickup',key:p.key||null,species:null,name:p.name||null,lv:null,gx:gx,gy:gy,label:lbl};
-      // Pending (keyless): only the footer's "Record next key" applies -- confirm/cave resolve
-      // by an identity that doesn't exist yet, so hide them (same as a pending effigy).
+      // Pending (keyless): confirm/cave resolve by an identity that doesn't exist yet, so hide
+      // them (same as a pending effigy). "Map to key..." DOES apply though (2026-07-15) -- if
+      // the Schematic's key is already sitting in the Unmapped Keys list (you looted it before
+      // placing the pin), picking it here is instant, where "Record next key" would demand a
+      // second trip out to a chest that has already been opened. Unlike effigy, itempickup has
+      // a real unmapped-key list to offer, since ItemPickupObtainForInstanceFlag isn't noName.
       var bodyHtml='<b style="color:#111;">'+esc(lbl)+'</b><br>'+pTip+saveKeyRow(p.key)
-        +(pending?'':detailConfirmHtml(pChkId,confirmed)+caveAddButtonHtml());
+        +(pending?mapKeyButtonHtml(pMapBtnId):detailConfirmHtml(pChkId,confirmed)+caveAddButtonHtml());
       openIconDetail('Schematic',lbl,bodyHtml,ident,pm,function(el){
-        if(pending) return;
+        // Pass the stored gx/gy so the server's itempickup coord-fallback re-keys THIS row in
+        // place instead of creating a duplicate pin (PalWorldServerManager.ps1, $coordCat).
+        if(pending){ wireMapKeyButton(el,pMapBtnId,'Schematic',p.name||null,gx,gy,pm); return; }
         var box=el.querySelector('#'+pChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('itempickup',p.key||null,box.checked,p.name||null); };
         wireCaveAdd(el,{category:'itempickup',key:p.key||null,name:p.name||null,label:lbl});
@@ -6310,30 +6317,51 @@ var RECORD_POLL_MS=7000;      // how often to re-read the save while recording
 var RECORD_TIMEOUT_MS=300000; // give up after 5 min with no new key
 var _keyRecord=null;          // {property,catLabel,name,gx,gy,snapshot,timer,started} while active
 
+// Categories whose KEYLESS pins are identified purely by gx/gy -- effigy has no name at all,
+// and a Schematic is created coords-first and named later. Mirrors map_data_lib.ps1's
+// $script:CoordIdentityCategories; every other category resolves a keyless pin by name/species.
+var COORD_IDENTITY_CATEGORIES=['effigy','itempickup'];
+
 function isRecordableKeyless(ident){
   return !!(ident&&!ident.key&&RECORD_CAT_LABEL.hasOwnProperty(ident.category));
 }
-// True when an in-progress recording belongs to the SAME pin ident describes -- used both to
-// decide whether opening a pin's panel should cancel a stale recording (a DIFFERENT pin) or
-// just re-render the existing one's live state (2026-07-14: recording used to always die when
-// its panel closed, silently, even though the whole point is to close the dashboard and go
-// play the game -- see the "survives panel close" rewrite below).
+// Does this (catLabel,name,gx,gy) target describe the same pin as ident? Normalized, because
+// the two sides genuinely differ in type: gx/gy arrive as strings from the Add Icon and
+// detail-footer inputs but as numbers from the rosters, and a keyless effigy/itempickup has no
+// name at all -- which reaches here as '' from one path and null/undefined from another. The
+// old strict === comparison silently reported "different pin" for what is really the same one.
+function _sameRecordTarget(catLabel,name,gx,gy,ident){
+  if(!ident) return false;
+  if(RECORD_CAT_LABEL[ident.category]!==catLabel) return false;
+  var a=(name==null?'':String(name)), b=(ident.name==null?'':String(ident.name));
+  return a===b && Number(gx)===Number(ident.gx) && Number(gy)===Number(ident.gy);
+}
+// True when the in-progress recording belongs to the SAME pin ident describes -- used to decide
+// whether opening a pin's panel re-renders that recording's live state (2026-07-14: recording
+// used to always die when its panel closed, silently, even though the whole point is to close
+// the dashboard and go play the game -- see the "survives panel close" rewrite below).
 function _keyRecordMatchesIdent(ident){
-  if(!_keyRecord||!ident) return false;
-  return RECORD_CAT_LABEL[ident.category]===_keyRecord.catLabel
-    && ident.name===_keyRecord.name && ident.gx===_keyRecord.gx && ident.gy===_keyRecord.gy;
+  return !!(_keyRecord && _sameRecordTarget(_keyRecord.catLabel,_keyRecord.name,_keyRecord.gx,_keyRecord.gy,ident));
 }
 function recordStatusEl(){ return document.getElementById('icon-detail-record-status'); }
-function recordSetStatus(html){ var el=recordStatusEl(); if(el) el.innerHTML=html; }
+// Pass rec for any render OWNED BY A RECORDING; omit it for renders owned by whichever panel is
+// open right now. #icon-detail-record-status is a single shared id, and since a recording now
+// keeps running while you open OTHER pins' panels (2026-07-15), pin A's async renders (active/
+// pick-list/timeout/commit) would otherwise paint their status text into pin B's open panel.
+// The rec form no-ops unless the open panel is still showing that recording's own pin.
+function recordSetStatus(html,rec){
+  if(rec&&!(_iconDetailIdent&&_sameRecordTarget(rec.catLabel,rec.name,rec.gx,rec.gy,_iconDetailIdent))) return;
+  var el=recordStatusEl(); if(el) el.innerHTML=html;
+}
 function recordRenderIdle(){
   recordSetStatus('<button type="button" class="btn btn-ghost" id="icon-detail-record-btn" style="font-size:12px;">Record next key</button>'
     +'<div class="hint" style="margin-top:2px;">Hit Record, then trigger this location in-game -- the next new save key is mapped to this pin.</div>');
   var btn=document.getElementById('icon-detail-record-btn');
   if(btn) btn.onclick=function(){ if(_iconDetailIdent) startKeyRecording(_iconDetailIdent); };
 }
-function recordRenderActive(){
+function recordRenderActive(rec){
   recordSetStatus('<span style="color:#58a6ff;">&#9679; Recording -- now trigger this location in-game...</span> '
-    +'<button type="button" class="btn btn-ghost" id="icon-detail-record-stop" style="font-size:12px;margin-left:4px;">Stop</button>');
+    +'<button type="button" class="btn btn-ghost" id="icon-detail-record-stop" style="font-size:12px;margin-left:4px;">Stop</button>',rec);
   var stop=document.getElementById('icon-detail-record-stop');
   if(stop) stop.onclick=function(){ stopKeyRecording(); };
 }
@@ -6346,7 +6374,7 @@ function recordRenderPickList(rec){
   var fresh=rec.pendingChoices||[];
   recordSetStatus('<span style="color:#e3b341;">'+fresh.length+' new keys appeared -- pick the one for this pin:</span><br>'
     +fresh.map(function(k){ return '<button type="button" class="btn btn-ghost record-pick" data-key="'+esc(k)+'" style="font-size:12px;margin:2px 4px 0 0;">'+esc(k)+'</button>'; }).join('')
-    +'<br><button type="button" class="btn btn-ghost" id="icon-detail-record-cancel" style="font-size:12px;margin-top:4px;">Cancel</button>');
+    +'<br><button type="button" class="btn btn-ghost" id="icon-detail-record-cancel" style="font-size:12px;margin-top:4px;">Cancel</button>',rec);
   var el=recordStatusEl();
   if(el){
     el.querySelectorAll('.record-pick').forEach(function(b){ b.onclick=function(){ recordCommitKey(rec,b.getAttribute('data-key')); }; });
@@ -6358,7 +6386,22 @@ var _keyRecordStartSeq=0; // bumped by stopKeyRecording so a start still awaitin
                            // panel still being open (closing it no longer cancels -- see below).
 async function startKeyRecording(ident){
   if(!EFFIGY_CONFIRM_ENABLED) return;
-  if(_keyRecord){ toast('Already recording a key -- stop that first.','error'); return; }
+  if(_keyRecord){
+    // Re-clicking Record on the pin that's ALREADY recording just redraws its current state --
+    // restarting would throw away its key snapshot and its pending pick list.
+    if(_keyRecordMatchesIdent(ident)){
+      if(_keyRecord.pendingChoices) recordRenderPickList(_keyRecord); else recordRenderActive(_keyRecord);
+      return;
+    }
+    // Offer to hand the recorder over (2026-07-15). This used to be a flat "stop that first"
+    // error naming no pin, which was a dead end whenever the other recording was paused on a
+    // pending pick list: its Stop button only exists inside its OWN panel, so there was no way
+    // to reach it from here and no way to record anything else.
+    var who=(_keyRecord.name||_keyRecord.catLabel);
+    if(!confirm('Already recording a key for "'+who+'". Stop that and record this pin instead?')) return;
+    stopKeyRecording(true);
+    toast('Stopped recording for "'+who+'".','success');
+  }
   var catLabel=RECORD_CAT_LABEL[ident.category];
   var cat=catLabel&&dmIconCatByLabel(catLabel);
   if(!cat){ toast('This category cannot record a key.','error'); return; }
@@ -6372,9 +6415,11 @@ async function startKeyRecording(ident){
   if(startId!==_keyRecordStartSeq) return;
   var snapshot={};
   dmUnmappedKeysFor(cat.property).forEach(function(k){ snapshot[k.toUpperCase()]=true; });
-  _keyRecord={property:cat.property,catLabel:catLabel,name:ident.name,gx:ident.gx,gy:ident.gy,
+  // gx/gy normalized at capture so the recording's stored target compares cleanly against both
+  // roster (number) and input-field (string) identities -- see _sameRecordTarget.
+  _keyRecord={property:cat.property,catLabel:catLabel,name:ident.name,gx:Number(ident.gx),gy:Number(ident.gy),
     snapshot:snapshot,started:Date.now(),timer:null};
-  recordRenderActive();
+  recordRenderActive(_keyRecord);
   _keyRecord.timer=setInterval(keyRecordTick,RECORD_POLL_MS);
 }
 function stopKeyRecording(silent){
@@ -6387,6 +6432,10 @@ function stopKeyRecording(silent){
 async function keyRecordTick(){
   var rec=_keyRecord;
   if(!rec) return;
+  // A commit is already in flight for this recording. Its timer is cleared, but a tick that was
+  // already awaiting dmFetchAndApply when the commit started can still resume past that point
+  // and commit the same key a second time.
+  if(rec.committing) return;
   if(Date.now()-rec.started>RECORD_TIMEOUT_MS){
     stopKeyRecording(true);
     // Toast unconditionally (2026-07-14) -- the panel may well be closed right now (you're
@@ -6394,7 +6443,7 @@ async function keyRecordTick(){
     // when its element doesn't exist, so without this a timeout was previously 100% silent.
     toast('No new key seen for "'+(rec.name||rec.catLabel)+'" after 5 min -- recording stopped.','error');
     recordSetStatus('<span style="color:#f85149;">No new key seen after 5 min.</span> '
-      +'<button type="button" class="btn btn-ghost" id="icon-detail-record-btn" style="font-size:12px;margin-left:4px;">Record again</button>');
+      +'<button type="button" class="btn btn-ghost" id="icon-detail-record-btn" style="font-size:12px;margin-left:4px;">Record again</button>',rec);
     var rb=document.getElementById('icon-detail-record-btn');
     if(rb) rb.onclick=function(){ if(_iconDetailIdent) startKeyRecording(_iconDetailIdent); };
     return;
@@ -6415,17 +6464,22 @@ async function keyRecordTick(){
   recordRenderPickList(rec);
 }
 async function recordCommitKey(rec,key){
+  if(rec.committing) return; // double-clicked pick-list button, or a resumed in-flight tick
+  rec.committing=true;
   if(rec.timer){ clearInterval(rec.timer); rec.timer=null; }
-  _keyRecord=null;
-  // Only auto-close the panel if it's still showing THIS pin -- if Anthony has since closed
-  // it (fine, recording survives that) or opened a totally different pin's panel, closing
-  // here would yank that unrelated panel out from under him.
-  var panelIsThisPin=_iconDetailIdent && RECORD_CAT_LABEL[_iconDetailIdent.category]===rec.catLabel
-    && _iconDetailIdent.name===rec.name && _iconDetailIdent.gx===rec.gx && _iconDetailIdent.gy===rec.gy;
-  recordSetStatus('<span style="color:var(--muted);">Mapping '+esc(key)+'...</span>');
+  // Only auto-close/paint the panel if it's still showing THIS pin -- if Anthony has since
+  // closed it (fine, recording survives that) or opened a totally different pin's panel, acting
+  // on it here would yank that unrelated panel out from under him.
+  var panelIsThisPin=_sameRecordTarget(rec.catLabel,rec.name,rec.gx,rec.gy,_iconDetailIdent);
+  if(panelIsThisPin) recordSetStatus('<span style="color:var(--muted);">Mapping '+esc(key)+'...</span>');
   try{
     await applyIconKeyMapping(rec.catLabel,rec.name,rec.gx,rec.gy,key);
-    toast('Recorded "'+(rec.name||'effigy')+'" -> '+key+'.','success');
+    // Cleared ONLY on success (2026-07-15). This used to be nulled up front, so a failed POST
+    // destroyed the recording AND the key it had just captured -- the key was already consumed
+    // from the "new since snapshot" diff, so re-recording could never see it again and the only
+    // recovery was hunting it down by hand in the Data Mine tab.
+    if(_keyRecord===rec) _keyRecord=null;
+    toast('Recorded "'+(rec.name||rec.catLabel)+'" -> '+key+'.','success');
     if(panelIsThisPin) closeIconDetail();
     // Reload this category's roster so the pin picks up its new key immediately (an effigy
     // flips from its synthetic __PENDING__ id to the real GUID; without this it lingers as a
@@ -6433,8 +6487,13 @@ async function recordCommitKey(rec,key){
     var cat=dmIconCatByLabel(rec.catLabel);
     if(cat&&cat.refetch) await cat.refetch(); else renderEffigyMap();
   }catch(e){
-    recordSetStatus('<span style="color:#f85149;">Failed to map '+esc(key)+': '+esc(String(e&&e.message||e))+'</span>');
-    toast('Failed to record key.','error');
+    // Keep the recording alive and re-offer the key through the same pick list the ambiguous
+    // case uses, so reopening the pin lets you retry it.
+    rec.committing=false;
+    if(!rec.pendingChoices||rec.pendingChoices.indexOf(key)===-1)
+      rec.pendingChoices=(rec.pendingChoices||[]).concat([key]);
+    toast('Failed to map '+key+' -- open "'+(rec.name||rec.catLabel)+'" to retry.','error');
+    recordRenderPickList(rec);
   }
 }
 
@@ -6585,10 +6644,12 @@ function renderDataMine(){
 }
 
 // -- Add Icon (manual map-pin creation) ---------------------------------------
-// See openAddIconModal below. Categories match Get-MapCategoryJson's 6 live map
-// categories -- npc/landmark stay retired (map_data_lib.ps1's Get-CategoryForEntry),
-// so they're deliberately not offered here.
-var ADDICON_CATEGORY_LABELS={effigy:'Effigy',journal:'Journal',bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',tower:'Tower',itempickup:'Schematic'};
+// See openAddIconModal below. These 8 keys must stay in sync with map_data_lib.ps1's
+// $script:CustomIconCategories (the server rejects anything else as "Unsupported
+// category") -- npc/landmark stay retired (map_data_lib.ps1's Get-CategoryForEntry),
+// so they're deliberately not offered here. The labels double as the lookup into
+// DATAMINE_PROPERTIES' iconCategories, so they must match those strings exactly.
+var ADDICON_CATEGORY_LABELS={effigy:'Effigy',journal:'Journal',bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',sam:'SAM Site',tower:'Tower',itempickup:'Schematic'};
 var _aiKeyCandidates=[];
 
 // Unmapped-key candidates relevant to one Add Icon category, drawn from the same
@@ -6784,7 +6845,7 @@ function wireIconDetailFooter(el,ident,marker){
     // closing to go play) instead of always resetting to the idle "Record next key" button --
     // that reset used to make it look like nothing was happening even while the poll was
     // (or, before this fix, wasn't) still running underneath.
-    if(_keyRecordMatchesIdent(ident)){ if(_keyRecord.pendingChoices) recordRenderPickList(_keyRecord); else recordRenderActive(); }
+    if(_keyRecordMatchesIdent(ident)){ if(_keyRecord.pendingChoices) recordRenderPickList(_keyRecord); else recordRenderActive(_keyRecord); }
     else recordRenderIdle();
   }
 }
@@ -6797,12 +6858,13 @@ function wireIconDetailFooter(el,ident,marker){
 // e.popup.getElement(). onClose runs once, right before the panel actually closes (e.g. to
 // clear a hover-selected prereq-line state).
 function openIconDetail(categoryLabel,title,bodyHtml,ident,marker,wireExtra,onClose){
-  // Opening a DIFFERENT pin than the one currently recording cancels that recording -- its
-  // status div is about to be destroyed by the innerHTML rebuild below. Reopening the SAME
-  // pin that's already recording must NOT cancel it (2026-07-14) -- recording survives a
-  // panel close now (see closeIconDetail below), so this just needs to redraw its current
-  // state instead, which wireIconDetailFooter does.
-  if(_keyRecord && !_keyRecordMatchesIdent(ident)) stopKeyRecording(true);
+  // Opening a DIFFERENT pin does NOT disturb a recording in progress (2026-07-15) -- it keeps
+  // polling in the background exactly like it already does across a panel close, and its state
+  // is redrawn whenever its own pin is reopened (wireIconDetailFooter). This used to silently
+  // cancel it just because the innerHTML rebuild below destroys the shared status div, which
+  // meant a single misclick on a neighbouring pin killed a recording with no warning and no
+  // toast. The div is still shared, so recording-owned renders are ownership-gated instead --
+  // see recordSetStatus.
   _iconDetailIdent=ident;
   _iconDetailMarker=marker||null;
   _iconDetailOnClose=onClose||null;
@@ -6846,9 +6908,24 @@ async function saveIconDetailEdits(ident,marker){
     var newLv=lvInput.value.trim();
     body.lv=newLv===''?null:newLv;
   }
+  // Captured against the OLD identity, before the edit lands -- ident is what the recording
+  // stored when it started.
+  var wasRecording=_keyRecordMatchesIdent(ident);
   try{
     await api('/api/map-edit-icon','POST',body);
     toast('Pin updated.','success');
+    // Re-checked after the await: the recording may have committed or timed out while the edit
+    // was in flight, which clears _keyRecord.
+    if(wasRecording&&_keyRecord){
+      // Renaming/moving the pin mid-recording would otherwise leave the recording aimed at an
+      // identity that no longer exists: its commit posts the STORED name/gx/gy, which the
+      // server's fallback would then attach to a brand-new duplicate pin instead of this one.
+      if(body.key){ stopKeyRecording(true); toast('Recording stopped -- key set manually.','success'); }
+      else {
+        if(body.name!==undefined) _keyRecord.name=body.name;
+        _keyRecord.gx=Number(gx); _keyRecord.gy=Number(gy);
+      }
+    }
     closeIconDetail();
     refetchMapCategory(category);
   }catch(e){
@@ -6860,6 +6937,9 @@ async function deleteMapIcon(ident,marker){
   try{
     await api('/api/map-delete-icon','POST',{category:ident.category,key:ident.key||null,species:ident.species||null,name:ident.name||null,
       gx:(ident.gx!=null?ident.gx:null),gy:(ident.gy!=null?ident.gy:null)});
+    // Deleting the pin a recording is aimed at must cancel it -- otherwise its next commit
+    // posts the deleted pin's name/gx/gy and the server's fallback resurrects it as a fresh row.
+    if(_keyRecordMatchesIdent(ident)){ stopKeyRecording(true); toast('Recording cancelled -- pin deleted.','success'); }
     closeIconDetail();
     toast('Icon deleted.','success');
     refetchMapCategory(ident.category);
@@ -7016,9 +7096,26 @@ function dmRenderCustomIcons(){
         +'<td><input class="dm-edit-input" style="width:150px;" type="text" id="'+rowId+'-key" value="'+esc(c.key||'')+'" placeholder="(none)">'+keySelect+'</td>'
         +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(c.gx==null?'':esc(c.gx))+'" placeholder="gx">'
           +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(c.gy==null?'':esc(c.gy))+'" placeholder="gy"></td>'
-        +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\',\''+rowId+'\')">Save</button>'
-          +' <button class="btn btn-ghost dm-save-btn" onclick="deleteCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\')">Delete</button></td></tr>';
+        // The row's CURRENT gx/gy travel as identity too: a keyless effigy/itempickup has no key,
+        // species or name to resolve by, so without these the server can't find it at all
+        // ("No matching custom entry found" on both buttons). Numeric literals, not quoted.
+        +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\',\''+rowId+'\','+(c.gx==null?'null':Number(c.gx))+','+(c.gy==null?'null':Number(c.gy))+')">Save</button>'
+          +' <button class="btn btn-ghost dm-save-btn" onclick="deleteCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\','+(c.gx==null?'null':Number(c.gx))+','+(c.gy==null?'null':Number(c.gy))+')">Delete</button></td></tr>';
     }).join('')+'</tbody></table>';
+}
+
+// Does this local dmMappings row match the identity the Save/Delete buttons were rendered with?
+// Deliberately mirrors the server's Find-ConfirmedRow precedence (key, then coords for a keyless
+// coord-identity pin, then species, then name) so the local list splice below stays in agreement
+// with the row the server actually edited -- otherwise the table redraws showing the wrong row
+// changed until the next poll corrects it.
+function dmSameCustomRow(c,identKey,identSpecies,identName,identGx,identGy){
+  if(identKey) return c.key===identKey;
+  if(COORD_IDENTITY_CATEGORIES.indexOf(c.category)!==-1&&identGx!=null&&identGy!=null)
+    return !c.key&&Number(c.gx)===Number(identGx)&&Number(c.gy)===Number(identGy);
+  if(identSpecies) return c.species===identSpecies;
+  if(identName) return c.name===identName;
+  return false;
 }
 
 // Same pattern as dmApplyRosterMap -- fills the Key text input from a picked
@@ -7031,16 +7128,19 @@ function dmApplyCustomKeySelect(rowId,category,idxStr){
   if(keyEl) keyEl.value=c.key;
 }
 
-async function saveCustomIcon(category,identKey,identSpecies,identName,rowId){
+// identGx/identGy carry the row's CURRENT coords (its only identity when keyless) -- the gx/gy
+// read out of the inputs below are the possibly-EDITED new values, so they can't double as it.
+async function saveCustomIcon(category,identKey,identSpecies,identName,rowId,identGx,identGy){
   var name=document.getElementById(rowId+'-name').value.trim();
   var key=document.getElementById(rowId+'-key').value.trim();
   var gx=document.getElementById(rowId+'-gx').value.trim();
   var gy=document.getElementById(rowId+'-gy').value.trim();
   try{
     var resp=await api('/api/map-custom-edit','POST',{category:category,identityKey:identKey||null,identitySpecies:identSpecies||null,
-      identityName:identName||null,name:name||null,key:key||null,gx:gx===''?null:gx,gy:gy===''?null:gy});
+      identityName:identName||null,identityGx:(identGx==null?null:identGx),identityGy:(identGy==null?null:identGy),
+      name:name||null,key:key||null,gx:gx===''?null:gx,gy:gy===''?null:gy});
     dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).map(function(c){
-      return (c.category===category&&((identKey&&c.key===identKey)||(!identKey&&identSpecies&&c.species===identSpecies)||(!identKey&&!identSpecies&&c.name===identName)))?resp.entry:c;
+      return (c.category===category&&dmSameCustomRow(c,identKey,identSpecies,identName,identGx,identGy))?resp.entry:c;
     });
     toast('Saved.','success');
     renderDataMine();
@@ -7052,12 +7152,13 @@ async function saveCustomIcon(category,identKey,identSpecies,identName,rowId){
   }
 }
 
-async function deleteCustomIcon(category,identKey,identSpecies,identName){
+async function deleteCustomIcon(category,identKey,identSpecies,identName,identGx,identGy){
   if(!confirm('Delete this custom icon? This cannot be undone.')) return;
   try{
-    await api('/api/map-custom-delete','POST',{category:category,key:identKey||null,species:identSpecies||null,name:identName||null});
+    await api('/api/map-custom-delete','POST',{category:category,key:identKey||null,species:identSpecies||null,name:identName||null,
+      gx:(identGx==null?null:identGx),gy:(identGy==null?null:identGy)});
     dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){
-      return !(c.category===category&&((identKey&&c.key===identKey)||(!identKey&&identSpecies&&c.species===identSpecies)||(!identKey&&!identSpecies&&c.name===identName)));
+      return !(c.category===category&&dmSameCustomRow(c,identKey,identSpecies,identName,identGx,identGy));
     });
     toast('Deleted.','success');
     renderDataMine();
@@ -8379,6 +8480,7 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
         <option value="bounty">Field Boss</option>
         <option value="fugitive">Wanted Fugitive</option>
         <option value="eagle">Eagle Statue</option>
+        <option value="sam">SAM Site</option>
         <option value="tower">Tower</option>
         <option value="itempickup">Schematic</option>
       </select>
