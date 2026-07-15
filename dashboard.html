@@ -5469,6 +5469,12 @@ function populateEffigyPlayerDropdown(){
   fetchEffigyPlayer();
 }
 
+// Set while fetchEffigyPlayer's poll (every 5s via _mapLivePollTimer) is failing, so a
+// Manager restart's ~minute-long downtime window pops ONE toast instead of one every 5s
+// stacking into a dozen-plus overlapping "Could not load effigy data" toasts (2026-07-15 --
+// this is the only poller in the whole file that toasted on failure at all; every sibling
+// fetch* here already fails silently and just resets its own collected state).
+var _effigyPlayerFetchDown=false;
 async function fetchEffigyPlayer(){
   ensureMapKeyAvailabilityData();
   var sel=document.getElementById('effigy-player');
@@ -5479,9 +5485,13 @@ async function fetchEffigyPlayer(){
   try{
     var data=await api('/api/player-effigies?guid='+encodeURIComponent(guid));
     effigyCollected=data.collected||[];
+    _effigyPlayerFetchDown=false;
   }catch(e){
     effigyCollected=[];
-    toast('Could not load effigy data for player: '+e.message,'error');
+    if(!_effigyPlayerFetchDown){
+      _effigyPlayerFetchDown=true;
+      toast('Could not load effigy data for player: '+e.message,'error');
+    }
   }
   renderEffigyMap();
   fetchJournalPlayer(guid);
