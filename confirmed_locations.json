@@ -4018,5 +4018,37 @@
         "x":  null,
         "y":  null,
         "z":  null
+    },
+    {
+        "key":  "AA55509E4E80064DCB6F7EB58E60763C",
+        "name":  null,
+        "gx":  -51,
+        "gy":  -163,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
+    },
+    {
+        "key":  "D8C1A86541DACA78B1250AB9B85B7E67",
+        "name":  "Crescent Moon Shore Watchtower",
+        "gx":  -38,
+        "gy":  -160,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     }
 ]
