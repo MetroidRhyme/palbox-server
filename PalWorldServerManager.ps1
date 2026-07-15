@@ -2626,10 +2626,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     # custom:true rows -- added 2026-07-12 for post-1.0 location corrections,
                     # extended same day to also allow renaming and editing the raw save key).
                     # Body: { category, identityKey?, identitySpecies?, identityName?, name?,
-                    # key?, gx?, gy?, lv? } -- identity* resolves the row by its CURRENT
-                    # key/species/name (same convention as /api/map-custom-edit), name/key/
-                    # gx/gy/lv are the new values (gx and gy must both be present together if
-                    # either is). See Edit-MapEntry in map_data_lib.ps1.
+                    # key?, gx?, gy?, lv?, boss?, bossPal? } -- identity* resolves the row by
+                    # its CURRENT key/species/name (same convention as /api/map-custom-edit),
+                    # name/key/gx/gy/lv/boss/bossPal are the new values (gx and gy must both be
+                    # present together if either is). See Edit-MapEntry in map_data_lib.ps1.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $category = [string]$body.category
@@ -2647,6 +2647,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         if ($body.PSObject.Properties['gx']) { $fields.gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null } }
                         if ($body.PSObject.Properties['gy']) { $fields.gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null } }
                         if ($body.PSObject.Properties['lv']) { $fields.lv = if ($null -ne $body.lv -and [string]$body.lv -ne '') { [int]$body.lv } else { $null } }
+                        if ($body.PSObject.Properties['boss']) { $fields.boss = if ($body.boss) { [string]$body.boss } else { $null } }
+                        if ($body.PSObject.Properties['bossPal']) { $fields.bossPal = if ($body.bossPal) { [string]$body.bossPal } else { $null } }
                         $updated = Edit-MapEntry $category $identKey $identSpecies $identName $fields $identGx $identGy
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
                     } catch {
@@ -3140,9 +3142,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/player-tower-bosses' -and $method -eq 'GET') {
                     # Tower raid-boss defeat state, read from TowerBossDefeatFlag in the
                     # player's save (see extract_tower_boss_data in pal_save_reader.py).
-                    # Added 2026-07-07 -- keys are matched against towers.json's bossKey
-                    # field (Tower category, not Eagle Statue's separate FastTravelPoint-
-                    # UnlockFlag key) to drive the Tower marker's main-icon status.
+                    # Added 2026-07-07 -- keys are matched against each tower row's own
+                    # "key" field (2026-07-15: previously a separate towers.json-supplied
+                    # "bossKey" field) to drive the Tower marker's main-icon status.
                     try {
                         $guid = $req.QueryString['guid']
                         if (-not $guid) { throw "Missing guid parameter" }

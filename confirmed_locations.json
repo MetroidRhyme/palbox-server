@@ -815,7 +815,6 @@
         "lv":  58
     },
     {
-        "verified":  false,
         "category":  "tower",
         "origin":  "manual",
         "boss":  "Zoe",
@@ -827,7 +826,8 @@
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  10
+        "lv":  10,
+        "verified":  false
     },
     {
         "key":  null,

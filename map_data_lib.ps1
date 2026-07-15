@@ -210,8 +210,9 @@ function ConvertTo-GridXY([double]$x, [double]$y) {
 # Effigies alone keep their historical DICT shape (GUID -> {x,y,z,m}), matched by
 # dashboard.html's effigyLocations[key] lookups -- every other category is an array of
 # {name,x,y,key,m}, plus "species" for bounty, "lv" for tower/fugitive, "boss"/"bossPal"
-# for tower (the human raid-boss's name + their partner Pal's name, scraped from
-# paldb.cc -- static display data only, unrelated to "key").
+# for tower (the human raid-boss's name + their partner Pal's name, originally scraped from
+# paldb.cc via towers.json at import; editable through Edit-MapEntry as of 2026-07-15 --
+# unrelated to "key").
 #
 # Tower's "key" (added 2026-07-07, unified onto the single generic key model 2026-07-15) is
 # the TowerBossDefeatFlag key for that tower's raid-boss fight -- normal difficulty only,
@@ -633,6 +634,17 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
     if ($fields.ContainsKey('lv')) {
         Set-EntryProp $matched 'lv' $fields['lv']
     }
+    # $fields.boss/$fields.bossPal (added 2026-07-15): Tower's raid-boss NPC name and their
+    # partner Pal's name -- previously static display data baked in from towers.json at
+    # import with no edit path at all (unlike lv right above, which already had one).
+    # Generic passthrough, no category restriction, same reasoning as lv -- Get-MapCategoryJson
+    # already emits both for any row that has them. Null clears either field.
+    if ($fields.ContainsKey('boss')) {
+        Set-EntryProp $matched 'boss' $fields['boss']
+    }
+    if ($fields.ContainsKey('bossPal')) {
+        Set-EntryProp $matched 'bossPal' $fields['bossPal']
+    }
     Save-ConfirmedLocations $confirmed
     } catch {
         Reset-ConfirmedLocationsCache
@@ -827,10 +839,11 @@ function Test-SyndicateKeyShape([string]$key) { return $key -match '^BOSS_' }
 # Towers (towers.json, 7 raid-boss tower locations scraped from paldb.cc, added
 # 2026-07-06) were previously confirmed by Anthony under the Eagle Statue bucket, since
 # walking up to one behaves like a fast-travel point in his own mental model.
-# Merge-ConfirmedWantedFugitives/EagleStatues below explicitly exclude any confirmed
-# entry whose name matches one of these 7 so it routes to Merge-ConfirmedTowers instead,
-# splitting the two apart. Read fresh every call, same convention as the other small
-# roster files.
+# import_scraped_rosters.ps1's Import-KeylessRoster (Wanted Fugitive/Eagle Statue) skips
+# inserting any keyless roster row whose exact name already belongs to a DIFFERENT
+# category, which is what actually keeps a same-named Tower from also being inserted
+# under those categories -- see its "skipped-cross-category-duplicate" comment. Read
+# fresh every call here, same convention as the other small roster files.
 function Get-TowerNameSet {
     $names = New-Object System.Collections.Generic.HashSet[string]
     $f = "$script:MapDataRoot\towers.json"
@@ -870,14 +883,23 @@ function Find-ConfirmedByNameOrCoord($rosterEntry, $candidates) {
 }
 
 # Classifies a confirmed_locations.json entry into one of the 6 map categories: tower
-# name match first (paldb's Tower scrape has no save-flag key of its own), then the
-# entry's own "source" field, then roster-membership fallback for legacy entries that
-# predate "source". Originally migrate_map_schema.ps1's own private copy (used there for
-# the one-time bulk backfill); moved here so PalWorldServerManager.ps1's Data Mine tab
-# write endpoints (/api/datamine-mapping, /api/datamine-mapping-batch) can stamp a
-# category on a freshly-typed-in entry immediately, instead of it sitting
-# uncategorized -- and therefore invisible to Get-MapCategoryJson -- until the next
-# manual re-run of the migration script.
+# name match first (a keyless Tower row imported straight from towers.json has no
+# "source" of its own yet), then the entry's own "source" field, then roster-membership
+# fallback for legacy entries that predate "source". Originally migrate_map_schema.ps1's
+# own private copy (used there for the one-time bulk backfill); moved here so
+# PalWorldServerManager.ps1's Data Mine tab write endpoints (/api/datamine-mapping,
+# /api/datamine-mapping-batch) can stamp a category on a freshly-typed-in entry
+# immediately, instead of it sitting uncategorized -- and therefore invisible to
+# Get-MapCategoryJson -- until the next manual re-run of the migration script.
+#
+# The tower name-match is a genuine soft spot (flagged 2026-07-15): it's the ONLY path to
+# 'tower' for a row that hasn't had a key mapped to it yet, with no roster-membership
+# fallback the way effigy/journal/fugitive/eagle/bounty each get below. Renaming a tower
+# pin away from its exact towers.json name, before its key is ever linked, would make it
+# fall through to $null here (and thus disappear from Get-MapCategoryJson('tower')) the
+# next time this function re-runs on it. Once a key HAS been linked ('source' gets
+# stamped 'TowerBossDefeatFlag' by /api/datamine-mapping), the switch case below takes
+# over and the pin is safe from that point on regardless of its name.
 #
 # Returns $null (genuinely uncategorized) if nothing matches -- NPC and Landmark were
 # retired as map categories (2026-07-07, Anthony's call: Landmark existed only as a
@@ -893,6 +915,7 @@ function Get-CategoryForEntry($c) {
         'NormalBossDefeatFlag' { if ($c.key -and (Test-SyndicateKeyShape $c.key)) { return 'fugitive' } else { return 'bounty' } }
         'DestroyedWeapon' { return 'sam' }
         'ItemPickupObtainForInstanceFlag' { return 'itempickup' }
+        'TowerBossDefeatFlag' { return 'tower' }
     }
     if ($c.key) {
         $k = $c.key.ToUpper()

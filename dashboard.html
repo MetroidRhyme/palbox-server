@@ -3619,7 +3619,7 @@ function bountyBossIcon(name,status,locked){
 }
 // Wanted Fugitive (human/Syndicate bosses), Eagle Statue (fast-travel points), and Tower
 // (raid bosses) now OVERLAY real paldb-scraped rosters (added 2026-07-06, see
-// Merge-ConfirmedWantedFugitives/EagleStatues/Towers) with the same red/yellow/green
+// import_scraped_rosters.ps1/Get-MapCategoryJson) with the same red/yellow/green
 // status-ring convention as Journals/Field Boss, using paldb's own compass icons instead of
 // a flat dot.
 function wantedFugitiveIcon(status){
@@ -4710,7 +4710,7 @@ function buildTowerMarker(t,confirmed,tGot,tStatus,tLocked,prereqDetails){
       _bossPrereqActive=twIdent;
       renderEffigyMap();
       var _tg=worldToGrid(t.x,t.y);
-      var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:t.lv!=null?t.lv:null,gx:_tg.cx,gy:_tg.cy,label:t.name};
+      var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:t.lv!=null?t.lv:null,boss:t.boss||null,bossPal:t.bossPal||null,gx:_tg.cx,gy:_tg.cy,label:t.name};
       var bodyHtml=detailSectionHtml('Status',towerTipBody(t,confirmed,tGot,tStatus,tLocked,prereqDetails,true).body)
         +detailActionsHtml([detailConfirmHtml(tChkId,confirmed)],
           [(!t.key&&mapKeyAvailableForCategory('Tower'))?mapKeyButtonHtml(tMapBtnId):'',caveAddButtonHtml(),prereqAddButtonHtml()]);
@@ -5347,7 +5347,7 @@ async function fetchItemPickupLocations(force){
   }
 }
 // "Towers" (raid bosses) -- static, same loading convention as above. Split out of Eagle
-// Statues (see Merge-ConfirmedTowers).
+// Statues (see the Tower render block's comment for the current single-key model).
 var towerLocations=null;
 async function fetchTowerLocations(force){
   if(towerLocations&&!force)return;
@@ -6861,6 +6861,14 @@ function iconDetailFooterHtml(ident){
   // scraped), fugitive (scraped), and tower (2026-07-13 -- towerTipBody already displays it).
   var lvField=(category==='bounty'||category==='fugitive'||category==='tower') ?
     '<div class="ai-field"><label>Level</label><input id="icon-detail-lv" class="pf-input" style="width:140px;" type="number" min="1" placeholder="Level"></div>' : '';
+  // Boss name / partner Pal (2026-07-15): Tower-only display data (see Get-MapCategoryJson's
+  // boss/bossPal emission) that previously had no edit path at all -- unlike lv right above it
+  // on the same roster, which already got one. Both blank to null on save, same as every other
+  // optional text field here.
+  var bossField=(category==='tower') ?
+    '<div class="ai-field"><label>Boss name / Partner Pal</label><div style="display:flex;gap:8px;">'
+    +'<input id="icon-detail-boss" class="pf-input" style="flex:1;" type="text" placeholder="Boss name">'
+    +'<input id="icon-detail-bosspal" class="pf-input" style="flex:1;" type="text" placeholder="Partner Pal"></div></div>' : '';
   // Record-from-gameplay control, only for a keyless pin in a category with a real save-flag
   // property (see isRecordableKeyless/startKeyRecording). Populated by wireIconDetailFooter.
   var recordField=isRecordableKeyless(ident) ?
@@ -6885,6 +6893,7 @@ function iconDetailFooterHtml(ident){
     +pickKeyField+'</div>'
     +recordField
     +lvField
+    +bossField
     +'<div class="ai-field"><label>Coordinates (gx / gy)</label><div style="display:flex;gap:8px;">'
     +'<input id="icon-detail-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">'
     +'<input id="icon-detail-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy"></div></div>'
@@ -6900,6 +6909,10 @@ function wireIconDetailFooter(el,ident,marker){
   if(keyInput) keyInput.value=ident.key||'';
   var lvInput=el.querySelector('#icon-detail-lv');
   if(lvInput) lvInput.value=(ident.lv!=null?ident.lv:'');
+  var bossInput=el.querySelector('#icon-detail-boss');
+  if(bossInput) bossInput.value=ident.boss||'';
+  var bossPalInput=el.querySelector('#icon-detail-bosspal');
+  if(bossPalInput) bossPalInput.value=ident.bossPal||'';
   var gxInput=el.querySelector('#icon-detail-gx');
   if(gxInput) gxInput.value=(ident.gx!=null?ident.gx:'');
   var gyInput=el.querySelector('#icon-detail-gy');
@@ -7006,6 +7019,10 @@ async function saveIconDetailEdits(ident,marker){
     var newLv=lvInput.value.trim();
     body.lv=newLv===''?null:newLv;
   }
+  var bossInput=document.getElementById('icon-detail-boss');
+  if(bossInput) body.boss=bossInput.value.trim()||null;
+  var bossPalInput=document.getElementById('icon-detail-bosspal');
+  if(bossPalInput) body.bossPal=bossPalInput.value.trim()||null;
   // Captured against the OLD identity, before the edit lands -- ident is what the recording
   // stored when it started.
   var wasRecording=_keyRecordMatchesIdent(ident);

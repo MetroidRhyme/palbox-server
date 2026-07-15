@@ -7,8 +7,7 @@
     "y": 241079,
     "lv": 25,
     "boss": "Lily",
-    "bossPal": "Lyleen",
-    "bossKey": "BOSS_BATTLE_NAME_FORESTBOSS"
+    "bossPal": "Lyleen"
   },
   {
     "name": "Tower of the Brothers of the Eternal Pyre",
@@ -18,8 +17,7 @@
     "y": -111892,
     "lv": 45,
     "boss": "Axel",
-    "bossPal": "Orserk",
-    "bossKey": "BOSS_BATTLE_NAME_ELECTRICBOSS"
+    "bossPal": "Orserk"
   },
   {
     "name": "Tower of the PAL Genetic Research Unit",
@@ -29,8 +27,7 @@
     "y": 90068,
     "lv": 50,
     "boss": "Victor",
-    "bossPal": "Shadowbeak",
-    "bossKey": "BOSS_BATTLE_NAME_SNOWBOSS"
+    "bossPal": "Shadowbeak"
   },
   {
     "name": "Tower of the PIDF",
@@ -40,8 +37,7 @@
     "y": 413204,
     "lv": 40,
     "boss": "Marcus",
-    "bossPal": "Faleris",
-    "bossKey": "BOSS_BATTLE_NAME_DESERTBOSS"
+    "bossPal": "Faleris"
   },
   {
     "name": "Tower of the Rayne Syndicate",
@@ -51,8 +47,7 @@
     "y": 208949,
     "lv": 10,
     "boss": "Zoe",
-    "bossPal": "Grizzbolt",
-    "bossKey": "BOSS_BATTLE_NAME_GRASSBOSS"
+    "bossPal": "Grizzbolt"
   },
   {
     "name": "Feybreak Tower",
@@ -62,8 +57,7 @@
     "y": -435946,
     "lv": 60,
     "boss": "Bjorn",
-    "bossPal": "Bastigor",
-    "bossKey": "BOSS_BATTLE_NAME_VIKINGBOSS"
+    "bossPal": "Bastigor"
   },
   {
     "name": "Moonflower Tower",
@@ -73,7 +67,6 @@
     "y": -116023,
     "lv": 55,
     "boss": "Saya",
-    "bossPal": "Selyne",
-    "bossKey": "BOSS_BATTLE_NAME_SAKURAJIMABOSS"
+    "bossPal": "Selyne"
   }
 ]
