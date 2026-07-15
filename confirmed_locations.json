@@ -4004,19 +4004,19 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "source":  "ItemPickupObtainForInstanceFlag",
+        "verified":  true,
         "category":  "itempickup",
-        "name":  "",
+        "origin":  "manual",
+        "name":  "Heat Resistant Metal Armor Schematic 2",
+        "key":  "2DA59E1742103D879D1291B5FEC4E66A",
         "gx":  -102,
         "gy":  -102,
         "x":  null,
         "y":  null,
-        "z":  null,
-        "species":  "",
-        "lv":  null,
-        "source":  null,
-        "origin":  "manual",
-        "verified":  false,
-        "custom":  true
+        "z":  null
     }
 ]
