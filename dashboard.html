@@ -7526,12 +7526,16 @@ function renderEffigyMapNow(){
     towerLocations.forEach(function(t,idx){
       var confirmed=!!t.m;
       var bossVerified=!!t.bossVerified;
+      var trackable=!!t.bossKey;
       var bGot=!!(t.bossKey&&towerBossSet.has(t.bossKey.toUpperCase()));
-      // Tower's boss track is key-mapped by construction (see the class comment above), so
-      // on the public site (MAP_STATUS_TWO_STATE) it reduces to plain found-or-not,
-      // independent of bossVerified -- see mapStatus(). (Eagle-statue tracking removed
-      // 2026-07-13 -- the towers no longer have a fast-travel point on top.)
-      var bStatus=mapStatus(bossVerified,bGot,true);
+      // Fixed 2026-07-15: this used to hardcode trackable=true on the assumption every tower
+      // ships with a bossKey by construction. That's false whenever a tower's boss key isn't
+      // actually linked yet (e.g. after the 2026-07-10 bulk verification reset) -- with
+      // trackable stuck true, mapStatus()'s final `(confirmed||got||trackable)` OR could never
+      // fall through to 'unconfirmed', so an unverified/unkeyed tower rendered yellow
+      // ('confirmed') instead of red. Now computed the same way every other keyed category
+      // (journal/bounty/fugitive/eagle/schematic) already does it, right above.
+      var bStatus=mapStatus(bossVerified,bGot,trackable);
       if(bStatus==='found'&&!effigyShowFound) return;
       // Required-boss lock (2026-07-10, same convention as Field Boss -- see the shared
       // bossGotMap/bossLLBySpecies lookup built above).
