@@ -473,6 +473,29 @@ def extract_all_datamine_properties(sav_path):
     raw = decompress_save(sav_path)
     out = {}
     for name, kind in DATAMINE_PROPERTIES:
+        if name == "RelicObtainForInstanceFlag":
+            # Union the legacy flat map (CapturePower only) with the comprehensive by-type
+            # store (RelicObtainForInstanceFlagByType -- see parse_relic_by_type/
+            # collected_effigies). Without this, a non-CapturePower relic pickup (GliderSpeed/
+            # MoveSpeed/JumpPower/SphereHoming/HungerReduction/...) never touches the flat map,
+            # so it's invisible to the Data Mine tab's raw-key scan and the "Record next key"
+            # poll -- confirmed 2026-07-14 after a real pickup didn't surface anywhere.
+            entries = {}
+            pos = find_property(raw, name)
+            if pos != -1:
+                _, p = read_fstring(raw, pos)
+                _, p = read_fstring(raw, p)
+                try:
+                    entries = parse_name_bool_map_full(raw, p)
+                except Exception:
+                    entries = {}
+            try:
+                for guid in parse_relic_by_type(raw):
+                    entries[guid] = True
+            except Exception:
+                pass
+            out[name] = {"kind": kind, "entries": entries}
+            continue
         pos = find_property(raw, name)
         if pos == -1:
             out[name] = {"kind": kind, "entries": [] if kind == "name_array" else {}}
