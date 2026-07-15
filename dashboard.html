@@ -6836,6 +6836,17 @@ function detailLvlSuffix(lv){ return lv?(' (Lv '+lv+')'):''; }
 // which has no name concept -- see Get-MapCategoryJson's effigy dict shape), save key,
 // level (bounty/fugitive/tower -- see Edit-MapEntry's generic $fields.lv), coordinates, and
 // Save/Delete buttons. Values are filled in by wireIconDetailFooter once the HTML exists.
+// Eligible categories for the "Pick unmapped key..." control below -- same set the
+// per-category "Map to key..." button already uses (journal/bounty/fugitive/eagle/sam/
+// itempickup), added 2026-07-15. Reuses RECORD_CAT_LABEL but excludes 'effigy'
+// (RelicObtainForInstanceFlag is noName -- dmUnmappedKeysFor has no meaningful list to offer,
+// Record is its only path, same reasoning the Schematic section's Map-to-key note gives) and
+// implicitly excludes 'tower' (absent from RECORD_CAT_LABEL) since a tower's `key` field is a
+// dormant leftover -- the ring's real key is `bossKey`, which this field never touches (see
+// Edit-MapEntry's tower note above).
+function mapKeyPickCatLabel(category){
+  return category!=='effigy' ? RECORD_CAT_LABEL[category] : null;
+}
 function iconDetailFooterHtml(ident){
   var category=ident.category;
   var nameField=category==='effigy' ? '' :
@@ -6848,9 +6859,24 @@ function iconDetailFooterHtml(ident){
   // property (see isRecordableKeyless/startKeyRecording). Populated by wireIconDetailFooter.
   var recordField=isRecordableKeyless(ident) ?
     '<div class="ai-field" id="icon-detail-record-wrap"><label>Record key from gameplay</label><div id="icon-detail-record-status"></div></div>' : '';
+  // "Pick unmapped key..." (2026-07-15): fills the Save key input from a dropdown of this
+  // category's still-unmapped Data Mine keys, so linking/re-linking a pin no longer requires
+  // switching to the Data Mine tab to find and copy the raw key by hand. Deliberately fills the
+  // TEXT FIELD rather than auto-posting like the per-category "Map to key..." button does --
+  // that button's route (/api/datamine-mapping) only matches an existing row when it's still
+  // keyless (see PalWorldServerManager.ps1's datamine-mapping handler), so reusing it here for
+  // an ALREADY-KEYED pin being re-keyed would silently create a duplicate pin instead of
+  // updating this one. Routing through the existing Save-changes button instead
+  // (saveIconDetailEdits -> /api/map-edit-icon -> Edit-MapEntry) resolves by the pin's current
+  // identity either way, so it's safe for both a keyless pin and a re-key.
+  var pickKeyCat=mapKeyPickCatLabel(category);
+  var pickKeyField=pickKeyCat ?
+    '<span id="icon-detail-pickkey-wrap" style="display:inline-block;margin-top:6px;">'
+    +'<button type="button" class="btn btn-ghost" id="icon-detail-pickkey-btn" style="font-size:12px;">Pick unmapped key...</button></span>' : '';
   return '<div class="pm-sec" style="margin-top:16px;"><div class="pm-sec-h">Edit</div>'
     +nameField
-    +'<div class="ai-field"><label>Save key</label><input id="icon-detail-key" class="pf-input" style="width:100%;" type="text" placeholder="Raw save-flag key"></div>'
+    +'<div class="ai-field"><label>Save key</label><input id="icon-detail-key" class="pf-input" style="width:100%;" type="text" placeholder="Raw save-flag key">'
+    +pickKeyField+'</div>'
     +recordField
     +lvField
     +'<div class="ai-field"><label>Coordinates (gx / gy)</label><div style="display:flex;gap:8px;">'
@@ -6876,6 +6902,36 @@ function wireIconDetailFooter(el,ident,marker){
   if(saveBtn) saveBtn.onclick=function(){ saveIconDetailEdits(ident,marker); };
   var delBtn=el.querySelector('#icon-detail-delete-btn');
   if(delBtn) delBtn.onclick=function(){ deleteMapIcon(ident,marker); };
+  var pickKeyCat=mapKeyPickCatLabel(ident.category);
+  var pickBtn=el.querySelector('#icon-detail-pickkey-btn');
+  if(pickBtn) pickBtn.onclick=function(){
+    pickBtn.disabled=true; pickBtn.textContent='Loading keys...';
+    ensureDatamineDataLoaded().then(function(){
+      var cat=dmIconCatByLabel(pickKeyCat);
+      var keys=cat?dmUnmappedKeysFor(cat.property):[];
+      if(!keys.length){
+        toast('No unmapped keys found for this category.','error');
+        pickBtn.disabled=false; pickBtn.textContent='Pick unmapped key...';
+        return;
+      }
+      var wrap=el.querySelector('#icon-detail-pickkey-wrap');
+      var selId='icon-detail-pickkey-sel';
+      wrap.innerHTML='<select id="'+selId+'" class="dm-edit-input" style="width:220px;"><option value="">Select key...</option>'
+        +keys.map(function(k){return '<option value="'+esc(k)+'">'+esc(k)+'</option>';}).join('')
+        +'</select> <button type="button" class="btn btn-ghost" id="icon-detail-pickkey-go" style="font-size:12px;">Use</button>';
+      var goBtn=wrap.querySelector('#icon-detail-pickkey-go');
+      if(goBtn) goBtn.onclick=function(){
+        var sel=wrap.querySelector('#'+selId);
+        if(!sel||!sel.value){ toast('Pick a key first.','error'); return; }
+        var keyInput=el.querySelector('#icon-detail-key');
+        if(keyInput) keyInput.value=sel.value;
+        toast('Key filled in -- click "Save changes" to apply.','success');
+      };
+    }).catch(function(e){
+      toast('Failed to load keys: '+String(e&&e.message||e),'error');
+      pickBtn.disabled=false; pickBtn.textContent='Pick unmapped key...';
+    });
+  };
   if(isRecordableKeyless(ident)){
     // Reflect a recording already in progress for THIS pin (2026-07-14, e.g. reopening after
     // closing to go play) instead of always resetting to the idle "Record next key" button --
