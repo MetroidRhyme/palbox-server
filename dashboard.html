@@ -4238,9 +4238,12 @@ async function mapMarkerToKey(catLabel,name,gx,gy,key,marker){
     toast('Failed to map: '+String(e&&e.message||e),'error');
   }
 }
-// Lazy, once-per-session load of the same raw-save-key data the Data Mine tab uses (dmFullPlayers/
-// dmMappings) -- the Map tab doesn't poll this on its own (perf: see /palbox-map-performance),
-// it only fetches it the first time a "Map to key..." button is actually clicked.
+// Once-per-session load of the same raw-save-key data the Data Mine tab uses (dmFullPlayers/
+// dmMappings), cached after the first successful fetch. Originally lazy (fetched only when a
+// "Map to key..." button was clicked -- perf: see /palbox-map-performance); as of 2026-07-15
+// it's also triggered proactively by ensureMapKeyAvailabilityData (see below) so per-marker
+// "Map to key..." buttons can be gated on whether a key is actually available, not just
+// fetched reactively once the user has already clicked a button that might do nothing.
 var _dmMapLoadPromise=null;
 function ensureDatamineDataLoaded(){
   if(dmFullPlayers&&dmMappings) return Promise.resolve();
@@ -4249,8 +4252,43 @@ function ensureDatamineDataLoaded(){
   }
   return _dmMapLoadPromise;
 }
+// Fire-and-forget eager load, called from fetchEffigyPlayer (every initial map load AND every
+// player switch). renderEffigyMap() already ran synchronously with whatever data existed a
+// moment ago -- if the dataset wasn't loaded yet, this fetches it once and re-renders so any
+// "Map to key..." buttons that just became eligible (see mapKeyAvailableForCategory) appear
+// without the user having to touch anything.
+function ensureMapKeyAvailabilityData(){
+  if(dmFullPlayers&&dmMappings) return;
+  ensureDatamineDataLoaded().then(function(){ if(effigyLeaflet) renderEffigyMap(); }).catch(function(){});
+}
 function dmUnmappedKeysFor(propName){
   return dmAllKeysFor(propName).filter(function(k){ return !dmMappingFor(propName,k).mapped; });
+}
+// Same as above but scoped to ONE player's own raw save properties (2026-07-15) -- "tied to
+// the player the map is filtered to," not the union across every player, which is what
+// dmUnmappedKeysFor returns.
+function dmUnmappedKeysForPlayer(propName,playerGuid){
+  if(!playerGuid) return [];
+  var p=(dmFullPlayers||[]).filter(function(pp){return pp.guid===playerGuid;})[0];
+  if(!p) return [];
+  var d=(p.properties||{})[propName];
+  if(!d) return [];
+  var keys={};
+  if(d.kind==='name_array'){ (d.entries||[]).forEach(function(k){ keys[k.toUpperCase()]=k; }); }
+  else { Object.keys(d.entries||{}).forEach(function(k){ keys[k.toUpperCase()]=k; }); }
+  return Object.keys(keys).map(function(u){return keys[u];}).filter(function(k){ return !dmMappingFor(propName,k).mapped; }).sort();
+}
+// Button-visibility gate for the per-marker "Map to key..." button (2026-07-15): true only
+// once the raw save-key dataset has loaded AND the currently-selected map player has at least
+// one still-unmapped key for this category. Returns false (button hidden) before the dataset
+// loads -- ensureMapKeyAvailabilityData's re-render picks it up once ready.
+function mapKeyAvailableForCategory(catLabel){
+  if(!dmFullPlayers||!dmMappings) return false;
+  var cat=dmIconCatByLabel(catLabel);
+  if(!cat) return false;
+  var sel=document.getElementById('effigy-player');
+  var guid=sel?sel.value:'';
+  return dmUnmappedKeysForPlayer(cat.property,guid).length>0;
 }
 
 // Body-only tooltip text (no name header -- effigies have none), shared by the
@@ -4327,7 +4365,7 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
       var ident={category:'journal',key:j.key||null,species:null,name:j.name,lv:null,gx:j.gx,gy:j.gy,label:j.name};
       var bodyHtml=detailSectionHtml('Status',journalTipBody(j,confirmed,jGot,jStatus,trackable,true))
         +detailActionsHtml([detailConfirmHtml(jChkId,confirmed)],
-          [trackable?'':mapKeyButtonHtml(jMapBtnId),caveAddButtonHtml()]);
+          [(!trackable&&mapKeyAvailableForCategory('Journal'))?mapKeyButtonHtml(jMapBtnId):'',caveAddButtonHtml()]);
       openIconDetail('Journal',j.name,bodyHtml,ident,jm,function(el){
         var box=el.querySelector('#'+jChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('journal',j.key||null,box.checked,j.name); };
@@ -4403,7 +4441,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
         +detailActionsHtml([detailConfirmHtml(bChkId,confirmed)],
           [clickable?('<button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="font-size:12px;">'
              +(bManual?'Unmark defeated':'Mark defeated')+'</button>'):'',
-           b.key?'':mapKeyButtonHtml(bMapBtnId),
+           (!b.key&&mapKeyAvailableForCategory('Field Boss'))?mapKeyButtonHtml(bMapBtnId):'',
            caveAddButtonHtml(),
            prereqAddButtonHtml()]);
       openIconDetail('Field Boss',b.name+detailLvlSuffix(b.lv),bodyHtml,ident,bm,function(el){
@@ -4489,7 +4527,7 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
       var ident={category:'fugitive',key:h.key||null,species:null,name:h.name,lv:h.lv!=null?h.lv:null,gx:g.cx,gy:g.cy,label:h.name};
       var bodyHtml=detailSectionHtml('Status',fugitiveTipBody(h,confirmed,hGot,hStatus,true))
         +detailActionsHtml([detailConfirmHtml(hChkId,confirmed)],
-          [h.key?'':mapKeyButtonHtml(hMapBtnId),caveAddButtonHtml()]);
+          [(!h.key&&mapKeyAvailableForCategory('Wanted Fugitive'))?mapKeyButtonHtml(hMapBtnId):'',caveAddButtonHtml()]);
       openIconDetail('Wanted Fugitive',h.name+detailLvlSuffix(h.lv),bodyHtml,ident,hm,function(el){
         var box=el.querySelector('#'+hChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('fugitive',h.key||null,box.checked,h.name); };
@@ -4529,7 +4567,7 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
       var ident={category:'eagle',key:es.key||null,species:null,name:es.name,lv:null,gx:g.cx,gy:g.cy,label:es.name};
       var bodyHtml=detailSectionHtml('Status',eagleTipBody(es,confirmed,esGot,esStatus,true))
         +detailActionsHtml([detailConfirmHtml(esChkId,confirmed)],
-          [es.key?'':mapKeyButtonHtml(esMapBtnId),caveAddButtonHtml()]);
+          [(!es.key&&mapKeyAvailableForCategory('Eagle Statue'))?mapKeyButtonHtml(esMapBtnId):'',caveAddButtonHtml()]);
       openIconDetail('Eagle Statue',es.name,bodyHtml,ident,esm,function(el){
         var box=el.querySelector('#'+esChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('eagle',es.key||null,box.checked,es.name); };
@@ -4572,7 +4610,7 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
       var ident={category:'sam',key:s.key||null,species:null,name:s.name,lv:null,gx:g.cx,gy:g.cy,label:s.name};
       var bodyHtml=detailSectionHtml('Status',samTipBody(s,confirmed,sGot,sStatus,true))
         +detailActionsHtml([detailConfirmHtml(sChkId,confirmed)],
-          [s.key?'':mapKeyButtonHtml(sMapBtnId),caveAddButtonHtml()]);
+          [(!s.key&&mapKeyAvailableForCategory('SAM Site'))?mapKeyButtonHtml(sMapBtnId):'',caveAddButtonHtml()]);
       openIconDetail('SAM Site',s.name,bodyHtml,ident,sm,function(el){
         var box=el.querySelector('#'+sChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('sam',s.key||null,box.checked,s.name); };
@@ -4627,7 +4665,7 @@ function buildItemPickupMarker(p,confirmed,pGot,pStatus){
       // second trip out to a chest that has already been opened. Unlike effigy, itempickup has
       // a real unmapped-key list to offer, since ItemPickupObtainForInstanceFlag isn't noName.
       var bodyHtml=detailSectionHtml('Status',itemPickupTipBody(p,confirmed,pGot,pStatus,true))
-        +(pending?detailActionsHtml([],[mapKeyButtonHtml(pMapBtnId)])
+        +(pending?detailActionsHtml([],mapKeyAvailableForCategory('Schematic')?[mapKeyButtonHtml(pMapBtnId)]:[])
                  :detailActionsHtml([detailConfirmHtml(pChkId,confirmed)],[caveAddButtonHtml()]));
       openIconDetail('Schematic',lbl,bodyHtml,ident,pm,function(el){
         // Pass the stored gx/gy so the server's itempickup coord-fallback re-keys THIS row in
@@ -5456,6 +5494,7 @@ function populateEffigyPlayerDropdown(){
 }
 
 async function fetchEffigyPlayer(){
+  ensureMapKeyAvailabilityData();
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
   if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);fetchItemPickupPlayer(guid);return;}
