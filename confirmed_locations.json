@@ -12,7 +12,7 @@
         "x":  -220415.39
     },
     {
-        "key":  "099440764403D1508D9BADADF4848697",
+        "key":  null,
         "name":  "Tower of the PAL Genetic Research Unit",
         "gx":  -148,
         "gy":  447,
@@ -28,7 +28,7 @@
         "bossVerified":  true
     },
     {
-        "key":  "0B9C64E849BA38D328DD28AA02FE30BB",
+        "key":  null,
         "name":  "Feybreak Tower",
         "gx":  -1294,
         "gy":  -1669,
@@ -66,7 +66,7 @@
         "x":  -123020.7
     },
     {
-        "key":  "1_10_PLAIN_F_BOSS_FAIRYDRAGON",
+        "key":  null,
         "name":  "Chillet",
         "gx":  173,
         "gy":  -418,
@@ -124,7 +124,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "2BC5E46049E69D3549CFB58948BE3288",
+        "key":  null,
         "name":  "Sand Dunes Entrance",
         "gx":  282,
         "gy":  159,
@@ -147,7 +147,7 @@
         "x":  -331136.22
     },
     {
-        "key":  "2DE1702048A1D4A82126168C49BE51A9",
+        "key":  null,
         "name":  "Mossanda Forest",
         "gx":  233,
         "gy":  -118,
@@ -170,7 +170,7 @@
         "x":  -268510.94
     },
     {
-        "key":  "3A84A3DD43C34B936CE6F18842A6FE1D",
+        "key":  null,
         "name":  "Emberstone Plateau",
         "gx":  -720,
         "gy":  -1195,
@@ -193,7 +193,7 @@
         "x":  -367248.78
     },
     {
-        "key":  "41727100495D21DC905D309C53989914",
+        "key":  null,
         "name":  "Fort Ruins",
         "gx":  182,
         "gy":  -390,
@@ -216,7 +216,7 @@
         "x":  -164866.52
     },
     {
-        "key":  "49C3516D459F15C70ABEE88CD7F4D331",
+        "key":  null,
         "name":  "Moonflower Tower Entrance",
         "gx":  -603,
         "gy":  214,
@@ -227,7 +227,7 @@
         "x":  -25662
     },
     {
-        "key":  "513E166044565A0BD3360F94142577E8",
+        "key":  null,
         "name":  "Marsh Island",
         "gx":  431,
         "gy":  -346,
@@ -247,7 +247,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "5669E36645C97EE9F38D308738ED30A7",
+        "key":  null,
         "name":  "Frostbitten Isle",
         "gx":  -80,
         "gy":  -946,
@@ -258,7 +258,7 @@
         "x":  -558561
     },
     {
-        "key":  "596996B948716D3FD2283C8B5C6E829C",
+        "key":  null,
         "name":  "Sea Breeze Archipelago - Castaway Beach",
         "gx":  -99,
         "gy":  -712,
@@ -269,7 +269,7 @@
         "x":  -450237
     },
     {
-        "key":  "5970E8E648D2A83AFDFF7C9151D9BEF5",
+        "key":  null,
         "name":  "Eternal Pyre Tower Entrance",
         "gx":  -594,
         "gy":  -531,
@@ -280,7 +280,7 @@
         "x":  -367617
     },
     {
-        "key":  "603ED0CD4CFB9AFDC9E11F805594CCE5",
+        "key":  null,
         "name":  "Rayne Syndicate Tower Entrance",
         "gx":  118,
         "gy":  -423,
@@ -291,7 +291,7 @@
         "x":  -317586
     },
     {
-        "key":  "6231802D40C81C00445379AE238D9F90",
+        "key":  null,
         "name":  "Eastern Wild Island",
         "gx":  549,
         "gy":  -103,
@@ -302,7 +302,7 @@
         "x":  -170706
     },
     {
-        "key":  "6282FE1E4029EDCDB14135AA4C171E4C",
+        "key":  null,
         "name":  "Desolate Church",
         "gx":  63,
         "gy":  -417,
@@ -313,7 +313,7 @@
         "x":  -314832
     },
     {
-        "key":  "65B10BB14ABDA9C2109167B21901D195",
+        "key":  null,
         "name":  "PIDF Tower Entrance",
         "gx":  542,
         "gy":  334,
@@ -348,7 +348,7 @@
         "x":  -13967.54
     },
     {
-        "key":  "6E03F8464BAD9E458B843AA30BE1CC8F",
+        "key":  null,
         "name":  "Plateau of Beginnings",
         "gx":  240,
         "gy":  -513,
@@ -359,7 +359,7 @@
         "x":  -358896
     },
     {
-        "key":  "7C5E91514F6E84B0C1DEFFB52C7C4DBA",
+        "key":  null,
         "name":  "Ruined Fortress City",
         "gx":  -561,
         "gy":  -247,
@@ -382,7 +382,7 @@
         "x":  -331910
     },
     {
-        "key":  "81_1_FOREST_FBOSS_2",
+        "key":  null,
         "name":  "Warsect",
         "gx":  161,
         "gy":  -223,
@@ -395,7 +395,7 @@
         "z":  0
     },
     {
-        "key":  "81_1_FOREST_FBOSS_3",
+        "key":  null,
         "name":  "Verdash",
         "gx":  285,
         "gy":  10,
@@ -408,7 +408,7 @@
         "z":  0
     },
     {
-        "key":  "81_1_FOREST_FBOSS_4",
+        "key":  null,
         "name":  "Vaelet",
         "gx":  129,
         "gy":  -51,
@@ -421,7 +421,7 @@
         "z":  0
     },
     {
-        "key":  "81_1_GRASS_FBOSS_1",
+        "key":  null,
         "name":  "Mammorest",
         "gx":  189,
         "gy":  -478,
@@ -434,7 +434,7 @@
         "species":  "GrassMammoth"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_11",
+        "key":  null,
         "name":  "Bushi",
         "gx":  -116,
         "gy":  -491,
@@ -447,7 +447,7 @@
         "z":  0
     },
     {
-        "key":  "81_1_GRASS_FBOSS_13",
+        "key":  null,
         "name":  "Jormuntide",
         "gx":  350,
         "gy":  -85,
@@ -460,7 +460,7 @@
         "z":  0
     },
     {
-        "key":  "81_1_GRASS_FBOSS_18",
+        "key":  null,
         "name":  "Grintale",
         "gx":  356,
         "gy":  -246,
@@ -473,7 +473,7 @@
         "species":  "NaughtyCat"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_2",
+        "key":  null,
         "name":  "Kingpaca",
         "gx":  50,
         "gy":  -461,
@@ -486,7 +486,7 @@
         "species":  "KingAlpaca"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_20",
+        "key":  null,
         "name":  "Katress",
         "gx":  242,
         "gy":  -332,
@@ -499,7 +499,7 @@
         "z":  0
     },
     {
-        "key":  "81_1_GRASS_FBOSS_21",
+        "key":  null,
         "name":  "Sweepa",
         "gx":  -227,
         "gy":  -593,
@@ -512,7 +512,7 @@
         "species":  "MopKing"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_23",
+        "key":  null,
         "name":  "Univolt",
         "gx":  -117,
         "gy":  -543,
@@ -525,7 +525,7 @@
         "species":  "Kirin"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_24",
+        "key":  null,
         "name":  "Broncherry",
         "gx":  -222,
         "gy":  -669,
@@ -538,7 +538,7 @@
         "species":  "SakuraSaurus"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_29",
+        "key":  null,
         "name":  "Wumpo Botan",
         "gx":  449,
         "gy":  -51,
@@ -551,7 +551,7 @@
         "species":  "Yeti_Grass"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_9",
+        "key":  null,
         "name":  "Penking",
         "gx":  114,
         "gy":  -352,
@@ -564,7 +564,7 @@
         "z":  0
     },
     {
-        "key":  "81_2_DESSERT_FBOSS_3",
+        "key":  null,
         "name":  "Menasting",
         "gx":  516,
         "gy":  102,
@@ -577,7 +577,7 @@
         "species":  "DarkScorpion"
     },
     {
-        "key":  "81_3_VOLCANO_FBOSS_1",
+        "key":  null,
         "name":  "Jetragon",
         "gx":  -789,
         "gy":  -321,
@@ -590,7 +590,7 @@
         "species":  "JetDragon"
     },
     {
-        "key":  "81_3_VOLCANO_FBOSS_3",
+        "key":  null,
         "name":  "Blazamut",
         "gx":  -442,
         "gy":  -561,
@@ -603,7 +603,7 @@
         "species":  "KingBahamut"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_15",
+        "key":  null,
         "name":  "Tarantriss",
         "gx":  -1341,
         "gy":  -1429,
@@ -617,7 +617,7 @@
         "species":  "PurpleSpider"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_18",
+        "key":  null,
         "name":  "Warsect Terra",
         "gx":  -1021,
         "gy":  -1448,
@@ -631,7 +631,7 @@
         "species":  "HerculesBeetle_Ground"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_20",
+        "key":  null,
         "name":  "Dazzi Noct",
         "gx":  -1343,
         "gy":  -1580,
@@ -645,7 +645,7 @@
         "species":  "RaijinDaughter_Water"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_4",
+        "key":  null,
         "name":  "Faleris Aqua",
         "gx":  -628,
         "gy":  -1048,
@@ -679,7 +679,7 @@
         "x":  -321353.06
     },
     {
-        "key":  "866881DB443444AA7F4E7C8E5DCDAA29",
+        "key":  null,
         "name":  "Marsh Island Church Ruins",
         "gx":  399,
         "gy":  -277,
@@ -702,7 +702,7 @@
         "x":  -311674.97
     },
     {
-        "key":  "8CA5E9774FF1BBC1156ABCA09E616480",
+        "key":  null,
         "name":  "Small Cove",
         "gx":  -205,
         "gy":  -546,
@@ -725,7 +725,7 @@
         "x":  -220268.9
     },
     {
-        "key":  "902C96F44BC84002E39B52ACBFC61452",
+        "key":  null,
         "name":  "Feybreak Shipwreck",
         "gx":  -1389,
         "gy":  -1471,
@@ -746,7 +746,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "9521FEBF4A6D0D02AE9F80AE9513B99C",
+        "key":  null,
         "name":  "Feybreak Tower Entrance",
         "gx":  -1287,
         "gy":  -1664,
@@ -758,7 +758,7 @@
         "x":  -888123
     },
     {
-        "key":  "979BF2044C8E8FE559B598A95A83EDE3",
+        "key":  null,
         "name":  "Small Settlement",
         "gx":  73,
         "gy":  -486,
@@ -781,7 +781,7 @@
         "x":  -216057.1
     },
     {
-        "key":  "9FBB93D84811BE424A37C391DBFBB476",
+        "key":  null,
         "name":  "Sealed Realm of the Frozen Wings",
         "gx":  119,
         "gy":  -336,
@@ -792,7 +792,7 @@
         "x":  -278571
     },
     {
-        "key":  "A1BC65AA445619EF338E0388BC010648",
+        "key":  null,
         "name":  "Foot of the Volcano",
         "gx":  -352,
         "gy":  -491,
@@ -803,7 +803,7 @@
         "x":  -349716
     },
     {
-        "key":  "A277AE6341EF40D84D711EA52303353F",
+        "key":  null,
         "name":  "Sealed Realm of the Swift",
         "gx":  286,
         "gy":  18,
@@ -850,7 +850,7 @@
         "x":  -368151.75
     },
     {
-        "key":  "A893B952423E429AA45A06B615A582FA",
+        "key":  null,
         "name":  "Moonflower Tower",
         "gx":  -597,
         "gy":  206,
@@ -866,7 +866,7 @@
         "bossVerified":  true
     },
     {
-        "key":  "ACAE5FB04D48DE4197443E9C0993086B",
+        "key":  null,
         "name":  "Sealed Realm of the Guardian",
         "gx":  120,
         "gy":  -62,
@@ -889,7 +889,7 @@
         "x":  -198773.23
     },
     {
-        "key":  "AECFED0D41AFEE11F30B4F9687BC3243",
+        "key":  null,
         "name":  "Mount Obsidian - Midpoint",
         "gx":  -497,
         "gy":  -444,
@@ -912,7 +912,7 @@
         "x":  -61251.86
     },
     {
-        "key":  "B639B7ED4EE18A7AA09BA189EA703032",
+        "key":  null,
         "name":  "Tower of the Brothers of the Eternal Pyre",
         "gx":  -588,
         "gy":  -518,
@@ -961,7 +961,7 @@
         "x":  -232164.45
     },
     {
-        "key":  "BF8B123244ADB794A06EA8A10503FBDD",
+        "key":  null,
         "name":  "Gobfin\u0027s Turf",
         "gx":  149,
         "gy":  -207,
@@ -972,7 +972,7 @@
         "x":  -219360
     },
     {
-        "key":  "BOSS_FEMALE_SOLDIER03",
+        "key":  null,
         "name":  "Aloha",
         "gx":  -592,
         "gy":  -235,
@@ -984,7 +984,7 @@
         "lv":  39
     },
     {
-        "key":  "BOSS_HUNTER_RIFLE",
+        "key":  null,
         "name":  "Hawk",
         "gx":  52,
         "gy":  -513,
@@ -996,7 +996,7 @@
         "lv":  12
     },
     {
-        "key":  "BOSS_MALE_DESERTPEOPLE",
+        "key":  null,
         "name":  "Phantom",
         "gx":  533,
         "gy":  133,
@@ -1008,7 +1008,7 @@
         "lv":  36
     },
     {
-        "key":  "BOSS_MALE_PEOPLE",
+        "key":  null,
         "name":  "Dyna",
         "gx":  349,
         "gy":  -7,
@@ -1020,7 +1020,7 @@
         "lv":  26
     },
     {
-        "key":  "BOSS_MALE_PEOPLE03",
+        "key":  null,
         "name":  "Scoot",
         "gx":  -15,
         "gy":  -482,
@@ -1032,7 +1032,7 @@
         "lv":  10
     },
     {
-        "key":  "BOSS_MALE_PEOPLE2",
+        "key":  null,
         "name":  "Mite",
         "gx":  349,
         "gy":  -2,
@@ -1044,7 +1044,7 @@
         "lv":  26
     },
     {
-        "key":  "BOSS_MALE_SOLDIER02",
+        "key":  null,
         "name":  "Dart",
         "gx":  268,
         "gy":  -216,
@@ -1056,7 +1056,7 @@
         "lv":  23
     },
     {
-        "key":  "BOSS_MALE_TRADER01",
+        "key":  null,
         "name":  "Skim",
         "gx":  -90,
         "gy":  144,
@@ -1068,7 +1068,7 @@
         "lv":  42
     },
     {
-        "key":  "BOSS_NINJA",
+        "key":  null,
         "name":  "Fumble",
         "gx":  162,
         "gy":  -2,
@@ -1080,7 +1080,7 @@
         "lv":  28
     },
     {
-        "key":  "BOSS_VIKINGELITE",
+        "key":  null,
         "name":  "Cache",
         "gx":  -1386,
         "gy":  -1485,
@@ -1129,7 +1129,7 @@
         "x":  -297494.75
     },
     {
-        "key":  "D27AFCAD472164F000D33A8D8B61FE8B",
+        "key":  null,
         "name":  "Tower of the Rayne Syndicate",
         "gx":  111,
         "gy":  -431,
@@ -1181,7 +1181,7 @@
         "x":  -370392.88
     },
     {
-        "key":  "DAY-XX",
+        "key":  null,
         "name":  "Castaway\u0027s Journal - Day XX",
         "gx":  151,
         "gy":  -465,
@@ -1192,7 +1192,7 @@
         "y":  227309
     },
     {
-        "key":  "DAY1-1",
+        "key":  null,
         "name":  "Castaway\u0027s Journal - Day 1-1",
         "gx":  259,
         "gy":  -522,
@@ -1203,7 +1203,7 @@
         "verified":  false
     },
     {
-        "key":  "DAY2",
+        "key":  null,
         "name":  "Castaway\u0027s Journal - Day 2",
         "gx":  239,
         "gy":  -506,
@@ -1214,7 +1214,7 @@
         "y":  268160
     },
     {
-        "key":  "DAY3",
+        "key":  null,
         "name":  "Castaway\u0027s Journal - Day 3",
         "gx":  189,
         "gy":  -379,
@@ -1225,7 +1225,7 @@
         "y":  244751
     },
     {
-        "key":  "DAY8",
+        "key":  null,
         "name":  "Castaway\u0027s Journal - Day 8",
         "gx":  64,
         "gy":  -418,
@@ -1236,7 +1236,7 @@
         "y":  187376
     },
     {
-        "key":  "DDBBFFAF43D9219AE68DF98744DF0831",
+        "key":  null,
         "name":  "Grassy Behemoth Hills",
         "gx":  172,
         "gy":  -475,
@@ -1258,7 +1258,7 @@
         "verified":  true
     },
     {
-        "key":  "E0819EFB41581AEAC3A029B0EE2FE195",
+        "key":  null,
         "name":  "Genetic Research Unit Tower Entrance",
         "gx":  -139,
         "gy":  466,
@@ -1305,7 +1305,7 @@
         "x":  -306167.03
     },
     {
-        "key":  "E88379634CB5B6117DA2E7B8810BFE0A",
+        "key":  null,
         "name":  "Tower of the Free Pal Alliance",
         "gx":  182,
         "gy":  30,
@@ -1333,7 +1333,7 @@
         "x":  -359240.56
     },
     {
-        "key":  "EC94023A4CA571FF0FD19E90944F4231",
+        "key":  null,
         "name":  "Icy Weasel Hill",
         "gx":  4,
         "gy":  183,
@@ -1357,7 +1357,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "F6C005A14B38FE0B57F1C7869FD899CB",
+        "key":  null,
         "name":  "Natural Bridge",
         "gx":  377,
         "gy":  -213,
@@ -1389,7 +1389,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "FE90632845114C7FBFA4669D071E285F",
+        "key":  null,
         "name":  "Tower of the PIDF",
         "gx":  556,
         "gy":  335,
@@ -1405,7 +1405,7 @@
         "bossVerified":  true
     },
     {
-        "key":  "GRASSBOSS3",
+        "key":  null,
         "name":  "Zoe Rayne\u0027s Diary - 3",
         "gx":  126,
         "gy":  -337,
@@ -1416,7 +1416,7 @@
         "y":  216293
     },
     {
-        "key":  "SNOWBOSS1",
+        "key":  null,
         "name":  "Victor Ashford\u0027s Diary - 1",
         "gx":  -87,
         "gy":  178,
@@ -2152,7 +2152,7 @@
         "x":  -660170.6
     },
     {
-        "key":  "DAY11",
+        "key":  null,
         "name":  "Castaway\u0027s Journal - Day 11",
         "gx":  122,
         "gy":  -397,
@@ -8859,7 +8859,7 @@
         "z":  36043.28
     },
     {
-        "key":  "923B781345D2AB7ECED6BABD6E97ECE8",
+        "key":  null,
         "name":  "Hypocrite Hill",
         "gx":  71,
         "gy":  -248,
@@ -8871,7 +8871,7 @@
         "x":  -237720
     },
     {
-        "key":  "81_1_FOREST_FBOSS_7",
+        "key":  null,
         "name":  "Elphidran",
         "gx":  44,
         "gy":  -284,
@@ -8885,7 +8885,7 @@
         "species":  "FairyDragon"
     },
     {
-        "key":  "81_1_FOREST_FBOSS_1",
+        "key":  null,
         "name":  "Petallia",
         "gx":  -19,
         "gy":  -264,
@@ -8899,7 +8899,7 @@
         "z":  0
     },
     {
-        "key":  "16C7164C43E2B96BEDCC6696E2E592F7",
+        "key":  null,
         "name":  "Ancient Ritual Site",
         "gx":  -15,
         "gy":  -292,
@@ -8918,7 +8918,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -292,
-        "key":  "Day0",
+        "key":  null,
         "gx":  -447,
         "x":  -257916,
         "y":  -47173,
@@ -8933,7 +8933,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -459,
-        "key":  "Day1-2",
+        "key":  null,
         "gx":  85,
         "x":  -334569,
         "y":  197015,
@@ -8948,7 +8948,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -188,
-        "key":  "Day6",
+        "key":  null,
         "gx":  -234,
         "x":  -210180,
         "y":  50594,
@@ -8963,7 +8963,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -372,
-        "key":  "Day10",
+        "key":  null,
         "gx":  -19,
         "x":  -294636,
         "y":  149279,
@@ -8971,7 +8971,7 @@
         "verified":  false
     },
     {
-        "key":  "DAY12-2",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -8993,7 +8993,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  26,
-        "key":  "Day12-3",
+        "key":  null,
         "gx":  184,
         "x":  -111954,
         "y":  242456,
@@ -9001,7 +9001,7 @@
         "verified":  false
     },
     {
-        "key":  "DAY13",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9016,7 +9016,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "DAY15",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9038,7 +9038,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -417,
-        "key":  "Day18",
+        "key":  null,
         "gx":  34,
         "x":  -315291,
         "y":  173606,
@@ -9046,7 +9046,7 @@
         "verified":  false
     },
     {
-        "key":  "DAY22",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9068,7 +9068,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -656,
-        "key":  "Day25",
+        "key":  null,
         "gx":  -725,
         "x":  -424992,
         "y":  -174775,
@@ -9083,7 +9083,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -605,
-        "key":  "Day29",
+        "key":  null,
         "gx":  -405,
         "x":  -401583,
         "y":  -27895,
@@ -9098,7 +9098,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  193,
-        "key":  "Day30",
+        "key":  null,
         "gx":  290,
         "x":  -35301,
         "y":  291110,
@@ -9113,7 +9113,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  392,
-        "key":  "Day32",
+        "key":  null,
         "gx":  512,
         "x":  56040,
         "y":  393008,
@@ -9128,7 +9128,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -134,
-        "key":  "Day38",
+        "key":  null,
         "gx":  -263,
         "x":  -185394,
         "y":  37283,
@@ -9143,7 +9143,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -504,
-        "key":  "GRASSBOSS1",
+        "key":  null,
         "gx":  -4,
         "x":  -355224,
         "y":  156164,
@@ -9158,7 +9158,7 @@
         "source":  null,
         "origin":  "scraped",
         "gy":  -554,
-        "key":  "GRASSBOSS2",
+        "key":  null,
         "gx":  168,
         "x":  -378174,
         "y":  235112,
@@ -9166,7 +9166,7 @@
         "verified":  false
     },
     {
-        "key":  "GRASSBOSS4",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9181,7 +9181,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "GRASSBOSS5",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9196,7 +9196,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "FORESTBOSS1",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9211,7 +9211,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "FORESTBOSS4",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9226,7 +9226,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "VOLCANOBOSS1",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9241,7 +9241,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "DESERTBOSS1",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9256,7 +9256,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "DESERTBOSS2",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9271,7 +9271,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "DESERTBOSS3",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9286,7 +9286,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "SNOWBOSS3",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9301,7 +9301,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "SNOWBOSS2",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9316,7 +9316,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "SAKURAJIMABOSS1",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9331,7 +9331,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "SAKURAJIMABOSS2",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9346,7 +9346,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "SAKURAJIMABOSS3",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9361,7 +9361,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "SAKURAJIMABOSS4",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9376,7 +9376,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "SAKURAJIMABOSS5",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9391,7 +9391,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "VIKINGBOSS1",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9406,7 +9406,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "VIKINGBOSS2",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9421,7 +9421,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "VIKINGBOSS3",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9436,7 +9436,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "VIKINGBOSS4",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9451,7 +9451,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "VIKINGBOSS5",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -9466,7 +9466,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_14",
+        "key":  null,
         "gx":  -134,
         "gy":  -94,
         "lv":  null,
@@ -9481,7 +9481,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_3_VOLCANO_FBOSS_2",
+        "key":  null,
         "gx":  -615,
         "gy":  -429,
         "lv":  null,
@@ -9496,7 +9496,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_3",
+        "key":  null,
         "gx":  -1106,
         "gy":  -1315,
         "lv":  null,
@@ -9511,7 +9511,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "1_10_PLAIN_F_BOSS_BLUEDRAGON",
+        "key":  null,
         "gx":  -53,
         "gy":  -387,
         "lv":  null,
@@ -9526,7 +9526,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_4",
+        "key":  null,
         "gx":  -345,
         "gy":  -253,
         "lv":  null,
@@ -9541,7 +9541,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_5",
+        "key":  null,
         "category":  "bounty",
         "gx":  -167,
         "gy":  -448,
@@ -9556,7 +9556,7 @@
         "source":  "NormalBossDefeatFlag"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_22",
+        "key":  null,
         "gx":  -1164,
         "gy":  -1653,
         "lv":  null,
@@ -9571,7 +9571,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_7",
+        "key":  null,
         "gx":  -965,
         "gy":  -1175,
         "lv":  null,
@@ -9586,7 +9586,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_21",
+        "key":  null,
         "gx":  -1165,
         "gy":  -1557,
         "lv":  null,
@@ -9601,7 +9601,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_2_DESSERT_FBOSS_4",
+        "key":  null,
         "gx":  350,
         "gy":  537,
         "lv":  null,
@@ -9631,7 +9631,7 @@
         "lv":  14
     },
     {
-        "key":  "81_1_FOREST_FBOSS_6",
+        "key":  null,
         "gx":  19,
         "gy":  -158,
         "lv":  null,
@@ -9661,7 +9661,7 @@
         "lv":  15
     },
     {
-        "key":  "81_1_GRASS_FBOSS_16",
+        "key":  null,
         "category":  "bounty",
         "gx":  -258,
         "gy":  -458,
@@ -9676,7 +9676,7 @@
         "source":  "NormalBossDefeatFlag"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_5",
+        "key":  null,
         "gx":  -834,
         "gy":  -1116,
         "lv":  null,
@@ -9691,7 +9691,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_19",
+        "key":  null,
         "gx":  -1283,
         "gy":  -1304,
         "lv":  null,
@@ -9706,7 +9706,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_3_SNOW_FBOSS_1",
+        "key":  null,
         "gx":  -357,
         "gy":  509,
         "lv":  null,
@@ -9721,7 +9721,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_16",
+        "key":  null,
         "gx":  -1082,
         "gy":  -1320,
         "lv":  null,
@@ -9742,7 +9742,7 @@
                     ]
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_13",
+        "key":  null,
         "gx":  -761,
         "gy":  -1223,
         "lv":  null,
@@ -9757,7 +9757,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_25",
+        "key":  null,
         "category":  "bounty",
         "gx":  -113,
         "gy":  -628,
@@ -9772,7 +9772,7 @@
         "source":  "NormalBossDefeatFlag"
     },
     {
-        "key":  "81_3_SNOW_FBOSS_2",
+        "key":  null,
         "gx":  -228,
         "gy":  469,
         "lv":  null,
@@ -9787,7 +9787,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_6",
+        "key":  null,
         "gx":  -1036,
         "gy":  -1145,
         "lv":  null,
@@ -9802,7 +9802,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_4_SAKURAJIMA_FBOSS_2",
+        "key":  null,
         "gx":  -676,
         "gy":  174,
         "lv":  null,
@@ -9817,7 +9817,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_23",
+        "key":  null,
         "gx":  -946,
         "gy":  -824,
         "lv":  null,
@@ -9832,7 +9832,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_28",
+        "key":  null,
         "category":  "bounty",
         "gx":  -147,
         "gy":  -659,
@@ -9847,7 +9847,7 @@
         "source":  "NormalBossDefeatFlag"
     },
     {
-        "key":  "81_3_SNOW_FBOSS_3",
+        "key":  null,
         "gx":  -160,
         "gy":  343,
         "lv":  null,
@@ -9862,7 +9862,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_4_SAKURAJIMA_FBOSS_1",
+        "key":  null,
         "gx":  -575,
         "gy":  332,
         "lv":  null,
@@ -9877,7 +9877,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_26",
+        "key":  null,
         "gx":  448,
         "gy":  -181,
         "lv":  null,
@@ -9892,7 +9892,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "5_2_ISLAND_ICEBLOCK_FBOSS_1",
+        "key":  null,
         "gx":  139,
         "gy":  651,
         "lv":  null,
@@ -9907,7 +9907,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_9",
+        "key":  null,
         "gx":  -923,
         "gy":  -1014,
         "lv":  null,
@@ -9943,7 +9943,7 @@
         "lv":  18
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_12",
+        "key":  null,
         "gx":  -1114,
         "gy":  -940,
         "lv":  null,
@@ -9958,7 +9958,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_14",
+        "key":  null,
         "gx":  -1183,
         "gy":  -1490,
         "lv":  null,
@@ -9973,7 +9973,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_2_DESSERT_FBOSS_2",
+        "key":  null,
         "gx":  447,
         "gy":  666,
         "lv":  null,
@@ -9988,7 +9988,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_11",
+        "key":  null,
         "gx":  -1355,
         "gy":  -968,
         "lv":  null,
@@ -10008,7 +10008,7 @@
                     ]
     },
     {
-        "key":  "81_1_GRASS_FBOSS_10",
+        "key":  null,
         "gx":  -256,
         "gy":  -131,
         "lv":  null,
@@ -10038,7 +10038,7 @@
         "z":  null
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_17",
+        "key":  null,
         "gx":  -1211,
         "gy":  -1354,
         "lv":  null,
@@ -10053,7 +10053,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_1_FOREST_FBOSS_5",
+        "key":  null,
         "gx":  252,
         "gy":  69,
         "lv":  null,
@@ -10068,7 +10068,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_1",
+        "key":  null,
         "gx":  -984,
         "gy":  -1022,
         "lv":  null,
@@ -10089,7 +10089,7 @@
                       ]
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_8",
+        "key":  null,
         "gx":  -879,
         "gy":  -1467,
         "lv":  null,
@@ -10109,7 +10109,7 @@
                     ]
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_2",
+        "key":  null,
         "gx":  -1209,
         "gy":  -1326,
         "lv":  null,
@@ -10130,7 +10130,7 @@
                       ]
     },
     {
-        "key":  "81_5_YAMIJIMA_FBOSS_10",
+        "key":  null,
         "gx":  -756,
         "gy":  -940,
         "lv":  null,
@@ -10145,7 +10145,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_2_DESSERT_FBOSS_1",
+        "key":  null,
         "gx":  404,
         "gy":  256,
         "lv":  null,
@@ -10160,7 +10160,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_6_OCEAN_FBOSS_1",
+        "key":  null,
         "gx":  -179,
         "gy":  842,
         "lv":  null,
@@ -10175,7 +10175,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "81_6_OCEAN_FBOSS_2",
+        "key":  null,
         "gx":  -970,
         "gy":  -538,
         "lv":  null,
@@ -10190,7 +10190,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_MALE_TRADER02",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -1707,
@@ -10205,7 +10205,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_POLICE_OLD",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -1226,
@@ -10220,7 +10220,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_DARKTRADER",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -1181,
@@ -10241,7 +10241,7 @@
                       ]
     },
     {
-        "key":  "BOSS_MALE_TRADER03",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -904,
@@ -10256,7 +10256,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_FEMALE_SOLDIER02",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -1281,
@@ -10271,7 +10271,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_FEMALE_PEOPLE",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -755,
@@ -10286,7 +10286,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_MALE_SOLDIER04",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -203,
@@ -10301,7 +10301,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_FIRECULT_FLAMETHROWER",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -453,
@@ -10316,7 +10316,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_FEMALE_PEOPLE03",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -386,
@@ -10331,7 +10331,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_BELIEVER_CROSSBOW",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -88,
@@ -10346,7 +10346,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_MALE_PEOPLE02",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  481,
@@ -10361,7 +10361,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_POLICE_RIFLE",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  370,
@@ -10376,7 +10376,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_MALE_NINJAELITE",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  230,
@@ -10391,7 +10391,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_FEMALE_PEOPLE02",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -394,
@@ -10406,7 +10406,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_FEMALE_SOLDIER04",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  105,
@@ -10421,7 +10421,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_MALE_SOLDIER03",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  318,
@@ -10436,7 +10436,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_BELIEVER_FAT_GIANTCLUB",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  96,
@@ -10451,7 +10451,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_FEMALE_DESERTPEOPLE",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  590,
@@ -10466,7 +10466,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_VIKING",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -1004,
@@ -10481,7 +10481,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_HUNTER_FAT_GATLINGGUN",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -258,
@@ -10496,7 +10496,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_FEMALE_SOLDIER",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  -117,
@@ -10511,7 +10511,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "BOSS_SCIENTIST_LASERRIFLE",
+        "key":  null,
         "z":  null,
         "species":  null,
         "gy":  312,
@@ -10526,7 +10526,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "2EC07ACC4505CB726DE38A84246CA999",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10541,7 +10541,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "5F426B49469368B0C131D3A6DB8F7831",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10556,7 +10556,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "F8E5CB8143F4FA2F6213E6B454569F87",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10571,7 +10571,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "01ACCA6E4BDAA68220821FB05AB54E4D",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10586,7 +10586,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "3697999C458BF8A3C7973382969FBDF9",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10601,7 +10601,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "4669582D4081BF550AFB66A05D043A3D",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10631,22 +10631,22 @@
         "origin":  "manual"
     },
     {
-        "key":  "71C4B2B2407F2BBBD77572A20C7FF0F5",
-        "z":  null,
         "species":  null,
         "lv":  null,
-        "gy":  95,
-        "gx":  -36,
-        "x":  -80283,
-        "y":  141476,
         "name":  "No Man\u0027s Trail",
+        "key":  "71C4B2B2407F2BBBD77572A20C7FF0F5",
+        "gx":  -36,
+        "gy":  94,
+        "x":  null,
+        "y":  null,
+        "z":  null,
         "source":  "FastTravelPointUnlockFlag",
-        "verified":  false,
+        "verified":  true,
         "category":  "eagle",
         "origin":  "manual"
     },
     {
-        "key":  "2A2B744B41AC79964DAE6B89CAC51FC3",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10661,7 +10661,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "22095BFA48A46172F8D154B2EBEB7493",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10676,7 +10676,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "4CCF456A440C6CD5F2347AAA3E163F21",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10751,7 +10751,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "C808C5844EB34E9EDA773AA209CEBA01",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10766,7 +10766,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "10F777FB4B9BFA0CAD790887D87DDBC2",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10781,7 +10781,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "916CC96142D38225BD3C9290D6321073",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10796,7 +10796,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "DEAA0D38438D8CF02BC7CC82621B33B0",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10811,7 +10811,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "F31B78014AD3954185416DA155E50CCD",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10826,7 +10826,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "6D227CD3475783FB16D797B206DD8C13",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10841,7 +10841,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "72626BD0492AD65E59BDB499C9BED99A",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10856,7 +10856,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "6B05B93C445473B5A9597A90CEBFF27B",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10871,7 +10871,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "23F4D1CB454D1E23F252C29447F5A384",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10901,7 +10901,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "2EE8ACF447C0CFC2C3C11E948E691448",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10916,7 +10916,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "CF5FAE4A487231DDD8487C9B19453128",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10931,7 +10931,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "52E1E065410F78AF13B18CB1136EC8D6",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10946,7 +10946,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "E74D687D4CAAF5EA085E0B8A76F8B652",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10961,7 +10961,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "F6AFBCDA4D7AF6C373407DBC8556FBAE",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10976,7 +10976,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "27508F284B175C5C2B9BFC85AD773E4F",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -10991,7 +10991,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "6DB6B7B2431CA2EFFFC88EB45805BA6A",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11006,7 +11006,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "74270C2F45B8DCA66B6A1FAAA911D024",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11036,7 +11036,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "91DAC6F34D2A9FD7F01471B5166C6C02",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11051,7 +11051,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "15314BE94E2FB8D018D5749BE9A318F0",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11066,7 +11066,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "B44AA24445864494E7569597ACCAEFC6",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11081,7 +11081,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "3A0F123947BE045BC415C6B061A5285A",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11096,7 +11096,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "75BD9923489E2A4EBCED5A81175D5928",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11118,7 +11118,7 @@
         "category":  "eagle",
         "origin":  "manual",
         "name":  "Sealed Realm of the Swordmaster",
-        "key":  "79C561B747335A7A0A8FBF9FAE280E62",
+        "key":  null,
         "gx":  -214,
         "gy":  -348,
         "x":  null,
@@ -11126,7 +11126,7 @@
         "z":  null
     },
     {
-        "key":  "B001852C491FF5E70C4747BFF9972924",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11141,7 +11141,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "28D514E74B51FD9EB078A891DB0787C2",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11156,7 +11156,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "F8DF603B4C750B37D943C9AF6A911946",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11171,7 +11171,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "4D2F204549AB656CA1EA4B8E39C484F3",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11186,7 +11186,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "1BDEABA240B1699541C17F83E59E61DF",
+        "key":  null,
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -11201,7 +11201,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "FORESTBOSS3",
+        "key":  null,
         "name":  "Lily Everhart\u0027s Diary - 3",
         "gx":  -2,
         "gy":  -266,
@@ -11213,7 +11213,7 @@
         "y":  157082
     },
     {
-        "key":  "7170881D44249E90902F728E240493AF",
+        "key":  null,
         "name":  "Islandhopper Coast",
         "gx":  241,
         "gy":  -310,
@@ -11225,7 +11225,7 @@
         "y":  268619
     },
     {
-        "key":  "FORESTBOSS2",
+        "key":  null,
         "name":  "Lily Everhart\u0027s Diary - 2",
         "gx":  217,
         "gy":  -258,
@@ -11237,7 +11237,7 @@
         "y":  257603
     },
     {
-        "key":  "BOSS_MALE_SOLDIER",
+        "key":  null,
         "name":  "Insurance Fraud Crash",
         "gx":  -290,
         "gy":  -622,
@@ -11250,7 +11250,7 @@
         "lv":  15
     },
     {
-        "key":  "3E8E504B4A3975FD3862E1BC85A5D4F6",
+        "key":  null,
         "name":  "Sea Breeze Archipelago Church",
         "gx":  -73,
         "gy":  -551,
@@ -11262,7 +11262,7 @@
         "y":  124493
     },
     {
-        "key":  "DAY12-1",
+        "key":  null,
         "name":  "Castaway\u0027s Journal - Day 12-1",
         "gx":  -170,
         "gy":  -466,
@@ -11274,7 +11274,7 @@
         "y":  79970
     },
     {
-        "key":  "23B9E99C4A454B99220AF7B4A58FD8DE",
+        "key":  null,
         "name":  "Ascetic Falls",
         "gx":  -224,
         "gy":  -441,
@@ -11286,7 +11286,7 @@
         "y":  55184
     },
     {
-        "key":  "DAY5",
+        "key":  null,
         "name":  "Castaway\u0027s Journal - Day 5",
         "gx":  162,
         "gy":  449,
@@ -11296,7 +11296,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "AA347F504DA91F1886472FB96F3745ED",
+        "key":  null,
         "name":  "SAM Site - Scorched Hill North Coast",
         "gx":  -1241,
         "gy":  -811,
@@ -11311,7 +11311,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "73A399004933990F1AE275B06716F6F2",
+        "key":  null,
         "name":  "SAM Site - Scorched Ashland Coastal",
         "gx":  -993,
         "gy":  -855,
@@ -11326,7 +11326,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "1770E38D4E83EC6DF18DDF9BF29F4F7D",
+        "key":  null,
         "name":  "SAM Site - Scorched Ashland Cliff (Teleporter)",
         "gx":  -859,
         "gy":  -914,
@@ -11341,7 +11341,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "CCBAA9AC4F9DC499AD447DA4A4A22AA3",
+        "key":  null,
         "name":  "SAM Site - Scorched Ashland West (Teleporter)",
         "gx":  -710,
         "gy":  -932,
@@ -11356,7 +11356,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "FD126D344214D814A3B789BC611050D3",
+        "key":  null,
         "name":  "SAM Site - Withered Seaside Coast",
         "gx":  -608,
         "gy":  -1146,
@@ -11371,7 +11371,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "C882B0744BB9E7CBB1B4B0BD43EB3A58",
+        "key":  null,
         "name":  "SAM Site - Scorched Hill Cliff (Withered Seaside)",
         "gx":  -770,
         "gy":  -1138,
@@ -11401,7 +11401,7 @@
         "verified":  false
     },
     {
-        "key":  "AF83F2E7489B4CD1F257E19BA97496A8",
+        "key":  null,
         "name":  "SAM Site - Emberstone Plateau Hilltop",
         "gx":  -1141,
         "gy":  -1003,
@@ -11416,7 +11416,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "6929C332404F1BF9FBFF1C8D29CC1313",
+        "key":  null,
         "name":  "SAM Site - Deserted Ash Plateau (Teleporter)",
         "gx":  -1337,
         "gy":  -1108,
@@ -11431,7 +11431,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "C433DC3C48627D676E5089BB9AEB4168",
+        "key":  null,
         "name":  "SAM Site - Deserted Ash Plateau Ground",
         "gx":  -1133,
         "gy":  -1217,
@@ -11446,7 +11446,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "E143DE0B40B7A166267C73B7D63250C5",
+        "key":  null,
         "name":  "SAM Site - Loess Plains Area",
         "gx":  -946,
         "gy":  -1253,
@@ -11506,7 +11506,7 @@
         "verified":  false
     },
     {
-        "key":  "0D95DF764AFD74CF1DFF88BF4A1CF51B",
+        "key":  null,
         "name":  "SAM Site - Frozen Coral Hill Entrance",
         "gx":  -1139,
         "gy":  -1392,
@@ -11536,7 +11536,7 @@
         "verified":  false
     },
     {
-        "key":  "8FD328C5413D91F91C6CA3BB22EF5B01",
+        "key":  null,
         "name":  "SAM Site - Feybreak Shipwreck",
         "gx":  -1369,
         "gy":  -1466,
@@ -11551,7 +11551,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "588A275441F03EF500B948813A2C38EE",
+        "key":  null,
         "name":  "SAM Site - Frozen Coral Hill Ground",
         "gx":  -1266,
         "gy":  -1445,
@@ -11581,7 +11581,7 @@
         "verified":  false
     },
     {
-        "key":  "7A85AFFD4456A9BEA4CE5BBAFF748C0F",
+        "key":  null,
         "name":  "SAM Site - Frozen Coral Hill South",
         "gx":  -1109,
         "gy":  -1645,
@@ -11596,7 +11596,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "6A2505944BB55E6572210B9D714C02F8",
+        "key":  null,
         "name":  "SAM Site - Near Feybreak Tower",
         "gx":  -1222,
         "gy":  -1622,
@@ -11611,7 +11611,7 @@
         "origin":  "manual"
     },
     {
-        "key":  "9250905449F1794FCD623C949B6973E5",
+        "key":  null,
         "name":  "SAM Site - Feybreak Tower Southwest",
         "gx":  -1365,
         "gy":  -1630,
@@ -11685,6 +11685,22 @@
         "key":  "3B7064E0488FEE9BC1BAC887FA92FDD5",
         "gx":  -79,
         "gy":  55,
+        "x":  null,
+        "y":  null,
+        "z":  null
+    },
+    {
+        "species":  "",
+        "lv":  null,
+        "custom":  true,
+        "source":  "ItemPickupObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "itempickup",
+        "origin":  "manual",
+        "name":  "Pal Tamer\u0027s Glasses Schematic",
+        "key":  "D5E3FFE24579FE8A6BA230BEBC416494",
+        "gx":  8,
+        "gy":  121,
         "x":  null,
         "y":  null,
         "z":  null
