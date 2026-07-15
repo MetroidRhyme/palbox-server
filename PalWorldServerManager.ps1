@@ -2565,7 +2565,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/map-add-icon' -and $method -eq 'POST') {
                     # "Add Icon" header button -> modal (dashboard.html, openAddIconModal/
                     # saveAddIcon) -- hand-creates a brand-new confirmed_locations.json row
-                    # for one of the 6 live map categories, optionally tied to an already-
+                    # for one of the 8 live map categories, optionally tied to an already-
                     # discovered but still-unmapped raw save key (Data Mine tab's Unmapped
                     # Keys list). Stamped custom:true by Add-CustomMapEntry so it's
                     # distinguishable from every other creation path; scraped-roster
@@ -2591,9 +2591,11 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 ($path -eq '/api/map-custom-edit' -and $method -eq 'POST') {
                     # Data Mine tab's Custom Icons review list -- edits a custom:true row
                     # in place. Body: { category, identityKey?, identitySpecies?,
-                    # identityName?, name?, gx?, gy?, key?, species? }. Edit-CustomMapEntry
-                    # refuses to touch anything that isn't custom:true, so this can never be
-                    # pointed at a scraped/live row even via a matching identity.
+                    # identityName?, identityGx?, identityGy?, name?, gx?, gy?, key?,
+                    # species? }. Edit-CustomMapEntry refuses to touch anything that isn't
+                    # custom:true, so this can never be pointed at a scraped/live row even
+                    # via a matching identity. identityGx/identityGy resolve a KEYLESS
+                    # effigy/itempickup pin, whose coords are its only identity.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $category = [string]$body.category
@@ -2601,13 +2603,15 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $identKey = if ($body.identityKey) { [string]$body.identityKey } else { $null }
                         $identSpecies = if ($body.identitySpecies) { [string]$body.identitySpecies } else { $null }
                         $identName = if ($body.identityName) { [string]$body.identityName } else { $null }
+                        $identGx = if ($null -ne $body.identityGx -and [string]$body.identityGx -ne '') { [int]$body.identityGx } else { $null }
+                        $identGy = if ($null -ne $body.identityGy -and [string]$body.identityGy -ne '') { [int]$body.identityGy } else { $null }
                         $fields = @{}
                         if ($body.PSObject.Properties['name']) { $fields.name = if ($body.name) { [string]$body.name } else { $null } }
                         if ($body.PSObject.Properties['gx']) { $fields.gx = if ([string]$body.gx -ne '') { [int]$body.gx } else { $null } }
                         if ($body.PSObject.Properties['gy']) { $fields.gy = if ([string]$body.gy -ne '') { [int]$body.gy } else { $null } }
                         if ($body.PSObject.Properties['key']) { $fields.key = if ($body.key) { [string]$body.key } else { $null } }
                         if ($body.PSObject.Properties['species']) { $fields.species = if ($body.species) { [string]$body.species } else { $null } }
-                        $updated = Edit-CustomMapEntry $category $identKey $identSpecies $identName $fields
+                        $updated = Edit-CustomMapEntry $category $identKey $identSpecies $identName $fields $identGx $identGy
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2617,8 +2621,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
 
                 ($path -eq '/api/map-custom-delete' -and $method -eq 'POST') {
                     # Data Mine tab's Custom Icons review list -- deletes a custom:true row.
-                    # Body: { category, key?, species?, name? }. Same custom:true guard as
-                    # /api/map-custom-edit above.
+                    # Body: { category, key?, species?, name?, gx?, gy? }. Same custom:true
+                    # guard as /api/map-custom-edit above; gx/gy resolve a KEYLESS
+                    # effigy/itempickup pin, whose coords are its only identity.
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $category = [string]$body.category
@@ -2626,7 +2631,9 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $key = if ($body.key) { [string]$body.key } else { $null }
                         $species = if ($body.species) { [string]$body.species } else { $null }
                         $name = if ($body.name) { [string]$body.name } else { $null }
-                        Remove-CustomMapEntry $category $key $species $name | Out-Null
+                        $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
+                        $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
+                        Remove-CustomMapEntry $category $key $species $name $gx $gy | Out-Null
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -3419,8 +3426,23 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 # instead of creating a visually-duplicate second one at (usually)
                                 # the exact same location -- this is exactly the bug that produced
                                 # a duplicate, never-green Fenglope pin (2026-07-07).
+                                #
+                                # Scoped to the key's OWN category (2026-07-15): this match used to
+                                # be name-only across every category, so linking a key whose typed
+                                # name collided with a keyless row in a DIFFERENT category (e.g. an
+                                # eagle key vs. a same-named keyless journal/sam pin) silently
+                                # rewrote that unrelated row's key/source/category instead. The probe
+                                # runs the same classification the write below stamps on the row, so
+                                # the NormalBossDefeatFlag bounty-vs-fugitive key-shape split is
+                                # handled for free; name is $null on it so the tower name-override
+                                # can't fire. An unknown property yields no category -- skip the
+                                # fallback entirely and let a fresh row be created (the safe outcome).
                                 $nameU = $name.ToUpper()
-                                $existing = $arr | Where-Object { -not $_.key -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1
+                                $probe = [pscustomobject]@{ key = $key; name = $null; source = $property }
+                                $targetCat = Get-CategoryForEntry $probe
+                                if ($targetCat) {
+                                    $existing = $arr | Where-Object { -not $_.key -and $_.name -and $_.name.ToUpper() -eq $nameU -and $_.category -eq $targetCat } | Select-Object -First 1
+                                }
                             }
                             $coordCat = switch ($property) {
                                 'RelicObtainForInstanceFlag' { 'effigy' }

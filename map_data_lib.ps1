@@ -120,6 +120,22 @@ function Set-EntryProp($obj, [string]$name, $value) {
     $obj | Add-Member -NotePropertyName $name -NotePropertyValue $value -Force
 }
 
+# Forces the next Get-ConfirmedLocations to re-read from disk instead of serving the cache.
+#
+# Required by any write path that mutates rows BEFORE it has finished validating them (both
+# Edit-* functions below do -- some of their rules can only be checked against the post-edit
+# state). Get-ConfirmedLocations caches the parsed array and hands out those LIVE row objects,
+# and its only invalidation signal is the file's mtime -- which never moves when a validation
+# throw skips the save. So without this, a rejected edit's half-applied mutation silently stays
+# in memory, is served to every subsequent reader, and gets written to disk for real by the next
+# unrelated successful Save-ConfirmedLocations (2026-07-15: found by a smoke test where a
+# rejected name-blanking left name=$null in the cache, which then defeated the keyless duplicate
+# -name guard on a later add).
+function Reset-ConfirmedLocationsCache {
+    $script:confirmedLocations = $null
+    $script:confirmedLocationsMtime = $null
+}
+
 function Update-CanonicalEntry([ref]$confirmedRef, $matched, [string]$category, [hashtable]$fields) {
     if ($matched) {
         if ($matched.verified -eq $true) {
@@ -385,11 +401,14 @@ function Set-MapConfirmVerified([string]$category, [string]$key, [string]$specie
 # / Edit-MapEntry below.
 $script:CoordIdentityCategories = @('effigy', 'itempickup')
 
-# The 7 map categories the "Add Icon" manual-creation feature supports -- npc/landmark
+# The 8 map categories the "Add Icon" manual-creation feature supports -- npc/landmark
 # stay retired (see Get-CategoryForEntry's note below on why), so they're deliberately
 # excluded here rather than silently accepted and then never rendered anywhere. itempickup
 # (Schematic) was added 2026-07-14 -- coords-first creation, key recorded by playing.
-$script:CustomIconCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower', 'itempickup')
+# sam was added 2026-07-15 -- it was already fully wired everywhere else (rendered by
+# Get-MapCategoryJson, resolvable by Find-ConfirmedRow, offered DestroyedWeapon keys by the
+# Data Mine tab); only this list was missing, which made Add Icon reject it as unsupported.
+$script:CustomIconCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eagle', 'tower', 'sam', 'itempickup')
 
 # Creates a brand-new, hand-typed confirmed_locations.json row for the "Add Icon"
 # dashboard feature (see the palbox-confirmed-locations skill) -- stamped custom:true so
@@ -412,6 +431,13 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
     if ($category -notin $script:CoordIdentityCategories -and -not $name) { throw "Display name is required for this category." }
     if ($null -eq $gx -or $null -eq $gy) { throw "Coordinates (gx/gy) are required." }
     if ($category -eq 'bounty' -and -not $species) { $species = $name }
+    # Same untyped-value reason as $keyVal above: [string]$name/[string]$species can never hold
+    # $null, so without this a keyless pin serialized "name": "" / "species": "" instead of null,
+    # which every -not $_.name / -not $_.species check reads as "absent" but which Get-CategoryForEntry's
+    # $c.name branch and the JSON consumers see as a real empty string (2026-07-15: this is what
+    # produced the 21 ""-valued rows the one-time normalization pass cleaned up).
+    $nameVal = if ([string]::IsNullOrEmpty($name)) { $null } else { $name }
+    $speciesVal = if ([string]::IsNullOrEmpty($species)) { $null } else { $species }
 
     $confirmed = @(Get-ConfirmedLocations)
     if ($key) {
@@ -420,11 +446,19 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
     } elseif ($category -in $script:CoordIdentityCategories) {
         $clash = $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
         if ($clash) { throw "Another keyless $category pin is already at ($gx,$gy) -- move one first, or record its key." }
+    } elseif ($nameVal) {
+        # Name-identity categories: a SECOND keyless pin with the same name would be ambiguous to
+        # Find-ConfirmedRow's name branch (it takes -First 1, so the edit/delete/confirm routes
+        # would silently all hit the same one). Keyless-vs-keyless only -- a KEYED row with the
+        # same name is the legitimate scraped-pin + mapped-key pair the importer reconciles.
+        $nameU = $nameVal.ToUpper()
+        $clash = $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1
+        if ($clash) { throw "A keyless $category pin named '$nameVal' already exists in this category." }
     }
 
     $newEntry = [pscustomobject]@{
-        key = $keyVal; category = $category; name = $name; gx = $gx; gy = $gy
-        x = $null; y = $null; z = $null; species = $species; lv = $null; source = $null
+        key = $keyVal; category = $category; name = $nameVal; gx = $gx; gy = $gy
+        x = $null; y = $null; z = $null; species = $speciesVal; lv = $null; source = $null
         origin = 'manual'; verified = $false; custom = $true
     }
     $confirmed = $confirmed + $newEntry
@@ -446,24 +480,48 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
 # with one, so this route can never be used (accidentally or otherwise) to corrupt real
 # imported/live-captured data. $fields is a hashtable of only the values to change
 # (name/gx/gy/key/species) -- omit a key to leave that field untouched.
-function Edit-CustomMapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields) {
+#
+# $identGx/$identGy (2026-07-15) resolve a KEYLESS coord-identity pin (effigy/itempickup),
+# whose gx/gy is its only identity -- this function predates that work, so without them a
+# hand-added keyless Schematic/effigy row was unreachable from the Data Mine tab's Custom
+# Icons section ("No matching custom entry found") and could never be edited or deleted.
+function Edit-CustomMapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields, $identGx = $null, $identGy = $null) {
     $confirmed = @(Get-ConfirmedLocations)
-    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName
+    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName $identGx $identGy
     if (-not $matched) { throw "No matching custom entry found." }
     if ($matched.custom -ne $true) { throw "Refusing to edit a non-custom entry through this route." }
-    foreach ($k in @('name', 'gx', 'gy', 'key', 'species')) {
-        if ($fields.ContainsKey($k)) { Set-EntryProp $matched $k $fields[$k] }
+    # Mutations below happen before the post-edit validation can run, so any throw past this point
+    # must drop the cache rather than leave a rejected edit live in memory -- see
+    # Reset-ConfirmedLocationsCache.
+    try {
+        foreach ($k in @('name', 'gx', 'gy', 'key', 'species')) {
+            if ($fields.ContainsKey($k)) { Set-EntryProp $matched $k $fields[$k] }
+        }
+        # Validated AFTER the fields are applied, so these check the row's post-edit state. Mirrors
+        # Edit-MapEntry's rules (which this used to contradict by hardcoding 'effigy'): a
+        # coord-identity pin may be keyless -- that's the "pending, go record it" state -- as long as
+        # it keeps the gx/gy that is then its only identity, and doesn't land on top of another
+        # keyless pin of the same category (ambiguous to both the recorder and Find-ConfirmedRow).
+        # Every other category is name-identified, so it needs a name and never a key.
+        if ($category -notin $script:CoordIdentityCategories -and -not $matched.name) { throw "Display name is required for this category." }
+        if ($category -in $script:CoordIdentityCategories -and -not $matched.key) {
+            if ($null -eq $matched.gx -or $null -eq $matched.gy) { throw "A keyless $category pin needs grid coordinates (gx/gy) to stay on the map." }
+            $clash = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and -not $_.key -and $_.gx -eq $matched.gx -and $_.gy -eq $matched.gy } | Select-Object -First 1
+            if ($clash) { throw "Another keyless $category pin is already at ($($matched.gx),$($matched.gy)) -- move one first." }
+        }
+        Save-ConfirmedLocations $confirmed
+    } catch {
+        Reset-ConfirmedLocationsCache
+        throw
     }
-    if ($category -eq 'effigy' -and -not $matched.key) { throw "Effigy pins require a key." }
-    if ($category -ne 'effigy' -and -not $matched.name) { throw "Display name is required for this category." }
-    Save-ConfirmedLocations $confirmed
     return $matched
 }
 
-# Deletes a custom-created row. Same custom:true guard as Edit-CustomMapEntry above.
-function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species, [string]$name) {
+# Deletes a custom-created row. Same custom:true guard as Edit-CustomMapEntry above, and the
+# same $gx/$gy keyless coord-identity resolution.
+function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null) {
     $confirmed = @(Get-ConfirmedLocations)
-    $matched = Find-ConfirmedRow $confirmed $category $key $species $name
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name $gx $gy
     if (-not $matched) { throw "No matching custom entry found." }
     if ($matched.custom -ne $true) { throw "Refusing to delete a non-custom entry through this route." }
     $remaining = @($confirmed | Where-Object { $_ -ne $matched })
@@ -516,6 +574,18 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
     # resolves by $identKey as before.
     $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName $identGx $identGy
     if (-not $matched) { throw "No matching map entry found." }
+    # Hoisted above every mutation (2026-07-15): this is a pure precondition on $fields, and it
+    # used to sit down with the gx/gy write -- i.e. AFTER the bounty branch below had already
+    # upserted anonymous_boss_keys.json. That's a separate FILE, so a half-lone gx here rolled
+    # back neither the key write nor that file. Checked first, nothing has happened yet.
+    if ($fields.ContainsKey('gx') -or $fields.ContainsKey('gy')) {
+        if ($null -eq $fields['gx'] -or $null -eq $fields['gy']) { throw "Coordinates (gx/gy) are required together." }
+    }
+    # Same cache-safety contract as Edit-CustomMapEntry: everything below mutates $matched (and,
+    # for bounty, anonymous_boss_keys.json) before later rules can throw, so any failure has to
+    # drop the cache instead of leaving a rejected edit live in memory for the next save to
+    # persist -- see Reset-ConfirmedLocationsCache.
+    try {
     if ($fields.ContainsKey('name')) {
         if ($category -eq 'effigy') { throw "Effigy pins have no display name to edit." }
         if (-not $fields['name']) { throw "Display name cannot be blank." }
@@ -555,7 +625,6 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
         }
     }
     if ($fields.ContainsKey('gx') -or $fields.ContainsKey('gy')) {
-        if ($null -eq $fields['gx'] -or $null -eq $fields['gy']) { throw "Coordinates (gx/gy) are required together." }
         Set-EntryProp $matched 'gx' $fields['gx']
         Set-EntryProp $matched 'gy' $fields['gy']
         Set-EntryProp $matched 'x' $null
@@ -573,6 +642,10 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
         Set-EntryProp $matched 'lv' $fields['lv']
     }
     Save-ConfirmedLocations $confirmed
+    } catch {
+        Reset-ConfirmedLocationsCache
+        throw
+    }
     return $matched
 }
 
