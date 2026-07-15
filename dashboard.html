@@ -3635,11 +3635,11 @@ function eagleStatueIcon(status){
   return _iconMemo[k]=statusRingIcon(EAGLE_STATUE_IMG,status,EFF_ACORN_SZ);
 }
 // Tower marker (added 2026-07-07; eagle badge removed 2026-07-13): the towers no longer have
-// an Eagle Statue / fast-travel point on top in-game, so the marker now tracks a SINGLE signal
-// -- TowerBossDefeatFlag (raid-boss cleared), shown as the ring color. The old small
-// top-right eagle-status badge and its FastTravelPointUnlockFlag tracking are gone; the row's
-// "key" field (a leftover FastTravelPointUnlockFlag key) is kept only as a stable pin identity
-// for confirm/edit, not rendered or treated as a "collected" signal anymore.
+// an Eagle Statue / fast-travel point on top in-game, so the marker tracks a SINGLE signal --
+// TowerBossDefeatFlag (raid-boss cleared), shown as the ring color. As of 2026-07-15 the row's
+// "key" field IS that TowerBossDefeatFlag key (previously a separate, hard-coded "bossKey"
+// field -- see the Tower render block's comment), same single-key model as every other
+// category.
 function towerIcon(bossStatus,locked){
   var k='tw:'+bossStatus+'|'+(locked?1:0);
   if(_iconMemo[k]) return _iconMemo[k];
@@ -3840,24 +3840,6 @@ function toggleMapConfirm(category,ident,checked,nameFallback){
       toast(checked?'Location confirmed.':'Location unconfirmed.','success');
     })
     .catch(function(){ toast('Failed to update confirm status.','error'); });
-}
-
-// Tower's per-key verification checkbox (added 2026-07-07) -- separate from toggleMapConfirm's
-// location "verified" above. field is 'bossVerified' -- the Eagle Statue's own
-// 'eagleVerified' counterpart was removed server-side (Set-TowerKeyVerified's whitelist
-// and Get-MapCategoryJson's emission) on 2026-07-15, since the towers no longer have a
-// fast-travel point on top in-game (UI removed earlier, 2026-07-13).
-function toggleTowerKeyVerified(towerName,field,checked){
-  if(!EFFIGY_CONFIRM_ENABLED)return;
-  fetch('/api/tower-key-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:towerName,field:field,verified:checked})})
-    .then(function(r){ if(!r.ok) throw new Error('request failed'); return r.json(); })
-    .then(function(){
-      var te=towerLocations&&towerLocations.find(function(t){return t.name&&t.name.toUpperCase()===towerName.toUpperCase();});
-      if(te) te[field]=checked;
-      renderEffigyMap();
-      toast(checked?'Key marked verified.':'Key marked unverified.','success');
-    })
-    .catch(function(){ toast('Failed to update verification status.','error'); });
 }
 
 // Global visibility filter for the effigy map. effigyShowFound is the cross-category "hide
@@ -4686,14 +4668,14 @@ function buildItemPickupMarker(p,confirmed,pGot,pStatus){
 // Body + level-suffix tooltip pieces, shared by the divIcon builder and the
 // low-zoom dot marker. Returns both since the level suffix sits between the
 // name header and the body in the composed tooltip string.
-function towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails,panel){
+function towerTipBody(t,confirmed,tGot,tStatus,tLocked,prereqDetails,panel){
   var _g=worldToGrid(t.x,t.y), cx=_g.cx, cy=_g.cy;
-  var bLabel=bStatus==='found'
-    ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Boss cleared</span>' : '<span style="color:#3fb950">&#10003; Boss cleared & key verified</span>')
+  var bLabel=tStatus==='found'
+    ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Boss cleared</span>' : '<span style="color:#3fb950">&#10003; Boss cleared & confirmed</span>')
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Boss not yet cleared</b>'
-    : bGot ? '<b style="color:#58a6ff">Boss cleared (key not yet verified)</b>'
-    : bossVerified ? '<b style="color:#e3b341">Key verified (boss not yet cleared)</b>'
-    : '<b style="color:#f85149">Boss key unverified</b>';
+    : tGot ? '<b style="color:#58a6ff">Boss cleared (not yet confirmed)</b>'
+    : confirmed ? '<b style="color:#e3b341">Confirmed (boss not yet cleared)</b>'
+    : '<b style="color:#f85149">Unconfirmed</b>';
   var tLvl=t.lv?(' <span style="color:var(--muted)">(Lv '+t.lv+')</span>'):'';
   var tBoss=(t.boss||t.bossPal)?('<br>'+esc(t.boss||'')+(t.boss&&t.bossPal?' &amp; ':'')+esc(t.bossPal||'')):'';
   var lockLine='';
@@ -4706,10 +4688,10 @@ function towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetail
   var tTip=bLabel+tBoss+lockLine+tipCoordsHtml(cx,cy,panel);
   return {lvl:tLvl,body:tTip};
 }
-function buildTowerMarker(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails){
+function buildTowerMarker(t,confirmed,tGot,tStatus,tLocked,prereqDetails){
   var twIdent='tw:'+(t.name||'').toUpperCase();
-  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(bStatus,tLocked),interactive:true});
-  var _tt=towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails);
+  var tm=L.marker(effigyRposToLatLng(t.x,t.y),{icon:towerIcon(tStatus,tLocked),interactive:true});
+  var _tt=towerTipBody(t,confirmed,tGot,tStatus,tLocked,prereqDetails);
   var tLvl=_tt.lvl, tTip=_tt.body;
   tm.bindTooltip('<b style="color:#111;">'+t.name+'</b>'+tLvl+'<br>'+tTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
@@ -4723,25 +4705,19 @@ function buildTowerMarker(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDe
   });
   if(EFFIGY_CONFIRM_ENABLED){
     var tChkId='tower-confirm-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
-    var bChkId='tower-boss-verify-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var tMapBtnId='tower-mapkey-'+t.name.replace(/[^a-zA-Z0-9]/g,'_');
     tm.on('click',function(){
       _bossPrereqActive=twIdent;
       renderEffigyMap();
       var _tg=worldToGrid(t.x,t.y);
       var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:t.lv!=null?t.lv:null,gx:_tg.cx,gy:_tg.cy,label:t.name};
-      // Boss key stays a read-only Status line: the Edit footer's "Save key" field only ever
-      // touches `key`, never `bossKey` (see Edit-MapEntry) -- so unlike name/coords/level this
-      // one genuinely isn't shown anywhere else.
-      var tKeys='<br><span style="color:var(--muted);font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
-      var bodyHtml=detailSectionHtml('Status',towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails,true).body+tKeys)
-        +detailActionsHtml([detailConfirmHtml(tChkId,confirmed),
-                            detailCheckboxHtml(bChkId,'Verify Boss Defeat key',bossVerified,!t.bossKey)],
-          [caveAddButtonHtml(),prereqAddButtonHtml()]);
+      var bodyHtml=detailSectionHtml('Status',towerTipBody(t,confirmed,tGot,tStatus,tLocked,prereqDetails,true).body)
+        +detailActionsHtml([detailConfirmHtml(tChkId,confirmed)],
+          [(!t.key&&mapKeyAvailableForCategory('Tower'))?mapKeyButtonHtml(tMapBtnId):'',caveAddButtonHtml(),prereqAddButtonHtml()]);
       openIconDetail('Tower',t.name+detailLvlSuffix(t.lv),bodyHtml,ident,tm,function(el){
         var box=el.querySelector('#'+tChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('tower',t.key||null,box.checked,t.name); };
-        var bBox=el.querySelector('#'+bChkId);
-        if(bBox) bBox.onchange=function(){ toggleTowerKeyVerified(t.name,'bossVerified',bBox.checked); };
+        if(!t.key) wireMapKeyButton(el,tMapBtnId,'Tower',t.name,_tg.cx,_tg.cy,tm);
         wireCaveAdd(el,{category:'tower',key:t.key||null,name:t.name,label:t.name});
         wirePrereqAdd(el,{name:t.name},'tower');
       },function(){
@@ -5632,7 +5608,7 @@ function renderMapCounts(){
   set('effigy-count', foundInRoster(effigyLocations,effigyCollected), effigyLocations?Object.keys(effigyLocations).length:0);
   set('fugitive-count', foundInRoster(wantedFugitiveLocations,fugitiveCollected), wantedFugitiveLocations?wantedFugitiveLocations.length:0);
   set('eagle-count', foundInRoster(eagleStatueLocations,eagleCollected), eagleStatueLocations?eagleStatueLocations.length:0);
-  set('tower-count', foundInRoster(towerLocations,towerBossCollected,'bossKey'), towerLocations?towerLocations.length:0);
+  set('tower-count', foundInRoster(towerLocations,towerBossCollected), towerLocations?towerLocations.length:0);
   // SAM Site: destroyed/total, same shape as every other found-tracked category, now that
   // FixedWeaponDestroySaveData gives a real signal (2026-07-09) -- once a pin is mapped to a
   // key. Falls back to counting nothing destroyed for any still-keyless pin.
@@ -5662,7 +5638,7 @@ var DATAMINE_PROPERTIES=[
     desc:'Effigy pickups -- no per-effigy name exists anywhere in this data (coordinates only, same as the Map tab). Includes the full 605-entry effigies.json roster, not just keys a player has actually picked up. Type = relic kind from RelicObtainForInstanceFlagByType (all relic types), known only once some player has collected that effigy.'},
   {name:'NoteObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Journal'],desc:'Journal / diary note pickups.'},
   {name:'FastTravelPointUnlockFlag',kind:'bool_map',spatial:true,iconCategories:['Eagle Statue'],desc:'Eagle Statue (fast travel) unlocks.'},
-  {name:'TowerBossDefeatFlag',kind:'bool_map',spatial:false,iconCategories:['Tower'],desc:'Tower raid-boss defeats (normal difficulty; hard-mode key not yet re-identified). Keys are matched against towers.json\'s own "bossKey" field, not written here -- shown read-only for visibility into any newly-discovered key (e.g. Feybreak Tower\'s, not yet known).'},
+  {name:'TowerBossDefeatFlag',kind:'bool_map',spatial:false,iconCategories:['Tower'],desc:'Tower raid-boss defeats (normal difficulty; hard-mode key not yet re-identified). Map a key to a Tower pin here, or record it by playing from the pin\'s detail panel, same as any other category (2026-07-15 -- previously a static towers.json-supplied key, not writable here).'},
   {name:'ItemPickupObtainForInstanceFlag',kind:'bool_map',spatial:true,iconCategories:['Schematic'],desc:'Schematic pickups -- locked-building blueprint chests etc., per-player world item-pickup instance GUIDs. Map a key to a Schematic pin here, or record it by playing from the pin\'s detail panel.'},
   {name:'PaldeckUnlockFlag',kind:'bool_map',spatial:false,noCoords:true,desc:'Paldeck species unlocks.'},
   {name:'PalCaptureBonusCount',kind:'int_map',spatial:false,noCoords:true,desc:'Lifetime per-species bonus-capture counts.'},
@@ -6162,9 +6138,9 @@ async function refetchDmIconRosters(){
 // Keys table) PLUS the 5 rosters feeding "Map Icon Categories" (2026-07-10 fix: those
 // rosters previously only ever refreshed while the Map tab was the active view -- see
 // switchView's _mapRosterPollTimer, which is cleared the instant you leave that tab -- so
-// a key that got mapped elsewhere while sitting on the Data Mine tab, e.g. a Tower's
-// bossKey being set by the Desktop dataminer script mid-session, never showed up here
-// until a full page reload).
+// a key that got mapped elsewhere while sitting on the Data Mine tab, e.g. a Tower's key
+// being set by the Desktop dataminer script mid-session, never showed up here until a full
+// page reload).
 function dmSnapshotKey(){
   return JSON.stringify({p:dmFullPlayers,m:dmMappings,
     j:journalLocations,b:bossLocations,f:wantedFugitiveLocations,e:eagleStatueLocations,t:towerLocations});
@@ -6263,12 +6239,11 @@ async function dmLivePollTick(){
 // world x/y -> grid coords for categories that don't already carry gx/gy (journals do,
 // from journal_locations.json directly).
 //
-// Tower (added 2026-07-08): unlike the other three, Tower's roster items carry TWO
-// distinct key concepts (t.key for Eagle Statue, t.bossKey for the raid-boss
-// TowerBossDefeatFlag key this category is actually for) -- getRoster remaps bossKey onto
-// the generic "key" field dmPropertyRows/dmRowHtml expect, so only towers with no bossKey
-// yet (currently just Feybreak) show up as an icon row here. Name includes the boss/Pal so
-// Feybreak's placeholder is self-explanatory before its real key is ever seen.
+// Tower (added 2026-07-08, unified onto the single generic "key" field 2026-07-15 -- see
+// the Tower render block's comment for why the old separate bossKey/bossVerified setup was
+// removed): t.key IS the raid-boss TowerBossDefeatFlag key now, same shape as every other
+// category, so towers show up here exactly like any other still-unlinked pin. Name includes
+// the boss/Pal so an unlinked tower's row is self-explanatory before its key is ever seen.
 // refetch: force=true re-fetches without nulling the backing global first -- see the
 // refetchEffigyMapRosters comment above for why nulling-then-fetching is unsafe (each
 // fetchX bails out early, WITHOUT restoring the variable, whenever the server text is
@@ -6285,7 +6260,7 @@ var DM_ICON_CATEGORIES=[
   {label:'Journal',property:'NoteObtainForInstanceFlag',getRoster:function(){return journalLocations||[];},getGxGy:function(r){return {cx:r.gx,cy:r.gy};},refetch:function(){return fetchJournalLocations(true);}},
   {label:'Tower',property:'TowerBossDefeatFlag',getRoster:function(){
     return (towerLocations||[]).map(function(t){
-      return {name:t.name+((t.boss||t.bossPal)?(' -- '+(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+(t.bossPal||'')):''),x:t.x,y:t.y,key:t.bossKey};
+      return {name:t.name+((t.boss||t.bossPal)?(' -- '+(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+(t.bossPal||'')):''),x:t.x,y:t.y,key:t.key};
     });
   },getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchTowerLocations(true);}},
   {label:'SAM Site',property:'DestroyedWeapon',getRoster:function(){return samSiteLocations||[];},getGxGy:function(r){return worldToGrid(r.x,r.y);},refetch:function(){return fetchSamSites(true);}},
@@ -6353,7 +6328,7 @@ async function applyIconKeyMapping(catLabel,name,gx,gy,key){
 // one new key in a single tick -> we can't tell which is which, so we show them as a
 // pick-list instead of guessing. Property-scoped, so a flag from any OTHER property never
 // interferes. Reuses the exact datamine infrastructure the Map-to-key dropdown already uses.
-var RECORD_CAT_LABEL={bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',journal:'Journal',sam:'SAM Site',effigy:'Effigy',itempickup:'Schematic'};
+var RECORD_CAT_LABEL={bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',journal:'Journal',sam:'SAM Site',effigy:'Effigy',itempickup:'Schematic',tower:'Tower'};
 var RECORD_POLL_MS=7000;      // how often to re-read the save while recording
 var RECORD_TIMEOUT_MS=300000; // give up after 5 min with no new key
 var _keyRecord=null;          // {property,catLabel,name,gx,gy,snapshot,timer,started} while active
@@ -6870,12 +6845,11 @@ function detailLvlSuffix(lv){ return lv?(' (Lv '+lv+')'):''; }
 // Save/Delete buttons. Values are filled in by wireIconDetailFooter once the HTML exists.
 // Eligible categories for the "Pick unmapped key..." control below -- same set the
 // per-category "Map to key..." button already uses (journal/bounty/fugitive/eagle/sam/
-// itempickup), added 2026-07-15. Reuses RECORD_CAT_LABEL but excludes 'effigy'
+// itempickup/tower), added 2026-07-15. Reuses RECORD_CAT_LABEL but excludes 'effigy'
 // (RelicObtainForInstanceFlag is noName -- dmUnmappedKeysFor has no meaningful list to offer,
-// Record is its only path, same reasoning the Schematic section's Map-to-key note gives) and
-// implicitly excludes 'tower' (absent from RECORD_CAT_LABEL) since a tower's `key` field is a
-// dormant leftover -- the ring's real key is `bossKey`, which this field never touches (see
-// Edit-MapEntry's tower note above).
+// Record is its only path, same reasoning the Schematic section's Map-to-key note gives).
+// Tower is included as of 2026-07-15 -- its `key` field IS the real TowerBossDefeatFlag key
+// now (see the Tower render block's comment), no longer a dormant leftover.
 function mapKeyPickCatLabel(category){
   return category!=='effigy' ? RECORD_CAT_LABEL[category] : null;
 }
@@ -7601,34 +7575,29 @@ function renderEffigyMapNow(){
   // Tower (raid bosses) -- OVERLAYS the 7-entry paldb-scraped towers.json roster (added
   // 2026-07-06, see Merge-ConfirmedTowers). Split out of Eagle Statues -- Anthony had been
   // confirming these under that bucket since walking up to one used to behave like a
-  // fast-travel point. Now tracks ONE per-player signal: "bossKey"/"bossVerified" is a
-  // TowerBossDefeatFlag key (raid-boss cleared, towerBossCollected -- see
-  // fetchTowerBossPlayer), which drives the ring color and gates the effigyShowFound
-  // hide-when-done toggle. (Eagle-statue tracking removed 2026-07-13 -- the towers no longer
-  // have a fast-travel point on top in-game; its "eagleVerified" flag was dropped entirely
-  // server-side on 2026-07-15. The leftover "key" field is untouched on disk but no longer
-  // read here, serving only as a stable pin identity.)
-  // "confirmed" (t.m, the pin's own location) is unrelated to the ring -- it only drives the
-  // separate "Confirm location" checkbox in the detail panel.
+  // fast-travel point. As of 2026-07-15, Tower uses the EXACT same single-key/single-checkbox
+  // model as Field Boss/Wanted Fugitive/Eagle Statue/SAM Site: "key" (TowerBossDefeatFlag,
+  // shared with the Data Mine tab's Tower category, drives the ring color via towerBossSet
+  // below) is no longer a static value baked in from towers.json at import time -- it starts
+  // null like every other category's key and is only populated once genuinely linked (Map to
+  // key.../Pick unmapped key.../Record next key/manual edit), and "verified"/t.m (the ONE
+  // "Confirm location" checkbox) is the only manual confirmation signal -- the old separate
+  // "Verify Boss Defeat key" checkbox and its bossVerified field are gone. (Previously Tower
+  // had a hard-coded bossKey that was always present regardless of verification state, which
+  // made every tower render yellow/"confirmed" the moment its trackable-by-key-presence
+  // fallback kicked in -- see 2026-07-15's git history for that bug and its interim fix. Since
+  // key genuinely starts empty now, that failure mode can't recur.)
   if(effigyShowTower&&towerLocations&&towerLocations.length){
     var towerBossSet=new Set((towerBossCollected||[]).map(function(s){return s.toUpperCase();}));
     towerLocations.forEach(function(t,idx){
       var confirmed=!!t.m;
-      var bossVerified=!!t.bossVerified;
-      var bGot=!!(t.bossKey&&towerBossSet.has(t.bossKey.toUpperCase()));
-      // Fixed 2026-07-15: trackable must NOT reduce to !!t.bossKey the way every other
-      // category's does. Every tower ships with a real, static bossKey baked in from
-      // towers.json at creation time -- unlike a Field Boss/Fugitive/Eagle key, it isn't
-      // discovered through play, so its mere presence carries zero verification signal and
-      // must not promote an otherwise-untouched tower to 'confirmed' (yellow) the way a
-      // genuinely-discovered key rightly does elsewhere. Gating trackable on bGot fixes this:
-      // mapStatus()'s tracked-branch (got&&trackable&&!confirmed) is unaffected since
-      // trackable===got there, but its all-signals-false fallback
-      // (confirmed||got||trackable) no longer gets a free pass from a key that was always
-      // going to be present regardless of verification state.
-      var trackable=bGot;
-      var bStatus=mapStatus(bossVerified,bGot,trackable);
-      if(bStatus==='found'&&!effigyShowFound) return;
+      var trackable=!!t.key;
+      var tGot=!!(t.key&&towerBossSet.has(t.key.toUpperCase()));
+      if(tGot&&!effigyShowFound) return;
+      // Admin: trackable also promotes to at least 'confirmed' -- see the journal block above.
+      // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
+      var tStatus=mapStatus(confirmed,tGot,trackable);
+      if(tStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
       // Required-boss lock (2026-07-10, same convention as Field Boss -- see the shared
       // bossGotMap/bossLLBySpecies lookup built above).
       var twIdent='tw:'+(t.name||'').toUpperCase();
@@ -7639,14 +7608,14 @@ function renderEffigyMapNow(){
         var pb=bossLocations&&bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
         return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
       });
-      effDesire('tw:'+(t.name||idx),bStatus+'|'+confirmed+'|'+tLocked+'|'+t.x+'|'+t.y+'|'+(t.name||'')+'|'+(t.lv||''),function(){
+      effDesire('tw:'+(t.name||idx),tStatus+'|'+confirmed+'|'+tLocked+'|'+t.x+'|'+t.y+'|'+(t.name||'')+'|'+(t.lv||''),function(){
         if(_effDotMode){
-          var _tt=towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails);
-          return buildDotMarker(effigyRposToLatLng(t.x,t.y),'tower',bStatus,'<b style="color:#111;">'+t.name+'</b>'+_tt.lvl+'<br>'+_tt.body);
+          var _tt=towerTipBody(t,confirmed,tGot,tStatus,tLocked,prereqDetails);
+          return buildDotMarker(effigyRposToLatLng(t.x,t.y),'tower',tStatus,'<b style="color:#111;">'+t.name+'</b>'+_tt.lvl+'<br>'+_tt.body);
         }
-        return buildTowerMarker(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails);
+        return buildTowerMarker(t,confirmed,tGot,tStatus,tLocked,prereqDetails);
       });
-      if(t.entrances) desireEntrances('tw:'+(t.name||idx),{category:'tower',name:t.name,label:t.name},t,effigyRposToLatLng(t.x,t.y),bStatus);
+      if(t.entrances) desireEntrances('tw:'+(t.name||idx),{category:'tower',name:t.name,label:t.name},t,effigyRposToLatLng(t.x,t.y),tStatus);
       desireBossPrereqLines(twIdent,effigyRposToLatLng(t.x,t.y),prereqSpecies,bossLLBySpecies,bossGotMap);
     });
   }

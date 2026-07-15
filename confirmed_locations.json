@@ -11,9 +11,7 @@
         "lv":  50,
         "verified":  false,
         "boss":  "Victor",
-        "bossPal":  "Shadowbeak",
-        "bossKey":  "BOSS_BATTLE_NAME_SNOWBOSS",
-        "bossVerified":  false
+        "bossPal":  "Shadowbeak"
     },
     {
         "key":  null,
@@ -28,9 +26,7 @@
         "x":  -889959,
         "lv":  60,
         "boss":  "Bjorn",
-        "bossPal":  "Bastigor",
-        "bossKey":  "BOSS_BATTLE_NAME_VIKINGBOSS",
-        "bossVerified":  false
+        "bossPal":  "Bastigor"
     },
     {
         "key":  "11BA233D4DF76C83A529DF83EAFDF23A",
@@ -636,9 +632,7 @@
         "x":  -29334,
         "lv":  55,
         "boss":  "Saya",
-        "bossPal":  "Selyne",
-        "bossKey":  "BOSS_BATTLE_NAME_SAKURAJIMABOSS",
-        "bossVerified":  false
+        "bossPal":  "Selyne"
     },
     {
         "key":  null,
@@ -674,9 +668,7 @@
         "x":  -361650,
         "lv":  45,
         "boss":  "Axel",
-        "bossPal":  "Orserk",
-        "bossKey":  "BOSS_BATTLE_NAME_ELECTRICBOSS",
-        "bossVerified":  false
+        "bossPal":  "Orserk"
     },
     {
         "key":  "B93B28214BED86A7C1E2FA8375853BF2",
@@ -828,7 +820,6 @@
         "origin":  "manual",
         "boss":  "Zoe",
         "bossPal":  "Grizzbolt",
-        "bossKey":  "BOSS_BATTLE_NAME_GRASSBOSS",
         "name":  "Tower of the Rayne Syndicate",
         "key":  null,
         "gx":  111,
@@ -836,8 +827,7 @@
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  10,
-        "bossVerified":  false
+        "lv":  10
     },
     {
         "key":  null,
@@ -942,9 +932,7 @@
         "x":  -110118,
         "lv":  25,
         "boss":  "Lily",
-        "bossPal":  "Lyleen",
-        "bossKey":  "BOSS_BATTLE_NAME_FORESTBOSS",
-        "bossVerified":  false
+        "bossPal":  "Lyleen"
     },
     {
         "key":  "EC94023A4CA571FF0FD19E90944F4231",
@@ -1003,9 +991,7 @@
         "x":  29877,
         "lv":  40,
         "boss":  "Marcus",
-        "bossPal":  "Faleris",
-        "bossKey":  "BOSS_BATTLE_NAME_DESERTBOSS",
-        "bossVerified":  false
+        "bossPal":  "Faleris"
     },
     {
         "key":  null,

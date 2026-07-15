@@ -2542,26 +2542,6 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
-                ($path -eq '/api/tower-key-confirm' -and $method -eq 'POST') {
-                    # Tower's raid-boss verification checkbox (added 2026-07-07, separate
-                    # from /api/map-confirm's location "verified" above; Eagle Statue's
-                    # counterpart checkbox removed 2026-07-15). Body: { name, field, verified }
-                    # -- field is "bossVerified" (see Set-TowerKeyVerified's whitelist).
-                    try {
-                        $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
-                        $towerName = [string]$body.name
-                        if (-not $towerName) { throw "No name provided." }
-                        $field = [string]$body.field
-                        $verifiedFlag = [bool]$body.verified
-                        $ok = Set-TowerKeyVerified $towerName $field $verifiedFlag
-                        if (-not $ok) { throw "No confirmed_locations.json tower row found, or unknown field." }
-                        Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; name=$towerName; field=$field; verified=$verifiedFlag } -Compress)
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
                 ($path -eq '/api/map-add-icon' -and $method -eq 'POST') {
                     # "Add Icon" header button -> modal (dashboard.html, openAddIconModal/
                     # saveAddIcon) -- hand-creates a brand-new confirmed_locations.json row

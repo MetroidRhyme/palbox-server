@@ -146,7 +146,7 @@ function Update-CanonicalEntry([ref]$confirmedRef, $matched, [string]$category, 
             }
             return 'matched-verified'
         } else {
-            foreach ($k in @('x', 'y', 'z', 'lv', 'boss', 'bossPal', 'bossKey')) {
+            foreach ($k in @('x', 'y', 'z', 'lv', 'boss', 'bossPal')) {
                 if ($fields.ContainsKey($k)) { Set-EntryProp $matched $k $fields[$k] }
             }
             if ($fields.ContainsKey('name') -and (-not $matched.name -or $matched.origin -eq 'scraped')) {
@@ -211,13 +211,18 @@ function ConvertTo-GridXY([double]$x, [double]$y) {
 # dashboard.html's effigyLocations[key] lookups -- every other category is an array of
 # {name,x,y,key,m}, plus "species" for bounty, "lv" for tower/fugitive, "boss"/"bossPal"
 # for tower (the human raid-boss's name + their partner Pal's name, scraped from
-# paldb.cc -- static display data only), and "bossKey" for tower (added 2026-07-07:
-# the TowerBossDefeatFlag key for that tower's raid-boss fight, supplied by Anthony
-# from a decoded save snippet -- normal difficulty only, hard-mode's key was lost in
-# an earlier consolidation and hasn't been re-identified; null for Feybreak Tower,
-# whose key hasn't been seen yet either). Tower now tracks TWO independent per-player
-# signals: "key" (Eagle Statue / FastTravelPointUnlockFlag, drives the small badge
-# icon) and "bossKey" (TowerBossDefeatFlag, drives the main tower icon) -- see
+# paldb.cc -- static display data only, unrelated to "key").
+#
+# Tower's "key" (added 2026-07-07, unified onto the single generic key model 2026-07-15) is
+# the TowerBossDefeatFlag key for that tower's raid-boss fight -- normal difficulty only,
+# hard-mode's key was lost in an earlier consolidation and hasn't been re-identified. Until
+# 2026-07-15 this lived in a separate "bossKey" field that towers.json baked in at import
+# time (always present regardless of real verification -- see the git history around
+# 2026-07-15 for the "yellow towers" bug that caused), plus a second "bossVerified" flag
+# mirroring Set-MapConfirmVerified's own "verified". Both are gone now: Tower uses the exact
+# same single key/single verified model as Field Boss/Wanted Fugitive/Eagle Statue/SAM Site --
+# "key" starts null and is only populated once genuinely linked (Map to key.../Pick unmapped
+# key.../Record next key/manual edit), "verified" is the only confirmation signal. See
 # dashboard.html's Tower render block and the palbox-confirmed-locations skill.
 
 # Cave-entrance sub-pins (2026-07-08): an optional "entrances" array on any row, each a
@@ -297,14 +302,6 @@ function Get-MapCategoryJson([string]$category) {
         if ($c.PSObject.Properties['lv'] -and $null -ne $c.lv) { $out.lv = $c.lv }
         if ($c.PSObject.Properties['boss'] -and $c.boss) { $out.boss = $c.boss }
         if ($c.PSObject.Properties['bossPal'] -and $c.bossPal) { $out.bossPal = $c.bossPal }
-        if ($c.PSObject.Properties['bossKey'] -and $c.bossKey) { $out.bossKey = $c.bossKey }
-        if ($category -eq 'tower') {
-            # Tower's raid-boss key ("bossKey") is verified independently of the pin's own
-            # "m"/verified (added 2026-07-07). Eagle Statue tracking (a second independent
-            # "eagleVerified" flag) was removed 2026-07-15 -- the towers no longer have a
-            # fast-travel point on top in-game, so bossVerified is the only per-key signal now.
-            $out.bossVerified = if ($c.PSObject.Properties['bossVerified']) { $c.bossVerified -eq $true } else { $false }
-        }
         if ($category -eq 'journal') {
             # Journal is the one category whose client tooltip (buildJournalMarker) and Data
             # Mine tab roster-fallback (getGxGy) read gx/gy straight off the roster item
@@ -557,10 +554,10 @@ $script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'ea
 # category sharing a key (would make Find-ConfirmedRow's key-branch match ambiguous). Bounty
 # gets the same anonymous_boss_keys.json upsert Add-CustomMapEntry already does at create
 # time (Test-SyndicateKeyShape decides whether a bounty key needs this species link at all),
-# so re-keying an existing bounty pin keeps defeat-status resolution working. Tower has TWO
-# independent keys ("key" = Eagle Statue link, "bossKey" = Boss Defeat link, see
-# Get-MapCategoryJson's tower branch) -- this generic field only ever touches "key" (matching
-# every other category's single-key model); bossKey is intentionally untouched/out of scope.
+# so re-keying an existing bounty pin keeps defeat-status resolution working. Tower's "key" IS
+# its Boss Defeat link (2026-07-15 -- previously a separate "bossKey" field this generic
+# field never touched; see Get-MapCategoryJson's comment), so it's edited exactly like every
+# other category's single-key model, no special-casing needed here.
 function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields, $identGx = $null, $identGy = $null) {
     if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
     $confirmed = @(Get-ConfirmedLocations)
@@ -740,22 +737,6 @@ function Remove-BossPrereq([string]$category, [string]$species, [string]$name, [
     Set-EntryProp $matched 'prereqs' $remaining
     Save-ConfirmedLocations $confirmed
     return $matched
-}
-
-# Flips Tower's raid-boss verification flag (added 2026-07-07, Eagle Statue's
-# counterpart removed 2026-07-15) -- independent of Set-MapConfirmVerified's "verified"
-# (the pin's own location) above. $field is whitelisted, not passed straight through to
-# Set-EntryProp, since it arrives from a client POST body and Set-EntryProp will happily
-# create ANY named property on the matched row otherwise.
-function Set-TowerKeyVerified([string]$towerName, [string]$field, [bool]$verified) {
-    if ($field -notin @('bossVerified')) { return $false }
-    $confirmed = Get-ConfirmedLocations
-    $nameU = $towerName.ToUpper()
-    $matched = $confirmed | Where-Object { $_.category -eq 'tower' -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1
-    if (-not $matched) { return $false }
-    Set-EntryProp $matched $field $verified
-    Save-ConfirmedLocations $confirmed
-    return $true
 }
 
 # Resolve a confirmed key to a bounty species via anonymous_boss_keys.json (the world

@@ -153,11 +153,15 @@ function Import-KeylessRoster([string]$fileName, [string]$category) {
                 continue
             }
         }
+        # towers.json's own "bossKey" field is NOT copied into $fields here (removed
+        # 2026-07-15) -- Tower's "key" is now the same genuinely-earned, editable field every
+        # other category uses (Map to key.../Record next key/manual edit), not a value
+        # auto-populated from the static roster at import time. See map_data_lib.ps1's
+        # Get-MapCategoryJson comment for why a pre-baked key broke Tower's status display.
         $fields = @{ name = $entry.name; x = $entry.x; y = $entry.y }
         if ($entry.PSObject.Properties['lv']) { $fields['lv'] = $entry.lv }
         if ($entry.PSObject.Properties['boss']) { $fields['boss'] = $entry.boss }
         if ($entry.PSObject.Properties['bossPal']) { $fields['bossPal'] = $entry.bossPal }
-        if ($entry.PSObject.Properties['bossKey']) { $fields['bossKey'] = $entry.bossKey }
         $grid = ConvertTo-GridXY $entry.x $entry.y
         $fields['gx'] = $grid.gx
         $fields['gy'] = $grid.gy
