@@ -2543,10 +2543,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 }
 
                 ($path -eq '/api/tower-key-confirm' -and $method -eq 'POST') {
-                    # Tower's two independent per-key verification checkboxes (added
-                    # 2026-07-07, separate from /api/map-confirm's location "verified"
-                    # above). Body: { name, field, verified } -- field is "eagleVerified" or
-                    # "bossVerified" (see Set-TowerKeyVerified's whitelist).
+                    # Tower's raid-boss verification checkbox (added 2026-07-07, separate
+                    # from /api/map-confirm's location "verified" above; Eagle Statue's
+                    # counterpart checkbox removed 2026-07-15). Body: { name, field, verified }
+                    # -- field is "bossVerified" (see Set-TowerKeyVerified's whitelist).
                     try {
                         $body = $reqBody | ConvertFrom-Json -ErrorAction Stop
                         $towerName = [string]$body.name

@@ -299,15 +299,10 @@ function Get-MapCategoryJson([string]$category) {
         if ($c.PSObject.Properties['bossPal'] -and $c.bossPal) { $out.bossPal = $c.bossPal }
         if ($c.PSObject.Properties['bossKey'] -and $c.bossKey) { $out.bossKey = $c.bossKey }
         if ($category -eq 'tower') {
-            # Tower's two save keys (Eagle Statue "key", raid-boss "bossKey") are verified
-            # independently of each other and of the pin's own "m"/verified (added
-            # 2026-07-07 -- Anthony wanted separate map checkboxes since he supplied the
-            # bossKey mapping from memory and isn't sure all 7 are right yet). Default true
-            # for eagleVerified (that linkage was already working/trusted before this
-            # session) and false for bossVerified (explicitly unconfirmed) wherever the
-            # field doesn't exist on the row yet, rather than reading absence as false for
-            # both -- see the migration note in import_scraped_rosters.ps1/towers.json.
-            $out.eagleVerified = if ($c.PSObject.Properties['eagleVerified']) { $c.eagleVerified -eq $true } else { $true }
+            # Tower's raid-boss key ("bossKey") is verified independently of the pin's own
+            # "m"/verified (added 2026-07-07). Eagle Statue tracking (a second independent
+            # "eagleVerified" flag) was removed 2026-07-15 -- the towers no longer have a
+            # fast-travel point on top in-game, so bossVerified is the only per-key signal now.
             $out.bossVerified = if ($c.PSObject.Properties['bossVerified']) { $c.bossVerified -eq $true } else { $false }
         }
         if ($category -eq 'journal') {
@@ -747,13 +742,13 @@ function Remove-BossPrereq([string]$category, [string]$species, [string]$name, [
     return $matched
 }
 
-# Flips Tower's per-key verification flags (added 2026-07-07) -- independent of
-# Set-MapConfirmVerified's "verified" (the pin's own location) above. $field is
-# whitelisted, not passed straight through to Set-EntryProp, since it arrives from a
-# client POST body and Set-EntryProp will happily create ANY named property on the
-# matched row otherwise.
+# Flips Tower's raid-boss verification flag (added 2026-07-07, Eagle Statue's
+# counterpart removed 2026-07-15) -- independent of Set-MapConfirmVerified's "verified"
+# (the pin's own location) above. $field is whitelisted, not passed straight through to
+# Set-EntryProp, since it arrives from a client POST body and Set-EntryProp will happily
+# create ANY named property on the matched row otherwise.
 function Set-TowerKeyVerified([string]$towerName, [string]$field, [bool]$verified) {
-    if ($field -notin @('eagleVerified', 'bossVerified')) { return $false }
+    if ($field -notin @('bossVerified')) { return $false }
     $confirmed = Get-ConfirmedLocations
     $nameU = $towerName.ToUpper()
     $matched = $confirmed | Where-Object { $_.category -eq 'tower' -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1

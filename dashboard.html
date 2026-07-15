@@ -3843,9 +3843,10 @@ function toggleMapConfirm(category,ident,checked,nameFallback){
 }
 
 // Tower's per-key verification checkbox (added 2026-07-07) -- separate from toggleMapConfirm's
-// location "verified" above. field is 'bossVerified' (the 'eagleVerified' path is retained
-// server-side in Set-TowerKeyVerified's whitelist but no longer wired to any UI as of
-// 2026-07-13, when eagle-statue tracking was removed from towers).
+// location "verified" above. field is 'bossVerified' -- the Eagle Statue's own
+// 'eagleVerified' counterpart was removed server-side (Set-TowerKeyVerified's whitelist
+// and Get-MapCategoryJson's emission) on 2026-07-15, since the towers no longer have a
+// fast-travel point on top in-game (UI removed earlier, 2026-07-13).
 function toggleTowerKeyVerified(towerName,field,checked){
   if(!EFFIGY_CONFIRM_ENABLED)return;
   fetch('/api/tower-key-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:towerName,field:field,verified:checked})})
@@ -7565,8 +7566,9 @@ function renderEffigyMapNow(){
   // TowerBossDefeatFlag key (raid-boss cleared, towerBossCollected -- see
   // fetchTowerBossPlayer), which drives the ring color and gates the effigyShowFound
   // hide-when-done toggle. (Eagle-statue tracking removed 2026-07-13 -- the towers no longer
-  // have a fast-travel point on top in-game; the leftover "key"/"eagleVerified" fields are
-  // untouched on disk but no longer read here, "key" only serving as a stable pin identity.)
+  // have a fast-travel point on top in-game; its "eagleVerified" flag was dropped entirely
+  // server-side on 2026-07-15. The leftover "key" field is untouched on disk but no longer
+  // read here, serving only as a stable pin identity.)
   // "confirmed" (t.m, the pin's own location) is unrelated to the ring -- it only drives the
   // separate "Confirm location" checkbox in the detail panel.
   if(effigyShowTower&&towerLocations&&towerLocations.length){
