@@ -7526,15 +7526,18 @@ function renderEffigyMapNow(){
     towerLocations.forEach(function(t,idx){
       var confirmed=!!t.m;
       var bossVerified=!!t.bossVerified;
-      var trackable=!!t.bossKey;
       var bGot=!!(t.bossKey&&towerBossSet.has(t.bossKey.toUpperCase()));
-      // Fixed 2026-07-15: this used to hardcode trackable=true on the assumption every tower
-      // ships with a bossKey by construction. That's false whenever a tower's boss key isn't
-      // actually linked yet (e.g. after the 2026-07-10 bulk verification reset) -- with
-      // trackable stuck true, mapStatus()'s final `(confirmed||got||trackable)` OR could never
-      // fall through to 'unconfirmed', so an unverified/unkeyed tower rendered yellow
-      // ('confirmed') instead of red. Now computed the same way every other keyed category
-      // (journal/bounty/fugitive/eagle/schematic) already does it, right above.
+      // Fixed 2026-07-15: trackable must NOT reduce to !!t.bossKey the way every other
+      // category's does. Every tower ships with a real, static bossKey baked in from
+      // towers.json at creation time -- unlike a Field Boss/Fugitive/Eagle key, it isn't
+      // discovered through play, so its mere presence carries zero verification signal and
+      // must not promote an otherwise-untouched tower to 'confirmed' (yellow) the way a
+      // genuinely-discovered key rightly does elsewhere. Gating trackable on bGot fixes this:
+      // mapStatus()'s tracked-branch (got&&trackable&&!confirmed) is unaffected since
+      // trackable===got there, but its all-signals-false fallback
+      // (confirmed||got||trackable) no longer gets a free pass from a key that was always
+      // going to be present regardless of verification state.
+      var trackable=bGot;
       var bStatus=mapStatus(bossVerified,bGot,trackable);
       if(bStatus==='found'&&!effigyShowFound) return;
       // Required-boss lock (2026-07-10, same convention as Field Boss -- see the shared

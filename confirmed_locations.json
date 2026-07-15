@@ -13,7 +13,7 @@
         "boss":  "Victor",
         "bossPal":  "Shadowbeak",
         "bossKey":  "BOSS_BATTLE_NAME_SNOWBOSS",
-        "bossVerified":  true
+        "bossVerified":  false
     },
     {
         "key":  null,
@@ -30,7 +30,7 @@
         "boss":  "Bjorn",
         "bossPal":  "Bastigor",
         "bossKey":  "BOSS_BATTLE_NAME_VIKINGBOSS",
-        "bossVerified":  true
+        "bossVerified":  false
     },
     {
         "key":  "11BA233D4DF76C83A529DF83EAFDF23A",
@@ -638,7 +638,7 @@
         "boss":  "Saya",
         "bossPal":  "Selyne",
         "bossKey":  "BOSS_BATTLE_NAME_SAKURAJIMABOSS",
-        "bossVerified":  true
+        "bossVerified":  false
     },
     {
         "key":  null,
@@ -676,7 +676,7 @@
         "boss":  "Axel",
         "bossPal":  "Orserk",
         "bossKey":  "BOSS_BATTLE_NAME_ELECTRICBOSS",
-        "bossVerified":  true
+        "bossVerified":  false
     },
     {
         "key":  "B93B28214BED86A7C1E2FA8375853BF2",
@@ -908,15 +908,16 @@
         "origin":  "manual"
     },
     {
-        "key":  "DF9FB9CB41B43052A9C74FA79A826A50",
-        "name":  "Sealed Realm of the Swordmaster",
-        "gx":  -109,
-        "gy":  -467,
         "category":  "eagle",
         "origin":  "manual",
-        "y":  107510,
-        "x":  -338700,
-        "verified":  true
+        "verified":  false,
+        "name":  "Sealed Realm of the Swordmaster",
+        "key":  null,
+        "gx":  -110,
+        "gy":  -468,
+        "x":  null,
+        "y":  null,
+        "z":  null
     },
     {
         "key":  null,
@@ -943,7 +944,7 @@
         "boss":  "Lily",
         "bossPal":  "Lyleen",
         "bossKey":  "BOSS_BATTLE_NAME_FORESTBOSS",
-        "bossVerified":  true
+        "bossVerified":  false
     },
     {
         "key":  "EC94023A4CA571FF0FD19E90944F4231",
@@ -1004,7 +1005,7 @@
         "boss":  "Marcus",
         "bossPal":  "Faleris",
         "bossKey":  "BOSS_BATTLE_NAME_DESERTBOSS",
-        "bossVerified":  true
+        "bossVerified":  false
     },
     {
         "key":  null,
