@@ -4221,28 +4221,41 @@ async function mapMarkerToKey(catLabel,name,gx,gy,key,marker){
   }
 }
 // Once-per-session load of the same raw-save-key data the Data Mine tab uses (dmFullPlayers/
-// dmMappings), cached after the first successful fetch. Originally lazy (fetched only when a
-// "Map to key..." button was clicked -- perf: see /palbox-map-performance); as of 2026-07-15
-// it's also triggered proactively by ensureMapKeyAvailabilityData (see below) so per-marker
-// "Map to key..." buttons can be gated on whether a key is actually available, not just
-// fetched reactively once the user has already clicked a button that might do nothing.
+// dmMappings), cached after the first successful fetch. Lazy: only the paths that actually
+// need the dataset on demand call this (the "Map to key..." dropdown and key recording) --
+// perf: see /palbox-map-performance. On the Map tab the dataset is kept fresh independently
+// by mapDataminePollTick (tab entry + every 15s), NOT from here.
 var _dmMapLoadPromise=null;
 function ensureDatamineDataLoaded(){
   if(dmFullPlayers&&dmMappings) return Promise.resolve();
   if(!_dmMapLoadPromise){
-    _dmMapLoadPromise=dmFetchAndApply().catch(function(e){ _dmMapLoadPromise=null; throw e; });
+    // Promise.resolve().then(...) rather than calling dmFetchAndApply() inline: this memo is
+    // re-entered SYNCHRONOUSLY from inside dmFetchAndApply's own prologue, and calling it
+    // inline assigns _dmMapLoadPromise only AFTER that prologue has already run --
+    //   dmFetchAndApply -> fetchEffigyLocations (its sync effigyLocations&&!force branch)
+    //   -> populateEffigyPlayerDropdown -> fetchEffigyPlayer -> ensureMapKeyAvailabilityData
+    //   -> back here, memo still null -> dmFetchAndApply again -> ...
+    // which recursed ~unboundedly (measured: 400+ nested calls, each firing fetchEffigyPlayer's
+    // ~7 player fetches -> thousands of requests -> ERR_INSUFFICIENT_RESOURCES -> the map froze
+    // and the player-effigy fetch failed, 2026-07-15). Deferring the call by one microtask means
+    // the memo is always assigned before any of dmFetchAndApply's body can re-enter, so the
+    // re-entrant call gets the in-flight promise and the cycle terminates at depth 1.
+    _dmMapLoadPromise=Promise.resolve().then(dmFetchAndApply).catch(function(e){ _dmMapLoadPromise=null; throw e; });
   }
   return _dmMapLoadPromise;
 }
-// Fire-and-forget eager load, called from fetchEffigyPlayer (every initial map load AND every
-// player switch). renderEffigyMap() already ran synchronously with whatever data existed a
-// moment ago -- if the dataset wasn't loaded yet, this fetches it once and re-renders so any
-// "Map to key..." buttons that just became eligible (see mapKeyAvailableForCategory) appear
-// without the user having to touch anything.
-function ensureMapKeyAvailabilityData(){
-  if(dmFullPlayers&&dmMappings) return;
-  ensureDatamineDataLoaded().then(function(){ if(effigyLeaflet) renderEffigyMap(); }).catch(function(){});
-}
+// NOTE (2026-07-15): there is deliberately NO eager dm-data loader wired into fetchEffigyPlayer.
+// An earlier cut of the "Map to key..." gating added one, which was both redundant and actively
+// harmful:
+//   * Redundant -- switchView('effigies') already calls mapDataminePollTick() on tab entry and
+//     every 15s after, and that populates the same dmFullPlayers/dmMappings this gating reads.
+//     Nothing else needs to fetch it: mapKeyAvailableForCategory is evaluated inside each
+//     marker's click handler, so a button's eligibility is recomputed on every panel open --
+//     no map re-render is required for a newly-eligible button to appear.
+//   * Harmful -- calling it from fetchEffigyPlayer closed a synchronous cycle back into
+//     ensureDatamineDataLoaded (see its comment above) that recursed ~unboundedly.
+// If some future caller does need the dataset on demand, call ensureDatamineDataLoaded()
+// directly and do NOT route it through anything fetchEffigyPlayer touches.
 function dmUnmappedKeysFor(propName){
   return dmAllKeysFor(propName).filter(function(k){ return !dmMappingFor(propName,k).mapped; });
 }
@@ -4263,7 +4276,9 @@ function dmUnmappedKeysForPlayer(propName,playerGuid){
 // Button-visibility gate for the per-marker "Map to key..." button (2026-07-15): true only
 // once the raw save-key dataset has loaded AND the currently-selected map player has at least
 // one still-unmapped key for this category. Returns false (button hidden) before the dataset
-// loads -- ensureMapKeyAvailabilityData's re-render picks it up once ready.
+// loads; no re-render is needed to recover, since this runs inside each marker's click handler
+// and so is re-evaluated every time a detail panel is opened (mapDataminePollTick has the
+// dataset loaded within moments of the Map tab opening anyway).
 function mapKeyAvailableForCategory(catLabel){
   if(!dmFullPlayers||!dmMappings) return false;
   var cat=dmIconCatByLabel(catLabel);
@@ -5476,7 +5491,6 @@ function populateEffigyPlayerDropdown(){
 // fetch* here already fails silently and just resets its own collected state).
 var _effigyPlayerFetchDown=false;
 async function fetchEffigyPlayer(){
-  ensureMapKeyAvailabilityData();
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
   if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);fetchItemPickupPlayer(guid);return;}
