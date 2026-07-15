@@ -25,7 +25,13 @@ html.map-locked,body.map-locked{overflow:hidden;overscroll-behavior:none;height:
    Declared after the rule above so it still wins for this specific case. */
 .leaflet-interactive:focus{outline:none;}
 /* Effigy marker tooltip: a touch larger and roomier than Leaflet's default. */
-.eff-tip{font-size:13px;line-height:1.45;padding:5px 9px;}
+/* Dark text belongs to the TOOLTIP, not to the strings it renders: the *TipBody functions are
+   shared verbatim with the full-screen icon detail panel, whose background is var(--bg) (near
+   black). Inline color:#111 in those strings made every line invisible there, so the neutral
+   text color lives here (tooltips only) and the panel inherits var(--text) instead. Leaflet's
+   own .leaflet-popup-content-wrapper already sets color:#333, which covers the public-site
+   popups that reuse the same strings without this class. */
+.eff-tip{font-size:13px;line-height:1.45;padding:5px 9px;color:#111;}
 /* Effigy + journal map markers: icon glyphs (Flaticon, see footer credit) instead of plain
    dots - full color for uncollected, grey/faded for already-found. Shared across the acorn
    (effigy) and book (journal) markers since the sizing/hover/found behavior is identical.
@@ -4160,15 +4166,14 @@ function effDesire(key,sig,build){
   return e;
 }
 
-// Admin-only line shown in every map marker popup: the raw save-data flag key (GUID for
-// effigies, string flag key for everything else) a marker is linked to, or an explicit
-// missing-note when no such key is known (e.g. an unconfirmed roster-only pin, or Towers,
-// which have no save-flag concept at all). Gated by the caller via EFFIGY_CONFIRM_ENABLED --
-// this is debugging/admin info, not something to surface on the public player-facing site.
-function saveKeyRow(key){
-  return key
-    ? '<br><span style="color:#5a6573;font-size:11px;">Save key: <code>'+esc(key)+'</code></span>'
-    : '<br><span style="color:#8a8f98;font-size:11px;font-style:italic;">No save data key linked</span>';
+// Coordinate line for the hover tooltip. The icon detail panel passes panel=true to omit it:
+// the panel already shows gx/gy as editable inputs in its Edit section, so printing them again
+// as static text was pure duplication (and, before the .eff-tip color move above, invisible
+// duplication). The old saveKeyRow() lived here for the same reason and is gone entirely --
+// the panel's "Save key" input is the only place a key needs to appear, and the tooltip never
+// showed one.
+function tipCoordsHtml(cx,cy,panel){
+  return panel ? '' : '<br><span style="font-weight:600">X: '+cx+', Y: '+cy+'</span>';
 }
 
 // "Map to key..." popup control (added 2026-07-08) -- lets Anthony link a keyless scraped
@@ -4178,8 +4183,10 @@ function saveKeyRow(key){
 // see applyIconKeyMapping, shared with saveDatamineIconKey below. Effigy/Tower excluded:
 // effigies always have a key by construction, and Tower keys are read-only here (matched
 // against towers.json, not written from either UI -- see DATAMINE_PROPERTIES' TowerBossDefeatFlag).
+// Bare button (no leading <br>, no margin of its own) -- detailActionsHtml lays every action
+// button out in one flex row now, instead of each stacking itself with its own <br>.
 function mapKeyButtonHtml(btnId){
-  return '<br><span id="'+btnId+'-wrap"><button type="button" class="btn btn-ghost eff-map-key-btn" id="'+btnId+'" style="margin-top:6px;font-size:12px;">Map to key...</button></span>';
+  return '<span id="'+btnId+'-wrap"><button type="button" class="btn btn-ghost eff-map-key-btn" id="'+btnId+'" style="font-size:12px;">Map to key...</button></span>';
 }
 function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
   var btn=popupEl.querySelector('#'+btnId);
@@ -4255,7 +4262,7 @@ function customPinBadge(entry){
 
 // Body-only tooltip text (no name header -- effigies have none), shared by the
 // divIcon builder and the low-zoom dot marker so both render identical text.
-function effigyTipBody(id,pos,got,confirmed,status){
+function effigyTipBody(id,pos,got,confirmed,status,panel){
   var _g=worldToGrid(pos.x,pos.y), cx=_g.cx, cy=_g.cy;
   var tipLabel=status!=='found' ? (MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet found</b>'
       : got ? '<b style="color:#58a6ff">Found (not yet logged)</b>'
@@ -4264,8 +4271,8 @@ function effigyTipBody(id,pos,got,confirmed,status){
     : MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Found</span>'
     : '<span style="color:#3fb950">&#10003; Found & confirmed</span>';
   var typeLbl=effigyTypeLabel(id);
-  return tipLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'
-    +(typeLbl?'<br><span style="color:#111">Type: '+typeLbl+'</span>':'')+customPinBadge(pos);
+  return tipLabel+tipCoordsHtml(cx,cy,panel)
+    +(typeLbl?'<br>Type: '+typeLbl:'')+customPinBadge(pos);
 }
 function buildEffigyMarker(id,pos,got,confirmed,status){
   var tip=effigyTipBody(id,pos,got,confirmed,status);
@@ -4286,7 +4293,8 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
       var gx=pending?pos.gx:_g.cx, gy=pending?pos.gy:_g.cy;
       var title=pending?'Effigy (pending key)':id;
       var ident={category:'effigy',key:effKey,species:null,name:null,lv:null,gx:gx,gy:gy,label:title};
-      var bodyHtml=tip+saveKeyRow(effKey)+(pending?'':detailConfirmHtml(chkId,confirmed)+caveAddButtonHtml());
+      var bodyHtml=detailSectionHtml('Status',effigyTipBody(id,pos,got,confirmed,status,true))
+        +(pending?'':detailActionsHtml([detailConfirmHtml(chkId,confirmed)],[caveAddButtonHtml()]));
       openIconDetail('Effigy',title,bodyHtml,ident,m,function(el){
         if(pending) return;
         var box=el.querySelector('#'+chkId);
@@ -4303,7 +4311,7 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
 
 // Body-only tooltip text; name header composed at each call site so both the
 // divIcon builder and the low-zoom dot marker render identical text.
-function journalTipBody(j,confirmed,jGot,jStatus,trackable){
+function journalTipBody(j,confirmed,jGot,jStatus,trackable,panel){
   var jStatusLabel=jStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Found</span>' : '<span style="color:#3fb950">&#10003; Found & confirmed</span>')
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet found</b>'
@@ -4311,7 +4319,7 @@ function journalTipBody(j,confirmed,jGot,jStatus,trackable){
     : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
     : trackable ? '<b style="color:#f85149">Unconfirmed</b>'
     : '<span style="color:#8a8f98">Found status unknown</span>';
-  return jStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+j.gx+', Y: '+j.gy+'</span>'+customPinBadge(j);
+  return jStatusLabel+tipCoordsHtml(j.gx,j.gy,panel)+customPinBadge(j);
 }
 function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
   var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jStatus),interactive:true});
@@ -4324,10 +4332,9 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
     var jMapBtnId='journal-mapkey-'+j.name.replace(/[^a-zA-Z0-9]/g,'_');
     jm.on('click',function(){
       var ident={category:'journal',key:j.key||null,species:null,name:j.name,lv:null,gx:j.gx,gy:j.gy,label:j.name};
-      var bodyHtml='<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+saveKeyRow(j.key)
-        +detailConfirmHtml(jChkId,confirmed)
-        +(trackable?'':mapKeyButtonHtml(jMapBtnId))
-        +caveAddButtonHtml();
+      var bodyHtml=detailSectionHtml('Status',journalTipBody(j,confirmed,jGot,jStatus,trackable,true))
+        +detailActionsHtml([detailConfirmHtml(jChkId,confirmed)],
+          [trackable?'':mapKeyButtonHtml(jMapBtnId),caveAddButtonHtml()]);
       openIconDetail('Journal',j.name,bodyHtml,ident,jm,function(el){
         var box=el.querySelector('#'+jChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('journal',j.key||null,box.checked,j.name); };
@@ -4345,8 +4352,11 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
 // Body-only tooltip text (no coords for bounty bosses), shared by the divIcon
 // builder and the low-zoom dot marker.
 function bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails){
-  var label=bAuto?'<span style="color:#5a6573">&#10003; Defeated (confirmed)</span>'
-    :bManual?'<span style="color:#5a6573">&#10003; Marked defeated by you</span>'
+  // #6e7781 rather than the old #5a6573: this "done/faded" grey has to stay legible on BOTH
+  // the light tooltip and the dark detail panel (4.6:1 and 4.2:1 respectively; #5a6573 was
+  // only 2.6:1 on the panel).
+  var label=bAuto?'<span style="color:#6e7781">&#10003; Defeated (confirmed)</span>'
+    :bManual?'<span style="color:#6e7781">&#10003; Marked defeated by you</span>'
     :MAP_STATUS_TWO_STATE?'<b style="color:#f85149">Not yet defeated</b>'
     :confirmed?'<b style="color:#e3b341">Confirmed location (not yet defeated)</b>'
     :'<b style="color:#f85149">Alpha Boss (unconfirmed)</b>';
@@ -4355,7 +4365,7 @@ function bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails){
     var reqList=prereqDetails.map(function(pd){
       return '<span style="color:'+(pd.got?'#3fb950':'#f85149')+';">'+(pd.got?'&#10003; ':'')+esc(pd.name)+'</span>';
     }).join(', ');
-    lockLine='<br><b style="color:#f85149;">Locked</b> <span style="color:#333;font-size:11px;">- requires '+reqList+'</span>';
+    lockLine='<br><b style="color:#f85149;">Locked</b> <span style="font-size:11px;">- requires '+reqList+'</span>';
   }
   return label+lockLine+customPinBadge(b);
 }
@@ -4396,15 +4406,14 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
       renderEffigyMap();
       var g=worldToGrid(b.x,b.y);
       var ident={category:'bounty',species:b.species,name:b.name,lv:b.lv!=null?b.lv:null,key:b.key||null,gx:g.cx,gy:g.cy,label:b.name};
-      var bodyHtml='<b style="color:#111;">'+esc(b.name)+'</b>'+bLvl+'<br>'+bStatusLabel
-        +(clickable?('<br><button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="margin-top:6px;font-size:12px;">'
-          +(bManual?'Unmark defeated':'Mark defeated')+'</button>'):'')
-        +saveKeyRow(b.key)
-        +detailConfirmHtml(bChkId,confirmed)
-        +(b.key?'':mapKeyButtonHtml(bMapBtnId))
-        +caveAddButtonHtml()
-        +prereqAddButtonHtml();
-      openIconDetail('Field Boss',b.name,bodyHtml,ident,bm,function(el){
+      var bodyHtml=detailSectionHtml('Status',bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails))
+        +detailActionsHtml([detailConfirmHtml(bChkId,confirmed)],
+          [clickable?('<button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="font-size:12px;">'
+             +(bManual?'Unmark defeated':'Mark defeated')+'</button>'):'',
+           b.key?'':mapKeyButtonHtml(bMapBtnId),
+           caveAddButtonHtml(),
+           prereqAddButtonHtml()]);
+      openIconDetail('Field Boss',b.name+detailLvlSuffix(b.lv),bodyHtml,ident,bm,function(el){
         var btn=el.querySelector('.eff-bounty-mark-btn');
         if(btn){
           btn.onclick=function(){
@@ -4459,7 +4468,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
 }
 
 // Body-only tooltip text, shared by the divIcon builder and the low-zoom dot marker.
-function fugitiveTipBody(h,confirmed,hGot,hStatus){
+function fugitiveTipBody(h,confirmed,hGot,hStatus,panel){
   var _g=worldToGrid(h.x,h.y), cx=_g.cx, cy=_g.cy;
   var hStatusLabel=hStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Defeated</span>' : '<span style="color:#3fb950">&#10003; Defeated & confirmed</span>')
@@ -4467,7 +4476,7 @@ function fugitiveTipBody(h,confirmed,hGot,hStatus){
     : hGot ? '<b style="color:#58a6ff">Defeated (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet defeated)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return hStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(h);
+  return hStatusLabel+tipCoordsHtml(cx,cy,panel)+customPinBadge(h);
 }
 function buildFugitiveMarker(h,confirmed,hGot,hStatus){
   var hm=L.marker(effigyRposToLatLng(h.x,h.y),{icon:wantedFugitiveIcon(hStatus),interactive:true});
@@ -4485,11 +4494,10 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
     hm.on('click',function(){
       var g=worldToGrid(h.x,h.y);
       var ident={category:'fugitive',key:h.key||null,species:null,name:h.name,lv:h.lv!=null?h.lv:null,gx:g.cx,gy:g.cy,label:h.name};
-      var bodyHtml='<b style="color:#111;">'+esc(h.name)+'</b>'+hLvl+'<br>'+hTip+saveKeyRow(h.key)
-        +detailConfirmHtml(hChkId,confirmed)
-        +(h.key?'':mapKeyButtonHtml(hMapBtnId))
-        +caveAddButtonHtml();
-      openIconDetail('Wanted Fugitive',h.name,bodyHtml,ident,hm,function(el){
+      var bodyHtml=detailSectionHtml('Status',fugitiveTipBody(h,confirmed,hGot,hStatus,true))
+        +detailActionsHtml([detailConfirmHtml(hChkId,confirmed)],
+          [h.key?'':mapKeyButtonHtml(hMapBtnId),caveAddButtonHtml()]);
+      openIconDetail('Wanted Fugitive',h.name+detailLvlSuffix(h.lv),bodyHtml,ident,hm,function(el){
         var box=el.querySelector('#'+hChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('fugitive',h.key||null,box.checked,h.name); };
         if(!h.key) wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
@@ -4504,7 +4512,7 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
 }
 
 // Body-only tooltip text, shared by the divIcon builder and the low-zoom dot marker.
-function eagleTipBody(es,confirmed,esGot,esStatus){
+function eagleTipBody(es,confirmed,esGot,esStatus,panel){
   var _g=worldToGrid(es.x,es.y), cx=_g.cx, cy=_g.cy;
   var esStatusLabel=esStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Unlocked</span>' : '<span style="color:#3fb950">&#10003; Unlocked & confirmed</span>')
@@ -4512,7 +4520,7 @@ function eagleTipBody(es,confirmed,esGot,esStatus){
     : esGot ? '<b style="color:#58a6ff">Unlocked (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet unlocked)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return esStatusLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(es);
+  return esStatusLabel+tipCoordsHtml(cx,cy,panel)+customPinBadge(es);
 }
 function buildEagleMarker(es,confirmed,esGot,esStatus){
   var esm=L.marker(effigyRposToLatLng(es.x,es.y),{icon:eagleStatueIcon(esStatus),interactive:true});
@@ -4526,10 +4534,9 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
     esm.on('click',function(){
       var g=worldToGrid(es.x,es.y);
       var ident={category:'eagle',key:es.key||null,species:null,name:es.name,lv:null,gx:g.cx,gy:g.cy,label:es.name};
-      var bodyHtml='<b style="color:#111;">'+esc(es.name)+'</b><br>'+esTip+saveKeyRow(es.key)
-        +detailConfirmHtml(esChkId,confirmed)
-        +(es.key?'':mapKeyButtonHtml(esMapBtnId))
-        +caveAddButtonHtml();
+      var bodyHtml=detailSectionHtml('Status',eagleTipBody(es,confirmed,esGot,esStatus,true))
+        +detailActionsHtml([detailConfirmHtml(esChkId,confirmed)],
+          [es.key?'':mapKeyButtonHtml(esMapBtnId),caveAddButtonHtml()]);
       openIconDetail('Eagle Statue',es.name,bodyHtml,ident,esm,function(el){
         var box=el.querySelector('#'+esChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('eagle',es.key||null,box.checked,es.name); };
@@ -4548,7 +4555,7 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
 // was reverse-engineered (see /palbox-confirmed-locations' SAM Site section) -- now a real
 // three-state status like eagleTipBody/fugitiveTipBody, instead of the original always-
 // keyless "no save key linked yet" text (which predates knowing this flag existed at all).
-function samTipBody(s,confirmed,sGot,sStatus){
+function samTipBody(s,confirmed,sGot,sStatus,panel){
   var _g=worldToGrid(s.x,s.y), cx=_g.cx, cy=_g.cy;
   var sLabel=sStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Destroyed</span>' : '<span style="color:#3fb950">&#10003; Destroyed & confirmed</span>')
@@ -4556,7 +4563,7 @@ function samTipBody(s,confirmed,sGot,sStatus){
     : sGot ? '<b style="color:#58a6ff">Destroyed (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet destroyed)</b>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return sLabel+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(s);
+  return sLabel+tipCoordsHtml(cx,cy,panel)+customPinBadge(s);
 }
 function buildSamMarker(s,confirmed,sGot,sStatus){
   var sm=L.marker(effigyRposToLatLng(s.x,s.y),{icon:samSiteIcon(sStatus),interactive:true});
@@ -4570,10 +4577,9 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
     sm.on('click',function(){
       var g=worldToGrid(s.x,s.y);
       var ident={category:'sam',key:s.key||null,species:null,name:s.name,lv:null,gx:g.cx,gy:g.cy,label:s.name};
-      var bodyHtml='<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+saveKeyRow(s.key)
-        +detailConfirmHtml(sChkId,confirmed)
-        +(s.key?'':mapKeyButtonHtml(sMapBtnId))
-        +caveAddButtonHtml();
+      var bodyHtml=detailSectionHtml('Status',samTipBody(s,confirmed,sGot,sStatus,true))
+        +detailActionsHtml([detailConfirmHtml(sChkId,confirmed)],
+          [s.key?'':mapKeyButtonHtml(sMapBtnId),caveAddButtonHtml()]);
       openIconDetail('SAM Site',s.name,bodyHtml,ident,sm,function(el){
         var box=el.querySelector('#'+sChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('sam',s.key||null,box.checked,s.name); };
@@ -4593,7 +4599,7 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
 // alone, renders red/untrackable, and captures its key via "Record next key" in the detail
 // footer; a display name is added later. p.name may be null while pending -- show a placeholder.
 function itemPickupLabel(p){ return p&&p.name ? p.name : 'Schematic (unnamed)'; }
-function itemPickupTipBody(p,confirmed,pGot,pStatus){
+function itemPickupTipBody(p,confirmed,pGot,pStatus,panel){
   var _g=worldToGrid(p.x,p.y), cx=_g.cx, cy=_g.cy;
   var lbl=pStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Collected</span>' : '<span style="color:#3fb950">&#10003; Collected & confirmed</span>')
@@ -4602,7 +4608,7 @@ function itemPickupTipBody(p,confirmed,pGot,pStatus){
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet collected)</b>'
     : p.pending ? '<span style="color:#8a8f98">Pending -- record its key</span>'
     : '<b style="color:#f85149">Unconfirmed</b>';
-  return lbl+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(p);
+  return lbl+tipCoordsHtml(cx,cy,panel)+customPinBadge(p);
 }
 function buildItemPickupMarker(p,confirmed,pGot,pStatus){
   var lbl=itemPickupLabel(p);
@@ -4627,8 +4633,9 @@ function buildItemPickupMarker(p,confirmed,pGot,pStatus){
       // placing the pin), picking it here is instant, where "Record next key" would demand a
       // second trip out to a chest that has already been opened. Unlike effigy, itempickup has
       // a real unmapped-key list to offer, since ItemPickupObtainForInstanceFlag isn't noName.
-      var bodyHtml='<b style="color:#111;">'+esc(lbl)+'</b><br>'+pTip+saveKeyRow(p.key)
-        +(pending?mapKeyButtonHtml(pMapBtnId):detailConfirmHtml(pChkId,confirmed)+caveAddButtonHtml());
+      var bodyHtml=detailSectionHtml('Status',itemPickupTipBody(p,confirmed,pGot,pStatus,true))
+        +(pending?detailActionsHtml([],[mapKeyButtonHtml(pMapBtnId)])
+                 :detailActionsHtml([detailConfirmHtml(pChkId,confirmed)],[caveAddButtonHtml()]));
       openIconDetail('Schematic',lbl,bodyHtml,ident,pm,function(el){
         // Pass the stored gx/gy so the server's itempickup coord-fallback re-keys THIS row in
         // place instead of creating a duplicate pin (PalWorldServerManager.ps1, $coordCat).
@@ -4648,7 +4655,7 @@ function buildItemPickupMarker(p,confirmed,pGot,pStatus){
 // Body + level-suffix tooltip pieces, shared by the divIcon builder and the
 // low-zoom dot marker. Returns both since the level suffix sits between the
 // name header and the body in the composed tooltip string.
-function towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails){
+function towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails,panel){
   var _g=worldToGrid(t.x,t.y), cx=_g.cx, cy=_g.cy;
   var bLabel=bStatus==='found'
     ? (MAP_STATUS_TWO_STATE ? '<span style="color:#3fb950">&#10003; Boss cleared</span>' : '<span style="color:#3fb950">&#10003; Boss cleared & key verified</span>')
@@ -4657,15 +4664,15 @@ function towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetail
     : bossVerified ? '<b style="color:#e3b341">Key verified (boss not yet cleared)</b>'
     : '<b style="color:#f85149">Boss key unverified</b>';
   var tLvl=t.lv?(' <span style="color:var(--muted)">(Lv '+t.lv+')</span>'):'';
-  var tBoss=(t.boss||t.bossPal)?('<br><span style="color:#111;">'+esc(t.boss||'')+(t.boss&&t.bossPal?' & ':'')+esc(t.bossPal||'')+'</span>'):'';
+  var tBoss=(t.boss||t.bossPal)?('<br>'+esc(t.boss||'')+(t.boss&&t.bossPal?' &amp; ':'')+esc(t.bossPal||'')):'';
   var lockLine='';
   if(tLocked&&prereqDetails&&prereqDetails.length){
     var reqList=prereqDetails.map(function(pd){
       return '<span style="color:'+(pd.got?'#3fb950':'#f85149')+';">'+(pd.got?'&#10003; ':'')+esc(pd.name)+'</span>';
     }).join(', ');
-    lockLine='<br><b style="color:#f85149;">Locked</b> <span style="color:#333;font-size:11px;">- requires '+reqList+'</span>';
+    lockLine='<br><b style="color:#f85149;">Locked</b> <span style="font-size:11px;">- requires '+reqList+'</span>';
   }
-  var tTip=bLabel+tBoss+lockLine+'<br><span style="color:#111;font-weight:600">X: '+cx+', Y: '+cy+'</span>'+customPinBadge(t);
+  var tTip=bLabel+tBoss+lockLine+tipCoordsHtml(cx,cy,panel)+customPinBadge(t);
   return {lvl:tLvl,body:tTip};
 }
 function buildTowerMarker(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails){
@@ -4691,13 +4698,15 @@ function buildTowerMarker(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDe
       renderEffigyMap();
       var _tg=worldToGrid(t.x,t.y);
       var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:t.lv!=null?t.lv:null,gx:_tg.cx,gy:_tg.cy,label:t.name};
-      var tKeys='<br><span style="color:#5a6573;font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
-      var bodyHtml='<b style="color:#111;">'+esc(t.name)+'</b>'+tLvl+'<br>'+tTip+tKeys
-        +detailConfirmHtml(tChkId,confirmed)
-        +'<label style="display:flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;">'
-        +'<input type="checkbox" id="'+bChkId+'"'+(bossVerified?' checked':'')+(t.bossKey?'':' disabled')+'> Verify Boss Defeat key</label>'
-        +caveAddButtonHtml()+prereqAddButtonHtml();
-      openIconDetail('Tower',t.name,bodyHtml,ident,tm,function(el){
+      // Boss key stays a read-only Status line: the Edit footer's "Save key" field only ever
+      // touches `key`, never `bossKey` (see Edit-MapEntry) -- so unlike name/coords/level this
+      // one genuinely isn't shown anywhere else.
+      var tKeys='<br><span style="color:var(--muted);font-size:11px;">Boss key: <code>'+(t.bossKey?esc(t.bossKey):'unknown')+'</code></span>';
+      var bodyHtml=detailSectionHtml('Status',towerTipBody(t,confirmed,bossVerified,bGot,bStatus,tLocked,prereqDetails,true).body+tKeys)
+        +detailActionsHtml([detailConfirmHtml(tChkId,confirmed),
+                            detailCheckboxHtml(bChkId,'Verify Boss Defeat key',bossVerified,!t.bossKey)],
+          [caveAddButtonHtml(),prereqAddButtonHtml()]);
+      openIconDetail('Tower',t.name+detailLvlSuffix(t.lv),bodyHtml,ident,tm,function(el){
         var box=el.querySelector('#'+tChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('tower',t.key||null,box.checked,t.name); };
         var bBox=el.querySelector('#'+bChkId);
@@ -6738,7 +6747,7 @@ async function saveAddIcon(){
 // ever called from a popup built under EFFIGY_CONFIRM_ENABLED, so stripping them is safe.
 var _entranceTarget=null;   // parent-pin identity the entrance modal is currently adding to
 function caveAddButtonHtml(){
-  return '<br><button type="button" class="btn btn-ghost eff-cave-add-btn" style="margin-top:6px;font-size:12px;">+ Cave entrance</button>';
+  return '<button type="button" class="btn btn-ghost eff-cave-add-btn" style="font-size:12px;">+ Cave entrance</button>';
 }
 function wireCaveAdd(popupEl,ident){
   var b=popupEl.querySelector('.eff-cave-add-btn');
@@ -6795,10 +6804,34 @@ function refetchMapCategory(category){
 // is appended ADDITIONALLY (not exclusively) when the pin has no key yet.
 // _iconDetailIdent/_iconDetailMarker/_iconDetailOnClose themselves are declared up near
 // _bossPrereqActive (NOT here) -- see that declaration's comment for why.
-function detailConfirmHtml(chkId,confirmed){
-  return '<label style="display:flex;align-items:center;gap:6px;margin-top:10px;cursor:pointer;font-size:14px;">'
-    +'<input type="checkbox" id="'+chkId+'"'+(confirmed?' checked':'')+'> Confirm location</label>';
+// -- Panel section builders (2026-07-15 streamlining pass) -------------------------------
+// The panel body used to be the hover tooltip's HTML pasted in as-is and then <br>-appended
+// with each control in turn, which left the name/coords/key/level each printed twice (once
+// invisibly in the tooltip string, once in the Edit inputs below) and the actions strung down
+// the page one per line. Every category now composes the same three labelled sections instead:
+// Status (read-only state the Edit fields don't already show), Actions, and the shared Edit
+// footer. Reuses the .pm-sec/.pm-sec-h classes the Edit footer already used.
+function detailSectionHtml(title,inner){
+  return '<div class="pm-sec"><div class="pm-sec-h">'+title+'</div>'+inner+'</div>';
 }
+function detailCheckboxHtml(chkId,label,checked,disabled){
+  return '<label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;font-size:14px;">'
+    +'<input type="checkbox" id="'+chkId+'"'+(checked?' checked':'')+(disabled?' disabled':'')+'> '+label+'</label>';
+}
+function detailConfirmHtml(chkId,confirmed){
+  return detailCheckboxHtml(chkId,'Confirm location',confirmed,false);
+}
+// Both arrays are filtered for falsy entries so a call site can pass a conditional straight in
+// (e.g. b.key?'':mapKeyButtonHtml(id)) without building the list up by hand first.
+function detailActionsHtml(checkboxes,buttons){
+  var boxes=(checkboxes||[]).filter(Boolean), btns=(buttons||[]).filter(Boolean);
+  if(!boxes.length&&!btns.length) return '';
+  return detailSectionHtml('Actions',boxes.join('')
+    +(btns.length?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:'+(boxes.length?10:0)+'px;">'+btns.join('')+'</div>':''));
+}
+// Plain-text "(Lv N)" suffix for the panel header, which is set via textContent (so it can't
+// take the HTML *Lvl spans the tooltips use).
+function detailLvlSuffix(lv){ return lv?(' (Lv '+lv+')'):''; }
 // The shared bottom section every category gets for free: display name (hidden for effigy,
 // which has no name concept -- see Get-MapCategoryJson's effigy dict shape), save key,
 // level (bounty/fugitive/tower -- see Edit-MapEntry's generic $fields.lv), coordinates, and
@@ -6990,7 +7023,7 @@ async function removeEntrance(ident,index,marker){
 // tower by name), but the prerequisite itself is always a Field Boss (bossLocations/species).
 var _prereqTarget=null;   // {category,species,name} of the pin the modal is currently editing
 function prereqAddButtonHtml(){
-  return '<br><button type="button" class="btn btn-ghost eff-prereq-add-btn" style="margin-top:6px;font-size:12px;">+ Prerequisite boss</button>';
+  return '<button type="button" class="btn btn-ghost eff-prereq-add-btn" style="font-size:12px;">+ Prerequisite boss</button>';
 }
 function wirePrereqAdd(popupEl,entity,category){
   var btn=popupEl.querySelector('.eff-prereq-add-btn');
