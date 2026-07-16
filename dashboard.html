@@ -6740,9 +6740,11 @@ function openAddIconModal(){
   document.getElementById('ai-gy').value='';
   addIconCategoryChanged();
   document.getElementById('addicon-modal-overlay').style.display='flex';
+  hoistOverlayForFullscreen('addicon-modal-overlay');
 }
 window.closeAddIconModal=function(){
   document.getElementById('addicon-modal-overlay').style.display='none';
+  unhoistOverlay('addicon-modal-overlay');
 };
 
 function addIconCategoryChanged(){
@@ -6809,9 +6811,11 @@ function openEntranceModal(ident){
   document.getElementById('entrance-gx').value='';
   document.getElementById('entrance-gy').value='';
   document.getElementById('entrance-modal-overlay').style.display='flex';
+  hoistOverlayForFullscreen('entrance-modal-overlay');
 }
 window.closeEntranceModal=function(){
   document.getElementById('entrance-modal-overlay').style.display='none';
+  unhoistOverlay('entrance-modal-overlay');
   _entranceTarget=null;
 };
 // Force-refetch the one roster a category is served from, then re-render on change -- same
@@ -7029,6 +7033,7 @@ function openIconDetail(categoryLabel,title,bodyHtml,ident,marker,wireExtra,onCl
   wireIconDetailFooter(body,ident,marker);
   if(typeof wireExtra==='function') wireExtra(body);
   document.getElementById('icon-detail-overlay').style.display='block';
+  hoistOverlayForFullscreen('icon-detail-overlay');
 }
 window.closeIconDetail=function(){
   // A recording in progress deliberately keeps running after the panel closes (2026-07-14) --
@@ -7037,6 +7042,7 @@ window.closeIconDetail=function(){
   // multi-key pause, and a 5-min timeout all toast regardless of panel state now (see
   // keyRecordTick/recordCommitKey), so nothing silently vanishes just because this closed.
   document.getElementById('icon-detail-overlay').style.display='none';
+  unhoistOverlay('icon-detail-overlay');
   if(typeof _iconDetailOnClose==='function') _iconDetailOnClose();
   _iconDetailIdent=null; _iconDetailMarker=null; _iconDetailOnClose=null;
 };
@@ -7156,9 +7162,11 @@ function openPrereqModal(entity,category){
   document.getElementById('prereq-boss-label').textContent=entity.name||entity.species;
   renderPrereqModalList();
   document.getElementById('prereq-modal-overlay').style.display='flex';
+  hoistOverlayForFullscreen('prereq-modal-overlay');
 }
 window.closePrereqModal=function(){
   document.getElementById('prereq-modal-overlay').style.display='none';
+  unhoistOverlay('prereq-modal-overlay');
   _prereqTarget=null;
 };
 // Finds the locked pin's own live roster row for _prereqTarget -- bounty by species,
@@ -8497,9 +8505,43 @@ function toggleEffigyFullscreen(){
     if(exit) exit.call(document);
   }
 }
+// Native fullscreen paints ONLY the fullscreen element's own subtree, so a body-level
+// overlay (icon detail, add-icon, entrance, prereq) is invisible while the map is
+// fullscreen no matter how high its z-index is -- it isn't losing a stacking contest, it
+// isn't being rendered at all. The fix is to move the overlay into #eff-map-wrap for as
+// long as it's open, then put it back so normal (non-fullscreen) stacking is unchanged.
+// The pseudo-fs fallback needs the same move for a different reason: #eff-map-wrap sits at
+// z-index 10000 there, above every overlay. Overlays are appended as a direct child of the
+// wrap, never inside Leaflet's panes -- those get a CSS transform while panning, which
+// would break position:fixed on anything nested in them.
+function effigyFullscreenHost(){
+  var el=document.getElementById('eff-map-wrap');
+  if(!el) return null;
+  var fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+  return (fsEl===el||el.classList.contains('eff-pseudo-fs'))?el:null;
+}
+function hoistOverlayForFullscreen(id){
+  var el=document.getElementById(id),host=effigyFullscreenHost();
+  if(!el||!host||el.parentNode===host) return;
+  el.setAttribute('data-fs-hoisted','1');
+  host.appendChild(el);
+}
+function unhoistOverlay(id){
+  var el=document.getElementById(id);
+  if(!el||!el.hasAttribute('data-fs-hoisted')) return;
+  el.removeAttribute('data-fs-hoisted');
+  document.body.appendChild(el);
+}
 function onEffigyFullscreenChange(){
   var el=document.getElementById('eff-map-wrap');
   var btn=document.getElementById('eff-fullscreen-btn');
+  // Leaving fullscreen (incl. via Esc, which never routes through toggleEffigyFullscreen)
+  // must return any still-open overlay to <body>, or it stays parented to the now-normal-
+  // sized map panel.
+  if(!effigyFullscreenHost()){
+    var hoisted=document.querySelectorAll('[data-fs-hoisted]');
+    for(var i=0;i<hoisted.length;i++) unhoistOverlay(hoisted[i].id);
+  }
   var active=!!(document.fullscreenElement||document.webkitFullscreenElement)||(el&&el.classList.contains('eff-pseudo-fs'));
   if(btn) btn.innerHTML=active?'&#9974; Exit Fullscreen':'&#9974; Fullscreen';
   // Leaflet sizes its canvas/tiles from the container's box at init time -- the container
