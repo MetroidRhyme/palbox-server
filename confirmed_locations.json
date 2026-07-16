@@ -1844,18 +1844,18 @@
     },
     {
         "species":  "CatVampire",
-        "source":  "NormalBossDefeatFlag",
-        "category":  "bounty",
-        "origin":  "manual",
-        "verified":  false,
         "name":  "Foxparks Cryst",
-        "key":  null,
+        "key":  "81_1_GRASS_FBOSS_15",
         "gx":  -411,
         "gy":  -55,
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  15
+        "lv":  15,
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -3233,7 +3233,7 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
+        "key":  "91DAC6F34D2A9FD7F01471B5166C6C02",
         "z":  null,
         "species":  null,
         "lv":  null,
@@ -3243,7 +3243,7 @@
         "y":  -29272,
         "name":  "Kelpsea Hill",
         "source":  "FastTravelPointUnlockFlag",
-        "verified":  false,
+        "verified":  true,
         "category":  "eagle",
         "origin":  "manual"
     },
