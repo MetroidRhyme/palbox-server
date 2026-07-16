@@ -38,17 +38,18 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "name":  "Chillet",
-        "gx":  173,
-        "gy":  -418,
-        "verified":  false,
         "category":  "bounty",
         "origin":  "manual",
-        "x":  -315583.53,
-        "z":  2448.41,
-        "y":  237116.97,
-        "species":  "WeaselDragon"
+        "species":  "WeaselDragon",
+        "verified":  true,
+        "name":  "Chillet",
+        "key":  "1_10_PLAIN_F_BOSS_FAIRYDRAGON",
+        "gx":  173,
+        "gy":  -418,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "lv":  11
     },
     {
         "key":  "2801DF834644293C3766F19AE7052C12",
@@ -93,15 +94,17 @@
         "x":  -671934
     },
     {
-        "key":  null,
         "name":  "Fort Ruins",
+        "key":  "41727100495D21DC905D309C53989914",
         "gx":  182,
         "gy":  -390,
-        "verified":  false,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
         "category":  "eagle",
-        "origin":  "manual",
-        "y":  241079,
-        "x":  -302898
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -237,17 +240,19 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
-        "name":  "Warsect",
+        "species":  "HerculesBeetle",
+        "name":  "Wixen",
+        "key":  "81_1_FOREST_FBOSS_2",
         "gx":  161,
         "gy":  -223,
-        "verified":  false,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "lv":  28,
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
         "category":  "bounty",
-        "origin":  "manual",
-        "x":  -227163,
-        "y":  231440,
-        "species":  "HerculesBeetle",
-        "z":  0
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -276,17 +281,18 @@
         "z":  0
     },
     {
-        "key":  null,
+        "key":  "81_1_GRASS_FBOSS_1",
         "name":  "Mammorest",
         "gx":  189,
         "gy":  -478,
-        "verified":  false,
-        "category":  "bounty",
-        "origin":  "manual",
         "x":  -343155,
         "z":  -95,
         "y":  244585,
-        "species":  "GrassMammoth"
+        "species":  "GrassMammoth",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -341,17 +347,19 @@
         "species":  "KingAlpaca"
     },
     {
-        "key":  null,
-        "name":  "Katress",
-        "gx":  242,
-        "gy":  -332,
-        "verified":  false,
+        "species":  "CatMage",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
         "category":  "bounty",
         "origin":  "manual",
-        "x":  -276276,
-        "y":  269078,
-        "species":  "CatMage",
-        "z":  0
+        "name":  "Foxcicle",
+        "key":  "81_1_GRASS_FBOSS_20",
+        "gx":  242,
+        "gy":  -332,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "lv":  15
     },
     {
         "key":  null,
@@ -406,17 +414,19 @@
         "species":  "Yeti_Grass"
     },
     {
-        "key":  null,
+        "species":  "CaptainPenguin",
         "name":  "Penking",
+        "key":  "81_1_GRASS_FBOSS_9",
         "gx":  114,
         "gy":  -352,
-        "verified":  false,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "lv":  15,
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
         "category":  "bounty",
-        "origin":  "manual",
-        "x":  -285915,
-        "y":  209867,
-        "species":  "CaptainPenguin",
-        "z":  0
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -588,15 +598,16 @@
         "x":  -346503
     },
     {
-        "key":  null,
+        "key":  "9FBB93D84811BE424A37C391DBFBB476",
         "name":  "Sealed Realm of the Frozen Wings",
         "gx":  119,
-        "gy":  -336,
-        "verified":  false,
-        "category":  "eagle",
-        "origin":  "manual",
+        "gy":  -337,
         "y":  212621,
-        "x":  -278571
+        "x":  -278571,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -680,15 +691,17 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
         "name":  "Gobfin\u0027s Turf",
+        "key":  "BF8B123244ADB794A06EA8A10503FBDD",
         "gx":  149,
         "gy":  -207,
-        "verified":  false,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
         "category":  "eagle",
-        "origin":  "manual",
-        "y":  226391,
-        "x":  -219360
+        "origin":  "manual"
     },
     {
         "key":  "BOSS_FEMALE_SOLDIER03",
@@ -864,15 +877,16 @@
         "origin":  "manual"
     },
     {
-        "key":  null,
+        "key":  "DAY3",
         "name":  "Castaway\u0027s Journal - Day 3",
         "gx":  189,
         "gy":  -379,
-        "verified":  false,
-        "category":  "journal",
-        "origin":  "manual",
         "x":  -297390,
-        "y":  244751
+        "y":  244751,
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -921,18 +935,19 @@
         "x":  89547
     },
     {
-        "key":  null,
-        "name":  "Tower of the Free Pal Alliance",
-        "gx":  182,
-        "gy":  30,
-        "verified":  false,
         "category":  "tower",
         "origin":  "manual",
-        "y":  241079,
-        "x":  -110118,
-        "lv":  25,
+        "name":  "Tower of the Free Pal Alliance",
+        "key":  "BOSS_BATTLE_NAME_FORESTBOSS",
+        "gx":  36,
+        "gy":  -311,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "lv":  20,
         "boss":  "Lily",
-        "bossPal":  "Lyleen"
+        "bossPal":  "Lyleen",
+        "verified":  true
     },
     {
         "key":  "EC94023A4CA571FF0FD19E90944F4231",
@@ -994,15 +1009,16 @@
         "bossPal":  "Faleris"
     },
     {
-        "key":  null,
+        "key":  "GRASSBOSS3",
         "name":  "Zoe Rayne\u0027s Diary - 3",
         "gx":  126,
         "gy":  -337,
-        "verified":  false,
-        "category":  "journal",
-        "origin":  "manual",
         "x":  -278571,
-        "y":  216293
+        "y":  216293,
+        "source":  "NoteObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "journal",
+        "origin":  "manual"
     },
     {
         "key":  "SNOWBOSS1",
@@ -1039,30 +1055,31 @@
         "y":  213998
     },
     {
-        "key":  null,
         "name":  "Hypocrite Hill",
+        "key":  "923B781345D2AB7ECED6BABD6E97ECE8",
         "gx":  71,
-        "gy":  -248,
+        "gy":  -247,
+        "x":  null,
+        "y":  null,
+        "z":  null,
         "source":  "FastTravelPointUnlockFlag",
-        "verified":  false,
+        "verified":  true,
         "category":  "eagle",
-        "origin":  "live",
-        "y":  190589,
-        "x":  -237720
+        "origin":  "manual"
     },
     {
-        "key":  null,
+        "key":  "81_1_FOREST_FBOSS_7",
         "name":  "Elphidran",
         "gx":  44,
         "gy":  -284,
-        "source":  "NormalBossDefeatFlag",
-        "verified":  false,
-        "category":  "bounty",
-        "origin":  "live",
         "x":  -254060,
         "z":  4000,
         "y":  178050,
-        "species":  "FairyDragon"
+        "species":  "FairyDragon",
+        "source":  "NormalBossDefeatFlag",
+        "verified":  true,
+        "category":  "bounty",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -3393,16 +3410,16 @@
         "y":  157082
     },
     {
-        "key":  null,
+        "key":  "7170881D44249E90902F728E240493AF",
         "name":  "Islandhopper Coast",
         "gx":  241,
         "gy":  -310,
-        "source":  "FastTravelPointUnlockFlag",
-        "verified":  false,
-        "category":  "eagle",
-        "origin":  "manual",
         "x":  -266178,
-        "y":  268619
+        "y":  268619,
+        "source":  "FastTravelPointUnlockFlag",
+        "verified":  true,
+        "category":  "eagle",
+        "origin":  "manual"
     },
     {
         "key":  null,
@@ -4139,6 +4156,54 @@
         "source":  "RelicObtainForInstanceFlag",
         "verified":  true,
         "category":  "effigy",
+        "origin":  "manual"
+    },
+    {
+        "species":  null,
+        "lv":  null,
+        "custom":  true,
+        "name":  "Crossbow Schematic 2",
+        "key":  "FB22DE6E44C4F83E1FD0B48631536D30",
+        "gx":  49,
+        "gy":  -330,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "source":  "ItemPickupObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "itempickup",
+        "origin":  "manual"
+    },
+    {
+        "key":  "865B21D541401445212352819BC7A290",
+        "name":  null,
+        "gx":  59,
+        "gy":  -291,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "species":  null,
+        "lv":  null,
+        "custom":  true,
+        "source":  "RelicObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "effigy",
+        "origin":  "manual"
+    },
+    {
+        "species":  null,
+        "lv":  null,
+        "custom":  true,
+        "name":  "Life Pendant Schematic",
+        "key":  "3A8C28584070FF43DFB8888B6E164898",
+        "gx":  106,
+        "gy":  -232,
+        "x":  null,
+        "y":  null,
+        "z":  null,
+        "source":  "ItemPickupObtainForInstanceFlag",
+        "verified":  true,
+        "category":  "itempickup",
         "origin":  "manual"
     }
 ]

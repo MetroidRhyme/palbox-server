@@ -3662,5 +3662,21 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "LAZYCATFISH_GOLD",
+        "name":  "Dumud Gild",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "LazyCatfish_Gold",
+        "name":  "Dumud Gild",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]
