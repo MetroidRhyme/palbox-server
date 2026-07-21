@@ -2428,7 +2428,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             if ($script:palTileCache.Count -ge 2000) { $script:palTileCache = @{} }
                             if (-not $script:palTileCache.ContainsKey($cacheKey)) {
                                 try {
-                                    $wreq = [System.Net.HttpWebRequest]::Create("https://cdn.paldb.cc/image/map7/z${tz}x${tx}y${ty}.webp")
+                                    $wreq = [System.Net.HttpWebRequest]::Create("https://cdn.paldb.cc/image/map8/z${tz}x${tx}y${ty}.webp")
                                     $wreq.UserAgent = 'Mozilla/5.0'
                                     $wreq.Referer   = 'https://paldb.cc/'
                                     $wreq.Timeout   = 8000

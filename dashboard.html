@@ -3235,7 +3235,7 @@ function loadLeaflet(cb){
 function initPalLeafletMap(){
   if(palMapLeaflet) return;
   var blockSize=131072;
-  window._palMapCfg={blockSize:blockSize,realMin:{X:-999940,Y:-737262},realMax:{X:447900,Y:710578}};
+  window._palMapCfg={blockSize:blockSize,realMin:{X:-1099400,Y:-724400},realMax:{X:349400,Y:724400}};
   palMapLeaflet=L.map('pal-leaflet-map',{minZoom:0,maxZoom:8,zoom:1,crs:L.CRS.Simple});
   var sw=palMapLeaflet.unproject([0,blockSize],8);
   var ne=palMapLeaflet.unproject([blockSize,0],8);
@@ -5021,7 +5021,7 @@ function initEffigyView(){
     requestAnimationFrame(function(){
       if(!effigyLeaflet){
         var blockSize=131072;
-        if(!window._palMapCfg) window._palMapCfg={blockSize:blockSize,realMin:{X:-999940,Y:-737262},realMax:{X:447900,Y:710578}};
+        if(!window._palMapCfg) window._palMapCfg={blockSize:blockSize,realMin:{X:-1099400,Y:-724400},realMax:{X:349400,Y:724400}};
         effigyLeaflet=L.map('effigy-leaflet-map',{minZoom:-1,maxZoom:8,zoom:-1,crs:L.CRS.Simple,zoomControl:false});
         // Default top-left position would collide with this tab's filter panel/player
         // select; bottom-right is clear on both desktop and phone layouts. Paldeck's spawn

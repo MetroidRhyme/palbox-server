@@ -34,7 +34,7 @@ async function handleTile(url, ctx) {
   if (!Number.isInteger(z) || !Number.isInteger(x) || !Number.isInteger(y)) {
     return new Response('bad tile', { status: 400 });
   }
-  const tileUrl = 'https://cdn.paldb.cc/image/map7/z' + z + 'x' + x + 'y' + y + '.webp';
+  const tileUrl = 'https://cdn.paldb.cc/image/map8/z' + z + 'x' + x + 'y' + y + '.webp';
   const cache = caches.default;
   const cacheKey = new Request(tileUrl, { method: 'GET' });
 
