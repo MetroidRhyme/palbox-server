@@ -599,6 +599,10 @@ tr.save-live-row>td:first-child{box-shadow:inset 3px 0 0 var(--green);}
         <button id="eff-follow-btn" class="btn-icon" onclick="toggleFollowSelectedPlayer()" title="Follow selected player's position">&#8982; Follow</button>
         <button id="eff-fullscreen-btn" class="btn-icon" onclick="toggleEffigyFullscreen()" title="Fullscreen map">&#9974; Fullscreen</button>
       </div>
+      <div id="eff-map-switch" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.35);" title="Switch between the Palpagos Islands overworld and the separate World Tree map">
+        <button id="eff-map-btn-map8" onclick="switchEffigyMap('map8')" style="font-size:11px;padding:4px 12px;border:none;background:#1f6feb;color:#fff;font-weight:600;cursor:pointer;">Palpagos Islands</button>
+        <button id="eff-map-btn-treemap8" onclick="switchEffigyMap('treemap8')" style="font-size:11px;padding:4px 12px;border:none;background:transparent;color:var(--muted);cursor:pointer;">The World Tree</button>
+      </div>
       <div id="eff-filter-panel" style="position:absolute;top:8px;left:8px;z-index:1000;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;flex-direction:column;gap:5px;box-shadow:0 4px 16px rgba(0,0,0,.35);">
         <div id="eff-filter-hdr" onclick="toggleFilterPanel()" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-weight:600;">
           <span id="eff-filter-arrow" style="display:inline-block;font-size:10px;color:var(--muted);transition:transform .15s;">&#9660;</span> Filters
@@ -4136,7 +4140,9 @@ function effDesire(key,sig,build){
   // Mode is part of the CACHE KEY, not the sig: both the icon and the dot
   // variant of a marker stay cached, so crossing the LOD zoom threshold is a
   // pure layer add/remove delta with no marker rebuilds after first render.
-  var mkey=(_effDotMode?'d|':'i|')+key;
+  // Active map id is part of the cache key too, so a marker cached while one map was active can
+  // never be reused (with a stale latlng) after switching to the other map.
+  var mkey=effigyActiveMapId+'|'+(_effDotMode?'d|':'i|')+key;
   var e=_effCache.get(mkey);
   if(!e||e.sig!==sig){
     var m=build();
@@ -4808,6 +4814,9 @@ function renderPlayerMarkers(){
   if(effigyShowPlayers&&playerLocations&&playerLocations.length){
     playerLocations.forEach(function(pl){
       if(typeof pl.x!=='number'||typeof pl.y!=='number') return;
+      // A player physically in the other map (e.g. inside the World Tree) shouldn't show on this
+      // one. Leaving seen[] unset lets the cleanup pass below remove their marker if they crossed.
+      if(!pinOnActiveMap(pl.x,pl.y)) return;
       seen[pl.guid]=true;
       var isFollowed=!!(followedPlayerGuid&&pl.guid===followedPlayerGuid);
       var ll=effigyRposToLatLng(pl.x,pl.y);
@@ -4877,7 +4886,7 @@ function renderPlayerMarkers(){
     if(!_target&&playerLocations.length===1&&typeof playerLocations[0].x==='number'&&typeof playerLocations[0].y==='number'){
       _target=playerLocations[0];
     }
-    if(_target){
+    if(_target&&pinOnActiveMap(_target.x,_target.y)){
       _effInitialCentered=true;
       effigyLeaflet.setView(effigyRposToLatLng(_target.x,_target.y),3);
     }
@@ -5022,6 +5031,8 @@ function initEffigyView(){
       if(!effigyLeaflet){
         var blockSize=131072;
         if(!window._palMapCfg) window._palMapCfg={blockSize:blockSize,realMin:{X:-1099400,Y:-724400},realMax:{X:349400,Y:724400}};
+        // Restore the last-selected map before the tile layer is built so it opens on the right one.
+        try{ var _mf=JSON.parse(localStorage.getItem('palbox_map_filters')||'{}'); if(_mf.activeMap==='treemap8') effigyActiveMapId='treemap8'; }catch(e){}
         effigyLeaflet=L.map('effigy-leaflet-map',{minZoom:-1,maxZoom:8,zoom:-1,crs:L.CRS.Simple,zoomControl:false});
         // Default top-left position would collide with this tab's filter panel/player
         // select; bottom-right is clear on both desktop and phone layouts. Paldeck's spawn
@@ -5034,7 +5045,9 @@ function initEffigyView(){
         // minNativeZoom:0 -- the tile proxy only has real tiles from z0 up (see palmaptile
         // in PalWorldServerManager.ps1), so below that Leaflet must upsample the z0 tile
         // instead of requesting negative-z tiles that don't exist and would render blank.
-        L.tileLayer('/api/palmaptile?z={z}&x={x}&y={y}',{
+        // Stored so switchEffigyMap() can setUrl() to the other tileset. The 'm=' param selects
+        // the map dir (map8 / treemap8); the proxy allowlists it (see palmaptile in the Manager).
+        effigyTileLayer=L.tileLayer('/api/palmaptile?m='+effigyActiveMap().dir+'&z={z}&x={x}&y={y}',{
           bounds:bounds,minNativeZoom:0,maxNativeZoom:4,tileSize:512,keepBuffer:4
         }).addTo(effigyLeaflet);
         // Plain layer group, no clustering -- every marker shows individually regardless of
@@ -5086,6 +5099,7 @@ function initEffigyView(){
       fetchDestroyedWeapons();
       fetchItemPickupLocations();
       fetchPlayerLocations();
+      updateMapSwitchUI();
     });
   });
 }
@@ -5100,8 +5114,59 @@ function worldToGrid(x,y){
   return {cx:Math.round((y-MAP_CONST.offsetY)/MAP_CONST.scale), cy:Math.round((x+MAP_CONST.offsetX)/MAP_CONST.scale)};
 }
 
+// -- Map switcher: overworld (Palpagos Islands, tiles map8) vs. The World Tree (tiles
+// treemap8). paldb serves these as two separate tilesets, each with its own world-coordinate
+// block but the IDENTICAL projection math and pyramid/blockSize -- only the tile dir and
+// realMin/realMax differ. The map8 entry has cfg:null and falls back to window._palMapCfg (set
+// at map init) so the overworld bounds aren't copied a third time. window._palMapCfg itself
+// STAYS the overworld config: the Paldeck spawn modal (palRposToLatLng) keeps reading it, so
+// switching the Map tab never affects that modal. These live OUTSIDE both generator strip zones
+// on purpose -- the switcher is a view control that ships to the public site too.
+var EFFIGY_MAPS=[
+  {id:'map8',label:'Palpagos Islands',dir:'map8',cfg:null},
+  {id:'treemap8',label:'The World Tree',dir:'treemap8',cfg:{blockSize:131072,realMin:{X:347351.5,Y:-818197},realMax:{X:689148.5,Y:-476400}}}
+];
+var effigyActiveMapId='map8';
+var effigyTileLayer=null;
+function effigyActiveMap(){
+  for(var i=0;i<EFFIGY_MAPS.length;i++){ if(EFFIGY_MAPS[i].id===effigyActiveMapId) return EFFIGY_MAPS[i]; }
+  return EFFIGY_MAPS[0];
+}
+function effigyActiveCfg(){ var m=effigyActiveMap(); return m.cfg||window._palMapCfg; }
+// A pin/player belongs to whichever map's world-coordinate rectangle contains its (x,y). Rows
+// with null x/y (gx/gy-only -- all currently overworld) default to the overworld map. The two
+// blocks are essentially disjoint in world space, so this routes every marker to its map with
+// no per-pin data changes.
+function pinOnActiveMap(x,y){
+  if(x==null||y==null) return effigyActiveMapId==='map8';
+  var c=effigyActiveCfg();
+  var xlo=Math.min(c.realMin.X,c.realMax.X),xhi=Math.max(c.realMin.X,c.realMax.X);
+  var ylo=Math.min(c.realMin.Y,c.realMax.Y),yhi=Math.max(c.realMin.Y,c.realMax.Y);
+  return x>=xlo&&x<=xhi&&y>=ylo&&y<=yhi;
+}
+function switchEffigyMap(id){
+  if(id!=='map8'&&id!=='treemap8') id='map8';
+  effigyActiveMapId=id;
+  try{ var f=JSON.parse(localStorage.getItem('palbox_map_filters')||'{}'); f.activeMap=id; localStorage.setItem('palbox_map_filters',JSON.stringify(f)); }catch(e){}
+  if(effigyTileLayer) effigyTileLayer.setUrl('/api/palmaptile?m='+effigyActiveMap().dir+'&z={z}&x={x}&y={y}');
+  if(effigyLeaflet){ var bs=effigyActiveCfg().blockSize; effigyLeaflet.setView(effigyLeaflet.unproject([bs/2,bs/2],8),1); }
+  updateMapSwitchUI();
+  renderEffigyMap();
+  renderPlayerMarkers();
+}
+function updateMapSwitchUI(){
+  for(var i=0;i<EFFIGY_MAPS.length;i++){
+    var b=document.getElementById('eff-map-btn-'+EFFIGY_MAPS[i].id);
+    if(!b) continue;
+    var on=(EFFIGY_MAPS[i].id===effigyActiveMapId);
+    b.style.background=on?'#1f6feb':'transparent';
+    b.style.color=on?'#fff':'var(--muted)';
+    b.style.fontWeight=on?'600':'400';
+  }
+}
+
 function effigyRposToLatLng(x,y){
-  var cfg=window._palMapCfg;
+  var cfg=effigyActiveCfg();
   var sx=(x-cfg.realMin.X)/(cfg.realMax.X-cfg.realMin.X);
   var sy=(y-cfg.realMin.Y)/(cfg.realMax.Y-cfg.realMin.Y);
   return effigyLeaflet.unproject([sy*cfg.blockSize,(1-sx)*cfg.blockSize],8);
@@ -7497,6 +7562,7 @@ function renderEffigyMapNow(){
     // reduces to plain found-or-not -- see mapStatus().
     var status=mapStatus(confirmed,got,!pending);
     if(status==='unconfirmed'&&!effigyShowUnconfirmed) return;
+    if(!pinOnActiveMap(pos.x,pos.y)) return;
     effDesire('e:'+id,status+'|'+confirmed+'|'+pending+'|'+pos.x+'|'+pos.y,function(){
       return _effDotMode
         ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(id,pos,got,confirmed,status))
@@ -7529,6 +7595,7 @@ function renderEffigyMapNow(){
       // (MAP_STATUS_TWO_STATE) drops that middle state -- see mapStatus().
       var jStatus=mapStatus(confirmed,jGot,trackable);
       if(jStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
+      if(!pinOnActiveMap(j.x,j.y)) return;
       effDesire('j:'+(j.key||idx),jStatus+'|'+confirmed+'|'+j.x+'|'+j.y+'|'+(j.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(j.x,j.y),'journal',jStatus,'<b style="color:#1673d1">'+j.name+'</b><br>'+journalTipBody(j,confirmed,jGot,jStatus,trackable))
@@ -7584,6 +7651,7 @@ function renderEffigyMapNow(){
         var pb=bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
         return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
       });
+      if(!pinOnActiveMap(b.x,b.y)) return;
       effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable+'|'+bLocked+'|'+b.x+'|'+b.y+'|'+(b.name||'')+'|'+(b.lv||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b>'+(b.lv?(' <span style="color:var(--muted)">(Lv '+b.lv+')</span>'):'')+'<br>'+bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails))
@@ -7610,6 +7678,7 @@ function renderEffigyMapNow(){
       // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var hStatus=mapStatus(confirmed,hGot,trackable);
       if(hStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
+      if(!pinOnActiveMap(h.x,h.y)) return;
       effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed+'|'+h.x+'|'+h.y+'|'+(h.name||'')+'|'+(h.lv||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b>'+(h.lv?(' <span style="color:var(--muted)">(Lv '+h.lv+')</span>'):'')+'<br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
@@ -7632,6 +7701,7 @@ function renderEffigyMapNow(){
       // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var esStatus=mapStatus(confirmed,esGot,trackable);
       if(esStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
+      if(!pinOnActiveMap(es.x,es.y)) return;
       effDesire('es:'+(es.key||es.name||idx),esStatus+'|'+confirmed+'|'+es.x+'|'+es.y+'|'+(es.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(es.x,es.y),'eagle',esStatus,'<b style="color:#111;">'+es.name+'</b><br>'+eagleTipBody(es,confirmed,esGot,esStatus))
@@ -7676,6 +7746,7 @@ function renderEffigyMapNow(){
         var pb=bossLocations&&bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
         return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
       });
+      if(!pinOnActiveMap(t.x,t.y)) return;
       effDesire('tw:'+(t.name||idx),tStatus+'|'+confirmed+'|'+tLocked+'|'+t.x+'|'+t.y+'|'+(t.name||'')+'|'+(t.lv||''),function(){
         if(_effDotMode){
           var _tt=towerTipBody(t,confirmed,tGot,tStatus,tLocked,prereqDetails);
@@ -7701,6 +7772,7 @@ function renderEffigyMapNow(){
       if(sGot&&!effigyShowFound) return;
       var sStatus=mapStatus(confirmed,sGot,!!s.key);
       if(sStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
+      if(!pinOnActiveMap(s.x,s.y)) return;
       effDesire('sam:'+(s.name||idx),sStatus+'|'+confirmed+'|'+s.x+'|'+s.y+'|'+(s.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(s.x,s.y),'sam',sStatus,'<b style="color:#111;">'+s.name+'</b><br>'+samTipBody(s,confirmed,sGot,sStatus))
@@ -7722,6 +7794,7 @@ function renderEffigyMapNow(){
       var pStatus=mapStatus(confirmed,pGot,trackable);
       if(pStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
       var ipk='ip:'+(p.key||('c'+p.gx+','+p.gy)||idx);
+      if(!pinOnActiveMap(p.x,p.y)) return;
       effDesire(ipk,pStatus+'|'+confirmed+'|'+(p.pending?1:0)+'|'+p.x+'|'+p.y+'|'+(p.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(p.x,p.y),'itempickup',pStatus,'<b style="color:#111;">'+esc(itemPickupLabel(p))+'</b><br>'+itemPickupTipBody(p,confirmed,pGot,pStatus))

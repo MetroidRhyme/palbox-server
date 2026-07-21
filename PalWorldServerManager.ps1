@@ -2419,8 +2419,14 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $tz = $req.QueryString['z']
                         $tx = $req.QueryString['x']
                         $ty = $req.QueryString['y']
+                        # Map selector: overworld (map8) or the World Tree (treemap8). Allowlisted
+                        # to a fixed set so 'm' can never be turned into an arbitrary-path open
+                        # proxy against cdn.paldb.cc. The cache key MUST include $tm or the two
+                        # maps' tiles collide in $script:palTileCache (same z/x/y, different image).
+                        $tm = $req.QueryString['m']
+                        if ($tm -ne 'treemap8') { $tm = 'map8' }
                         if ($tz -and $tx -and $ty) {
-                            $cacheKey = "${tz}_${tx}_${ty}"
+                            $cacheKey = "${tm}_${tz}_${tx}_${ty}"
                             # Crude cap: this cache never evicted anything, so panning/zooming
                             # around the map over a long enough uptime grows it unbounded.
                             # Full clear (not per-entry LRU) once it gets large -- simple, and
@@ -2428,7 +2434,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             if ($script:palTileCache.Count -ge 2000) { $script:palTileCache = @{} }
                             if (-not $script:palTileCache.ContainsKey($cacheKey)) {
                                 try {
-                                    $wreq = [System.Net.HttpWebRequest]::Create("https://cdn.paldb.cc/image/map8/z${tz}x${tx}y${ty}.webp")
+                                    $wreq = [System.Net.HttpWebRequest]::Create("https://cdn.paldb.cc/image/$tm/z${tz}x${tx}y${ty}.webp")
                                     $wreq.UserAgent = 'Mozilla/5.0'
                                     $wreq.Referer   = 'https://paldb.cc/'
                                     $wreq.Timeout   = 8000

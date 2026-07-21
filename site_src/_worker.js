@@ -34,7 +34,10 @@ async function handleTile(url, ctx) {
   if (!Number.isInteger(z) || !Number.isInteger(x) || !Number.isInteger(y)) {
     return new Response('bad tile', { status: 400 });
   }
-  const tileUrl = 'https://cdn.paldb.cc/image/map8/z' + z + 'x' + x + 'y' + y + '.webp';
+  // Map selector: overworld (map8) or the World Tree (treemap8), allowlisted so 'm' can't
+  // become an arbitrary-path open proxy. Edge cache keys off tileUrl, which contains the dir.
+  const dir = url.searchParams.get('m') === 'treemap8' ? 'treemap8' : 'map8';
+  const tileUrl = 'https://cdn.paldb.cc/image/' + dir + '/z' + z + 'x' + x + 'y' + y + '.webp';
   const cache = caches.default;
   const cacheKey = new Request(tileUrl, { method: 'GET' });
 
