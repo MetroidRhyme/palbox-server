@@ -4177,7 +4177,7 @@ function tipCoordsHtml(cx,cy,panel){
 function mapKeyButtonHtml(btnId){
   return '<span id="'+btnId+'-wrap"><button type="button" class="btn btn-ghost eff-map-key-btn" id="'+btnId+'" style="font-size:12px;">Map to key...</button></span>';
 }
-function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
+function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker,map){
   var btn=popupEl.querySelector('#'+btnId);
   if(!btn) return;
   btn.onclick=function(){
@@ -4204,7 +4204,7 @@ function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
       if(goBtn) goBtn.onclick=function(){
         var sel=document.getElementById(selId);
         if(!sel||!sel.value){ toast('Pick a key first.','error'); return; }
-        mapMarkerToKey(catLabel,name,gx,gy,sel.value,marker);
+        mapMarkerToKey(catLabel,name,gx,gy,sel.value,marker,map);
       };
     }).catch(function(e){
       toast('Failed to load keys: '+String(e&&e.message||e),'error');
@@ -4216,9 +4216,9 @@ function wireMapKeyButton(popupEl,btnId,catLabel,name,gx,gy,marker){
 // within the full-screen icon detail panel these days, see openIconDetail, not a Leaflet
 // popup) but kept as a parameter so wireMapKeyButton's existing call sites (which all still
 // pass it) don't need touching.
-async function mapMarkerToKey(catLabel,name,gx,gy,key,marker){
+async function mapMarkerToKey(catLabel,name,gx,gy,key,marker,map){
   try{
-    await applyIconKeyMapping(catLabel,name,gx,gy,key);
+    await applyIconKeyMapping(catLabel,name,gx,gy,key,map);
     toast('Mapped "'+name+'" to '+key+'.','success');
     closeIconDetail();
     renderEffigyMap();
@@ -4326,7 +4326,7 @@ function buildEffigyMarker(id,pos,got,confirmed,status){
       var effKey=pending?null:id;
       var gx=pending?pos.gx:_g.cx, gy=pending?pos.gy:_g.cy;
       var title=pending?'Effigy (pending key)':id;
-      var ident={category:'effigy',key:effKey,species:null,name:null,lv:null,gx:gx,gy:gy,label:title};
+      var ident={category:'effigy',map:(pos&&pos.map)||'map8',key:effKey,species:null,name:null,lv:null,gx:gx,gy:gy,label:title};
       var bodyHtml=detailSectionHtml('Status',effigyTipBody(id,pos,got,confirmed,status,true))
         +(pending?'':detailActionsHtml([detailConfirmHtml(chkId,confirmed)],[caveAddButtonHtml()]));
       openIconDetail('Effigy',title,bodyHtml,ident,m,function(el){
@@ -4365,14 +4365,14 @@ function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
     var jChkId='journal-confirm-'+(j.key||j.name).replace(/[^a-zA-Z0-9]/g,'_');
     var jMapBtnId='journal-mapkey-'+j.name.replace(/[^a-zA-Z0-9]/g,'_');
     jm.on('click',function(){
-      var ident={category:'journal',key:j.key||null,species:null,name:j.name,lv:null,gx:j.gx,gy:j.gy,label:j.name};
+      var ident={category:'journal',map:(j&&j.map)||'map8',key:j.key||null,species:null,name:j.name,lv:null,gx:j.gx,gy:j.gy,label:j.name};
       var bodyHtml=detailSectionHtml('Status',journalTipBody(j,confirmed,jGot,jStatus,trackable,true))
         +detailActionsHtml([detailConfirmHtml(jChkId,confirmed)],
           [(!trackable&&mapKeyAvailableForCategory('Journal'))?mapKeyButtonHtml(jMapBtnId):'',caveAddButtonHtml()]);
       openIconDetail('Journal',j.name,bodyHtml,ident,jm,function(el){
         var box=el.querySelector('#'+jChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('journal',j.key||null,box.checked,j.name); };
-        if(!trackable) wireMapKeyButton(el,jMapBtnId,'Journal',j.name,j.gx,j.gy,jm);
+        if(!trackable) wireMapKeyButton(el,jMapBtnId,'Journal',j.name,j.gx,j.gy,jm,(j&&j.map)||'map8');
         wireCaveAdd(el,{category:'journal',key:j.key,name:j.name,label:j.name});
       });
     });
@@ -4439,7 +4439,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
       _bossPrereqActive=sp;
       renderEffigyMap();
       var g=worldToGrid(b.x,b.y);
-      var ident={category:'bounty',species:b.species,name:b.name,lv:b.lv!=null?b.lv:null,key:b.key||null,gx:g.cx,gy:g.cy,label:b.name};
+      var ident={category:'bounty',map:(b&&b.map)||'map8',species:b.species,name:b.name,lv:b.lv!=null?b.lv:null,key:b.key||null,gx:g.cx,gy:g.cy,label:b.name};
       var bodyHtml=detailSectionHtml('Status',bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails))
         +detailActionsHtml([detailConfirmHtml(bChkId,confirmed)],
           [clickable?('<button type="button" class="btn btn-ghost eff-bounty-mark-btn" style="font-size:12px;">'
@@ -4459,7 +4459,7 @@ function buildBountyMarker(b,confirmed,bAuto,bManual,bGot,bStatus,clickable,bLoc
         }
         var box=el.querySelector('#'+bChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('bounty',b.species,box.checked); };
-        if(!b.key) wireMapKeyButton(el,bMapBtnId,'Field Boss',b.name,g.cx,g.cy,bm);
+        if(!b.key) wireMapKeyButton(el,bMapBtnId,'Field Boss',b.name,g.cx,g.cy,bm,(b&&b.map)||'map8');
         wireCaveAdd(el,{category:'bounty',species:b.species,name:b.name,label:b.name});
         wirePrereqAdd(el,b,'bounty');
       },function(){
@@ -4527,14 +4527,14 @@ function buildFugitiveMarker(h,confirmed,hGot,hStatus){
     var hMapBtnId='fugitive-mapkey-'+h.name.replace(/[^a-zA-Z0-9]/g,'_');
     hm.on('click',function(){
       var g=worldToGrid(h.x,h.y);
-      var ident={category:'fugitive',key:h.key||null,species:null,name:h.name,lv:h.lv!=null?h.lv:null,gx:g.cx,gy:g.cy,label:h.name};
+      var ident={category:'fugitive',map:(h&&h.map)||'map8',key:h.key||null,species:null,name:h.name,lv:h.lv!=null?h.lv:null,gx:g.cx,gy:g.cy,label:h.name};
       var bodyHtml=detailSectionHtml('Status',fugitiveTipBody(h,confirmed,hGot,hStatus,true))
         +detailActionsHtml([detailConfirmHtml(hChkId,confirmed)],
           [(!h.key&&mapKeyAvailableForCategory('Wanted Fugitive'))?mapKeyButtonHtml(hMapBtnId):'',caveAddButtonHtml()]);
       openIconDetail('Wanted Fugitive',h.name+detailLvlSuffix(h.lv),bodyHtml,ident,hm,function(el){
         var box=el.querySelector('#'+hChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('fugitive',h.key||null,box.checked,h.name); };
-        if(!h.key) wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm);
+        if(!h.key) wireMapKeyButton(el,hMapBtnId,'Wanted Fugitive',h.name,g.cx,g.cy,hm,(h&&h.map)||'map8');
         wireCaveAdd(el,{category:'fugitive',key:h.key||null,name:h.name,label:h.name});
       });
     });
@@ -4567,14 +4567,14 @@ function buildEagleMarker(es,confirmed,esGot,esStatus){
     var esMapBtnId='eagle-mapkey-'+es.name.replace(/[^a-zA-Z0-9]/g,'_');
     esm.on('click',function(){
       var g=worldToGrid(es.x,es.y);
-      var ident={category:'eagle',key:es.key||null,species:null,name:es.name,lv:null,gx:g.cx,gy:g.cy,label:es.name};
+      var ident={category:'eagle',map:(es&&es.map)||'map8',key:es.key||null,species:null,name:es.name,lv:null,gx:g.cx,gy:g.cy,label:es.name};
       var bodyHtml=detailSectionHtml('Status',eagleTipBody(es,confirmed,esGot,esStatus,true))
         +detailActionsHtml([detailConfirmHtml(esChkId,confirmed)],
           [(!es.key&&mapKeyAvailableForCategory('Eagle Statue'))?mapKeyButtonHtml(esMapBtnId):'',caveAddButtonHtml()]);
       openIconDetail('Eagle Statue',es.name,bodyHtml,ident,esm,function(el){
         var box=el.querySelector('#'+esChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('eagle',es.key||null,box.checked,es.name); };
-        if(!es.key) wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm);
+        if(!es.key) wireMapKeyButton(el,esMapBtnId,'Eagle Statue',es.name,g.cx,g.cy,esm,(es&&es.map)||'map8');
         wireCaveAdd(el,{category:'eagle',key:es.key||null,name:es.name,label:es.name});
       });
     });
@@ -4610,14 +4610,14 @@ function buildSamMarker(s,confirmed,sGot,sStatus){
     var sMapBtnId='sam-mapkey-'+s.name.replace(/[^a-zA-Z0-9]/g,'_');
     sm.on('click',function(){
       var g=worldToGrid(s.x,s.y);
-      var ident={category:'sam',key:s.key||null,species:null,name:s.name,lv:null,gx:g.cx,gy:g.cy,label:s.name};
+      var ident={category:'sam',map:(s&&s.map)||'map8',key:s.key||null,species:null,name:s.name,lv:null,gx:g.cx,gy:g.cy,label:s.name};
       var bodyHtml=detailSectionHtml('Status',samTipBody(s,confirmed,sGot,sStatus,true))
         +detailActionsHtml([detailConfirmHtml(sChkId,confirmed)],
           [(!s.key&&mapKeyAvailableForCategory('SAM Site'))?mapKeyButtonHtml(sMapBtnId):'',caveAddButtonHtml()]);
       openIconDetail('SAM Site',s.name,bodyHtml,ident,sm,function(el){
         var box=el.querySelector('#'+sChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('sam',s.key||null,box.checked,s.name); };
-        if(!s.key) wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm);
+        if(!s.key) wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm,(s&&s.map)||'map8');
         wireCaveAdd(el,{category:'sam',key:s.key||null,name:s.name,label:s.name});
       });
     });
@@ -4660,7 +4660,7 @@ function buildItemPickupMarker(p,confirmed,pGot,pStatus){
       // Keyless identity is gx/gy (like a pending effigy). Carry the EXACT stored gx/gy the
       // backend emitted -- NOT the round-tripped worldToGrid -- so edit/record resolve the row.
       var gx=(p.gx!=null?p.gx:g.cx), gy=(p.gy!=null?p.gy:g.cy);
-      var ident={category:'itempickup',key:p.key||null,species:null,name:p.name||null,lv:null,gx:gx,gy:gy,label:lbl};
+      var ident={category:'itempickup',map:(p&&p.map)||'map8',key:p.key||null,species:null,name:p.name||null,lv:null,gx:gx,gy:gy,label:lbl};
       // Pending (keyless): confirm/cave resolve by an identity that doesn't exist yet, so hide
       // them (same as a pending effigy). "Map to key..." DOES apply though (2026-07-15) -- if
       // the Schematic's key is already sitting in the Unmapped Keys list (you looted it before
@@ -4673,7 +4673,7 @@ function buildItemPickupMarker(p,confirmed,pGot,pStatus){
       openIconDetail('Schematic',lbl,bodyHtml,ident,pm,function(el){
         // Pass the stored gx/gy so the server's itempickup coord-fallback re-keys THIS row in
         // place instead of creating a duplicate pin (PalWorldServerManager.ps1, $coordCat).
-        if(pending){ wireMapKeyButton(el,pMapBtnId,'Schematic',p.name||null,gx,gy,pm); return; }
+        if(pending){ wireMapKeyButton(el,pMapBtnId,'Schematic',p.name||null,gx,gy,pm,(p&&p.map)||'map8'); return; }
         var box=el.querySelector('#'+pChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('itempickup',p.key||null,box.checked,p.name||null); };
         wireCaveAdd(el,{category:'itempickup',key:p.key||null,name:p.name||null,label:lbl});
@@ -4731,14 +4731,14 @@ function buildTowerMarker(t,confirmed,tGot,tStatus,tLocked,prereqDetails){
       _bossPrereqActive=twIdent;
       renderEffigyMap();
       var _tg=worldToGrid(t.x,t.y);
-      var ident={category:'tower',key:t.key||null,species:null,name:t.name,lv:t.lv!=null?t.lv:null,boss:t.boss||null,bossPal:t.bossPal||null,gx:_tg.cx,gy:_tg.cy,label:t.name};
+      var ident={category:'tower',map:(t&&t.map)||'map8',key:t.key||null,species:null,name:t.name,lv:t.lv!=null?t.lv:null,boss:t.boss||null,bossPal:t.bossPal||null,gx:_tg.cx,gy:_tg.cy,label:t.name};
       var bodyHtml=detailSectionHtml('Status',towerTipBody(t,confirmed,tGot,tStatus,tLocked,prereqDetails,true).body)
         +detailActionsHtml([detailConfirmHtml(tChkId,confirmed)],
           [(!t.key&&mapKeyAvailableForCategory('Tower'))?mapKeyButtonHtml(tMapBtnId):'',caveAddButtonHtml(),prereqAddButtonHtml()]);
       openIconDetail('Tower',t.name+detailLvlSuffix(t.lv),bodyHtml,ident,tm,function(el){
         var box=el.querySelector('#'+tChkId);
         if(box) box.onchange=function(){ toggleMapConfirm('tower',t.key||null,box.checked,t.name); };
-        if(!t.key) wireMapKeyButton(el,tMapBtnId,'Tower',t.name,_tg.cx,_tg.cy,tm);
+        if(!t.key) wireMapKeyButton(el,tMapBtnId,'Tower',t.name,_tg.cx,_tg.cy,tm,(t&&t.map)||'map8');
         wireCaveAdd(el,{category:'tower',key:t.key||null,name:t.name,label:t.name});
         wirePrereqAdd(el,{name:t.name},'tower');
       },function(){
@@ -5104,14 +5104,22 @@ function initEffigyView(){
   });
 }
 
-// World x/y -> in-game grid coords (cx/cy), for marker tooltips. Mirrors
-// map_constants.json (also read by build_public_data.ps1 and this Manager's own
-// ConvertTo-WorldXY) -- keep this literal in sync with that file if the transform ever
-// changes; single-sourcing across the PS/JS boundary isn't done here since dashboard.html
-// is served as a static file with no per-request templating.
-var MAP_CONST={scale:459,offsetX:123888,offsetY:158000};
-function worldToGrid(x,y){
-  return {cx:Math.round((y-MAP_CONST.offsetY)/MAP_CONST.scale), cy:Math.round((x+MAP_CONST.offsetX)/MAP_CONST.scale)};
+// World x/y -> in-game grid coords (cx/cy), for marker tooltips. Per-map grid: map8 mirrors
+// map_constants.json (also read by build_public_data.ps1 and this Manager's own ConvertTo-WorldXY
+// / Get-MapGrid) -- keep this literal in sync with that file. treemap8 (World Tree) is SEEDED
+// equal to the overworld: the World Tree's world coords are contiguous with the overworld, so the
+// in-game compass is almost certainly one continuous 459-scale grid. If an in-game check ever
+// shows a distinct World Tree compass grid, calibrate the treemap8 numbers HERE and in
+// map_data_lib.ps1's Get-MapGrid (the two must match) -- nothing else assumes they're equal.
+var MAP_GRID={
+  map8:{scale:459,offsetX:123888,offsetY:158000},
+  treemap8:{scale:459,offsetX:123888,offsetY:158000}
+};
+var MAP_CONST=MAP_GRID.map8; // alias for the overworld grid (back-compat for existing references)
+function mapGrid(mapId){ return MAP_GRID[mapId]||MAP_GRID.map8; }
+function worldToGrid(x,y,mapId){
+  var g=mapGrid(mapId||mapForWorld(x,y));
+  return {cx:Math.round((y-g.offsetY)/g.scale), cy:Math.round((x+g.offsetX)/g.scale)};
 }
 
 // -- Map switcher: overworld (Palpagos Islands, tiles map8) vs. The World Tree (tiles
@@ -5133,11 +5141,25 @@ function effigyActiveMap(){
   return EFFIGY_MAPS[0];
 }
 function effigyActiveCfg(){ var m=effigyActiveMap(); return m.cfg||window._palMapCfg; }
-// A pin/player belongs to whichever map's world-coordinate rectangle contains its (x,y). Rows
-// with null x/y (gx/gy-only -- all currently overworld) default to the overworld map. The two
-// blocks are essentially disjoint in world space, so this routes every marker to its map with
-// no per-pin data changes.
-function pinOnActiveMap(x,y){
+// Which map's world-coordinate rectangle contains (x,y); defaults to overworld. Used for the
+// tooltip grid (worldToGrid) and to route a pin/player that carries no explicit map tag.
+function mapForWorld(x,y){
+  if(x!=null&&y!=null){
+    for(var i=0;i<EFFIGY_MAPS.length;i++){
+      var c=EFFIGY_MAPS[i].cfg||window._palMapCfg; if(!c) continue;
+      var xlo=Math.min(c.realMin.X,c.realMax.X),xhi=Math.max(c.realMin.X,c.realMax.X);
+      var ylo=Math.min(c.realMin.Y,c.realMax.Y),yhi=Math.max(c.realMin.Y,c.realMax.Y);
+      if(x>=xlo&&x<=xhi&&y>=ylo&&y<=yhi) return EFFIGY_MAPS[i].id;
+    }
+  }
+  return 'map8';
+}
+// A pin/player belongs to a map. A pin carries an explicit map tag (emitted by Get-MapCategoryJson)
+// -- prefer it so a pin shows only on its own map even in the tiny world-coordinate overlap sliver
+// between the two blocks. Players / legacy rows have no tag, so fall back to the rectangle test
+// (rows with null x/y -- gx/gy-only -- are overworld).
+function pinOnActiveMap(x,y,pinMap){
+  if(pinMap) return pinMap===effigyActiveMapId;
   if(x==null||y==null) return effigyActiveMapId==='map8';
   var c=effigyActiveCfg();
   var xlo=Math.min(c.realMin.X,c.realMax.X),xhi=Math.max(c.realMin.X,c.realMax.X);
@@ -6379,12 +6401,13 @@ function dmIconRowId(property,label,name){
 // mapMarkerToKey (Map tab popup, key picked from a dropdown of still-unmapped keys). Same
 // POST route and stored effect regardless of which UI surface triggered it. Throws on
 // failure/unknown category so each caller can toast in its own idiom.
-async function applyIconKeyMapping(catLabel,name,gx,gy,key){
+async function applyIconKeyMapping(catLabel,name,gx,gy,key,map){
   var cat=dmIconCatByLabel(catLabel);
   if(!cat) throw new Error('Unknown category.');
   // verified:true -- Anthony picked/typed this key in himself, so it's his own confirmation,
-  // not an auto-filled scrape suggestion.
-  await api('/api/datamine-mapping','POST',{property:cat.property,key:key,name:name,gx:gx,gy:gy,verified:true});
+  // not an auto-filled scrape suggestion. map (default overworld) scopes the server's keyless
+  // gx/gy coord-fallback to the right base map for effigy/itempickup (World Tree vs. overworld).
+  await api('/api/datamine-mapping','POST',{property:cat.property,key:key,name:name,gx:gx,gy:gy,verified:true,map:map||'map8'});
   // Optimistic client-side update must land in the SAME store the server just wrote to --
   // spatial properties go to confirmed_locations.json, everything else (e.g.
   // TowerBossDefeatFlag, added 2026-07-08) to datamine_labels.json. Getting this branch
@@ -6540,7 +6563,7 @@ async function startKeyRecording(ident){
   // gx/gy normalized at capture so the recording's stored target compares cleanly against both
   // roster (number) and input-field (string) identities -- see _sameRecordTarget.
   _keyRecord={property:cat.property,catLabel:catLabel,guid:recGuid,name:ident.name,gx:Number(ident.gx),gy:Number(ident.gy),
-    snapshot:snapshot,started:Date.now(),timer:null};
+    map:ident.map||'map8',snapshot:snapshot,started:Date.now(),timer:null};
   recordRenderActive(_keyRecord);
   _keyRecord.timer=setInterval(keyRecordTick,RECORD_POLL_MS);
 }
@@ -6597,7 +6620,7 @@ async function recordCommitKey(rec,key){
   var panelIsThisPin=_sameRecordTarget(rec.catLabel,rec.name,rec.gx,rec.gy,_iconDetailIdent);
   if(panelIsThisPin) recordSetStatus('<span style="color:var(--muted);">Mapping '+esc(key)+'...</span>');
   try{
-    await applyIconKeyMapping(rec.catLabel,rec.name,rec.gx,rec.gy,key);
+    await applyIconKeyMapping(rec.catLabel,rec.name,rec.gx,rec.gy,key,rec.map);
     // Cleared ONLY on success (2026-07-15). This used to be nulled up front, so a failed POST
     // destroyed the recording AND the key it had just captured -- the key was already consumed
     // from the "new since snapshot" diff, so re-recording could never see it again and the only
@@ -6803,6 +6826,10 @@ function openAddIconModal(){
   document.getElementById('ai-name').value='';
   document.getElementById('ai-gx').value='';
   document.getElementById('ai-gy').value='';
+  // The pin is created on whichever map the Map tab is currently showing (its gx/gy are read in
+  // that map's grid) -- make that explicit so it's clear you're adding to the World Tree vs. the
+  // overworld. Switch maps with the top-center toggle before adding to change the target.
+  document.getElementById('ai-target-map').textContent='Adding to: '+effigyActiveMap().label;
   addIconCategoryChanged();
   document.getElementById('addicon-modal-overlay').style.display='flex';
   hoistOverlayForFullscreen('addicon-modal-overlay');
@@ -6839,10 +6866,14 @@ async function saveAddIcon(){
   if(category!=='effigy'&&category!=='itempickup'&&!name){ toast('Display name is required.','error'); return; }
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
   try{
-    var resp=await api('/api/map-add-icon','POST',{category:category,name:name||null,gx:gx,gy:gy,key:key});
+    // Create on the currently-active map; the server stores its map so it renders on the right
+    // base map (and its gx/gy are interpreted in that map's grid). Since it targets the active
+    // map, the new pin is always on the map you're looking at, so it appears immediately.
+    var targetMap=effigyActiveMapId;
+    var resp=await api('/api/map-add-icon','POST',{category:category,name:name||null,gx:gx,gy:gy,key:key,map:targetMap});
     dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).concat([resp.entry]);
     closeAddIconModal();
-    toast('Pin added.','success');
+    toast('Pin added to '+effigyActiveMap().label+'.','success');
     renderDataMine();
     // dmMappings.confirmedLocations already reflects the newly-linked key above, so the
     // badge can update immediately rather than waiting for the next 15s mapDataminePollTick.
@@ -7121,7 +7152,7 @@ async function saveIconDetailEdits(ident,marker){
   // re-record by playing. identityGx/identityGy let the server resolve an already-keyless
   // effigy (whose ident.key is null) by its grid position; a keyed pin still resolves by key.
   var body={category:category,identityKey:ident.key||null,identitySpecies:ident.species||null,identityName:ident.name||null,
-    identityGx:(ident.gx!=null?ident.gx:null),identityGy:(ident.gy!=null?ident.gy:null),key:newKey||null,gx:gx,gy:gy};
+    identityGx:(ident.gx!=null?ident.gx:null),identityGy:(ident.gy!=null?ident.gy:null),key:newKey||null,gx:gx,gy:gy,map:ident.map||'map8'};
   var nameInput=document.getElementById('icon-detail-name');
   if(nameInput){
     var newName=nameInput.value.trim();
@@ -7165,7 +7196,7 @@ async function deleteMapIcon(ident,marker){
   if(!confirm('Delete '+(ident.label||ident.name||ident.key||'this pin')+'? This removes it from the map entirely (it can only come back if a future scraped-roster re-import re-adds it).')) return;
   try{
     await api('/api/map-delete-icon','POST',{category:ident.category,key:ident.key||null,species:ident.species||null,name:ident.name||null,
-      gx:(ident.gx!=null?ident.gx:null),gy:(ident.gy!=null?ident.gy:null)});
+      gx:(ident.gx!=null?ident.gx:null),gy:(ident.gy!=null?ident.gy:null),map:ident.map||'map8'});
     // Deleting the pin a recording is aimed at must cancel it -- otherwise its next commit
     // posts the deleted pin's name/gx/gy and the server's fallback resurrects it as a fresh row.
     if(_keyRecordMatchesIdent(ident)){ stopKeyRecording(true); toast('Recording cancelled -- pin deleted.','success'); }
@@ -7330,8 +7361,8 @@ function dmRenderCustomIcons(){
         // The row's CURRENT gx/gy travel as identity too: a keyless effigy/itempickup has no key,
         // species or name to resolve by, so without these the server can't find it at all
         // ("No matching custom entry found" on both buttons). Numeric literals, not quoted.
-        +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\',\''+rowId+'\','+(c.gx==null?'null':Number(c.gx))+','+(c.gy==null?'null':Number(c.gy))+')">Save</button>'
-          +' <button class="btn btn-ghost dm-save-btn" onclick="deleteCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\','+(c.gx==null?'null':Number(c.gx))+','+(c.gy==null?'null':Number(c.gy))+')">Delete</button></td></tr>';
+        +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\',\''+rowId+'\','+(c.gx==null?'null':Number(c.gx))+','+(c.gy==null?'null':Number(c.gy))+',\''+dmEscJs(c.map||'map8')+'\')">Save</button>'
+          +' <button class="btn btn-ghost dm-save-btn" onclick="deleteCustomIcon(\''+dmEscJs(c.category)+'\',\''+dmEscJs(c.key||'')+'\',\''+dmEscJs(c.species||'')+'\',\''+dmEscJs(c.name||'')+'\','+(c.gx==null?'null':Number(c.gx))+','+(c.gy==null?'null':Number(c.gy))+',\''+dmEscJs(c.map||'map8')+'\')">Delete</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
 
@@ -7361,7 +7392,7 @@ function dmApplyCustomKeySelect(rowId,category,idxStr){
 
 // identGx/identGy carry the row's CURRENT coords (its only identity when keyless) -- the gx/gy
 // read out of the inputs below are the possibly-EDITED new values, so they can't double as it.
-async function saveCustomIcon(category,identKey,identSpecies,identName,rowId,identGx,identGy){
+async function saveCustomIcon(category,identKey,identSpecies,identName,rowId,identGx,identGy,identMap){
   var name=document.getElementById(rowId+'-name').value.trim();
   var key=document.getElementById(rowId+'-key').value.trim();
   var gx=document.getElementById(rowId+'-gx').value.trim();
@@ -7369,7 +7400,7 @@ async function saveCustomIcon(category,identKey,identSpecies,identName,rowId,ide
   try{
     var resp=await api('/api/map-custom-edit','POST',{category:category,identityKey:identKey||null,identitySpecies:identSpecies||null,
       identityName:identName||null,identityGx:(identGx==null?null:identGx),identityGy:(identGy==null?null:identGy),
-      name:name||null,key:key||null,gx:gx===''?null:gx,gy:gy===''?null:gy});
+      name:name||null,key:key||null,gx:gx===''?null:gx,gy:gy===''?null:gy,map:identMap||'map8'});
     dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).map(function(c){
       return (c.category===category&&dmSameCustomRow(c,identKey,identSpecies,identName,identGx,identGy))?resp.entry:c;
     });
@@ -7383,11 +7414,11 @@ async function saveCustomIcon(category,identKey,identSpecies,identName,rowId,ide
   }
 }
 
-async function deleteCustomIcon(category,identKey,identSpecies,identName,identGx,identGy){
+async function deleteCustomIcon(category,identKey,identSpecies,identName,identGx,identGy,identMap){
   if(!confirm('Delete this custom icon? This cannot be undone.')) return;
   try{
     await api('/api/map-custom-delete','POST',{category:category,key:identKey||null,species:identSpecies||null,name:identName||null,
-      gx:(identGx==null?null:identGx),gy:(identGy==null?null:identGy)});
+      gx:(identGx==null?null:identGx),gy:(identGy==null?null:identGy),map:identMap||'map8'});
     dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).filter(function(c){
       return !(c.category===category&&dmSameCustomRow(c,identKey,identSpecies,identName,identGx,identGy));
     });
@@ -7562,7 +7593,7 @@ function renderEffigyMapNow(){
     // reduces to plain found-or-not -- see mapStatus().
     var status=mapStatus(confirmed,got,!pending);
     if(status==='unconfirmed'&&!effigyShowUnconfirmed) return;
-    if(!pinOnActiveMap(pos.x,pos.y)) return;
+    if(!pinOnActiveMap(pos.x,pos.y,pos.map)) return;
     effDesire('e:'+id,status+'|'+confirmed+'|'+pending+'|'+pos.x+'|'+pos.y,function(){
       return _effDotMode
         ? buildDotMarker(effigyRposToLatLng(pos.x,pos.y),'effigy',status,effigyTipBody(id,pos,got,confirmed,status))
@@ -7595,7 +7626,7 @@ function renderEffigyMapNow(){
       // (MAP_STATUS_TWO_STATE) drops that middle state -- see mapStatus().
       var jStatus=mapStatus(confirmed,jGot,trackable);
       if(jStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
-      if(!pinOnActiveMap(j.x,j.y)) return;
+      if(!pinOnActiveMap(j.x,j.y,j.map)) return;
       effDesire('j:'+(j.key||idx),jStatus+'|'+confirmed+'|'+j.x+'|'+j.y+'|'+(j.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(j.x,j.y),'journal',jStatus,'<b style="color:#1673d1">'+j.name+'</b><br>'+journalTipBody(j,confirmed,jGot,jStatus,trackable))
@@ -7651,7 +7682,7 @@ function renderEffigyMapNow(){
         var pb=bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
         return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
       });
-      if(!pinOnActiveMap(b.x,b.y)) return;
+      if(!pinOnActiveMap(b.x,b.y,b.map)) return;
       effDesire('b:'+idx,bStatus+'|'+confirmed+'|'+bAuto+'|'+bManual+'|'+clickable+'|'+bLocked+'|'+b.x+'|'+b.y+'|'+(b.name||'')+'|'+(b.lv||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(b.x,b.y),'bounty',bStatus,'<b style="color:#111;">'+b.name+'</b>'+(b.lv?(' <span style="color:var(--muted)">(Lv '+b.lv+')</span>'):'')+'<br>'+bountyTipBody(b,confirmed,bAuto,bManual,bLocked,prereqDetails))
@@ -7678,7 +7709,7 @@ function renderEffigyMapNow(){
       // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var hStatus=mapStatus(confirmed,hGot,trackable);
       if(hStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
-      if(!pinOnActiveMap(h.x,h.y)) return;
+      if(!pinOnActiveMap(h.x,h.y,h.map)) return;
       effDesire('h:'+(h.key||h.name||idx),hStatus+'|'+confirmed+'|'+h.x+'|'+h.y+'|'+(h.name||'')+'|'+(h.lv||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(h.x,h.y),'fugitive',hStatus,'<b style="color:#111;">'+h.name+'</b>'+(h.lv?(' <span style="color:var(--muted)">(Lv '+h.lv+')</span>'):'')+'<br>'+fugitiveTipBody(h,confirmed,hGot,hStatus))
@@ -7701,7 +7732,7 @@ function renderEffigyMapNow(){
       // Public site collapses this via mapStatus() -- see MAP_STATUS_TWO_STATE.
       var esStatus=mapStatus(confirmed,esGot,trackable);
       if(esStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
-      if(!pinOnActiveMap(es.x,es.y)) return;
+      if(!pinOnActiveMap(es.x,es.y,es.map)) return;
       effDesire('es:'+(es.key||es.name||idx),esStatus+'|'+confirmed+'|'+es.x+'|'+es.y+'|'+(es.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(es.x,es.y),'eagle',esStatus,'<b style="color:#111;">'+es.name+'</b><br>'+eagleTipBody(es,confirmed,esGot,esStatus))
@@ -7746,7 +7777,7 @@ function renderEffigyMapNow(){
         var pb=bossLocations&&bossLocations.find(function(x){return (x.species||'').toUpperCase()===pu;});
         return {name:pb?pb.name:p,got:!!bossGotMap[pu]};
       });
-      if(!pinOnActiveMap(t.x,t.y)) return;
+      if(!pinOnActiveMap(t.x,t.y,t.map)) return;
       effDesire('tw:'+(t.name||idx),tStatus+'|'+confirmed+'|'+tLocked+'|'+t.x+'|'+t.y+'|'+(t.name||'')+'|'+(t.lv||''),function(){
         if(_effDotMode){
           var _tt=towerTipBody(t,confirmed,tGot,tStatus,tLocked,prereqDetails);
@@ -7772,7 +7803,7 @@ function renderEffigyMapNow(){
       if(sGot&&!effigyShowFound) return;
       var sStatus=mapStatus(confirmed,sGot,!!s.key);
       if(sStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
-      if(!pinOnActiveMap(s.x,s.y)) return;
+      if(!pinOnActiveMap(s.x,s.y,s.map)) return;
       effDesire('sam:'+(s.name||idx),sStatus+'|'+confirmed+'|'+s.x+'|'+s.y+'|'+(s.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(s.x,s.y),'sam',sStatus,'<b style="color:#111;">'+s.name+'</b><br>'+samTipBody(s,confirmed,sGot,sStatus))
@@ -7794,7 +7825,7 @@ function renderEffigyMapNow(){
       var pStatus=mapStatus(confirmed,pGot,trackable);
       if(pStatus==='unconfirmed'&&!effigyShowUnconfirmed) return;
       var ipk='ip:'+(p.key||('c'+p.gx+','+p.gy)||idx);
-      if(!pinOnActiveMap(p.x,p.y)) return;
+      if(!pinOnActiveMap(p.x,p.y,p.map)) return;
       effDesire(ipk,pStatus+'|'+confirmed+'|'+(p.pending?1:0)+'|'+p.x+'|'+p.y+'|'+(p.name||''),function(){
         return _effDotMode
           ? buildDotMarker(effigyRposToLatLng(p.x,p.y),'itempickup',pStatus,'<b style="color:#111;">'+esc(itemPickupLabel(p))+'</b><br>'+itemPickupTipBody(p,confirmed,pGot,pStatus))
@@ -8747,7 +8778,8 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
 <div id="skill-modal-overlay" class="pal-modal-overlay" style="z-index:700;align-items:center;" onclick="if(event.target===this)closeSkillModal()"><div class="pal-modal" id="skill-modal-body" style="max-width:420px;"></div></div>
 <div id="addicon-modal-overlay" class="pal-modal-overlay" style="align-items:center;z-index:2000;" onclick="if(event.target===this)closeAddIconModal()">
   <div class="pal-modal" id="addicon-modal-body" style="max-width:420px;">
-    <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Add Icon</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Add Icon</div>
+    <div id="ai-target-map" style="font-size:12px;color:var(--muted);margin-bottom:10px;"></div>
     <div class="ai-field">
       <label>Category</label>
       <select id="ai-category" class="sel" style="width:100%;" onchange="addIconCategoryChanged()">

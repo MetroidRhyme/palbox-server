@@ -2566,7 +2566,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $species = if ($body.species) { [string]$body.species } else { $null }
                         $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
                         $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
-                        $newRow = Add-CustomMapEntry $category $key $name $species $gx $gy
+                        # Which base map the pin lands on (World Tree vs. overworld) -- the client
+                        # sends the Map tab's active map. Allowlisted; anything else is overworld.
+                        $map = if ([string]$body.map -eq 'treemap8') { 'treemap8' } else { 'map8' }
+                        $newRow = Add-CustomMapEntry $category $key $name $species $gx $gy $map
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$newRow } -Depth 6 -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2597,7 +2600,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         if ($body.PSObject.Properties['gy']) { $fields.gy = if ([string]$body.gy -ne '') { [int]$body.gy } else { $null } }
                         if ($body.PSObject.Properties['key']) { $fields.key = if ($body.key) { [string]$body.key } else { $null } }
                         if ($body.PSObject.Properties['species']) { $fields.species = if ($body.species) { [string]$body.species } else { $null } }
-                        $updated = Edit-CustomMapEntry $category $identKey $identSpecies $identName $fields $identGx $identGy
+                        $identMap = if ([string]$body.map -eq 'treemap8') { 'treemap8' } else { 'map8' }
+                        $updated = Edit-CustomMapEntry $category $identKey $identSpecies $identName $fields $identGx $identGy $identMap
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2619,7 +2623,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $name = if ($body.name) { [string]$body.name } else { $null }
                         $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
                         $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
-                        Remove-CustomMapEntry $category $key $species $name $gx $gy | Out-Null
+                        $map = if ([string]$body.map -eq 'treemap8') { 'treemap8' } else { 'map8' }
+                        Remove-CustomMapEntry $category $key $species $name $gx $gy $map | Out-Null
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2655,7 +2660,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         if ($body.PSObject.Properties['lv']) { $fields.lv = if ($null -ne $body.lv -and [string]$body.lv -ne '') { [int]$body.lv } else { $null } }
                         if ($body.PSObject.Properties['boss']) { $fields.boss = if ($body.boss) { [string]$body.boss } else { $null } }
                         if ($body.PSObject.Properties['bossPal']) { $fields.bossPal = if ($body.bossPal) { [string]$body.bossPal } else { $null } }
-                        $updated = Edit-MapEntry $category $identKey $identSpecies $identName $fields $identGx $identGy
+                        $identMap = if ([string]$body.map -eq 'treemap8') { 'treemap8' } else { 'map8' }
+                        $updated = Edit-MapEntry $category $identKey $identSpecies $identName $fields $identGx $identGy $identMap
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$updated } -Depth 6 -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -2677,7 +2683,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         # gx/gy resolve a keyless effigy by its grid position (2026-07-13).
                         $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
                         $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
-                        Remove-MapEntry $category $key $species $name $gx $gy | Out-Null
+                        $map = if ([string]$body.map -eq 'treemap8') { 'treemap8' } else { 'map8' }
+                        Remove-MapEntry $category $key $species $name $gx $gy $map | Out-Null
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true } -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -3399,6 +3406,10 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $gx = if ($null -ne $body.gx -and [string]$body.gx -ne '') { [int]$body.gx } else { $null }
                         $gy = if ($null -ne $body.gy -and [string]$body.gy -ne '') { [int]$body.gy } else { $null }
                         $verifiedFlag = if ($null -ne $body.verified) { [bool]$body.verified } else { $true }
+                        # Which base map the pin is on -- sent by the client's Record-next-key /
+                        # Map-to-key flow so the keyless gx/gy coord-fallback below resolves within
+                        # the right map (gx/gy is a per-map grid). Absent/legacy -> overworld.
+                        $mapVal = if ([string]$body.map -eq 'treemap8') { 'treemap8' } else { 'map8' }
 
                         if ($script:DatamineSpatialProperties -contains $property) {
                             $f = "$ServerDir\confirmed_locations.json"
@@ -3445,7 +3456,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 # 2026-07-14 itempickup "Record next key") -- so recording re-keys that
                                 # pin in place rather than creating a visually-duplicate second pin at
                                 # the same spot.
-                                $existing = $arr | Where-Object { -not $_.key -and $_.category -eq $coordCat -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
+                                $existing = $arr | Where-Object { -not $_.key -and $_.category -eq $coordCat -and $_.gx -eq $gx -and $_.gy -eq $gy -and (Get-EntryMap $_) -eq $mapVal } | Select-Object -First 1
                             }
                             # Species carried by a matched scraped row (bounty pins only) --
                             # captured BEFORE the update below so we still have it for the
@@ -3481,6 +3492,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 $newEntry = [pscustomobject]@{ key = $key; name = $name; gx = $gx; gy = $gy; source = $property; verified = $verifiedFlag }
                                 $newEntry | Add-Member -MemberType NoteProperty -Name category -Value (Get-CategoryForEntry $newEntry) -Force
                                 $newEntry | Add-Member -MemberType NoteProperty -Name origin -Value $(if ($verifiedFlag) { 'manual' } else { 'scraped' }) -Force
+                                if ($mapVal -eq 'treemap8') { $newEntry | Add-Member -MemberType NoteProperty -Name map -Value 'treemap8' -Force }
                                 $arr = $arr + $newEntry
                             }
                             # Funnel through the canonical Save-ConfirmedLocations writer, which

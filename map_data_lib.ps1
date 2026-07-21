@@ -179,11 +179,29 @@ function Get-MapConstants {
     return $script:mapConstCache
 }
 
+# Per-map grid constants. map8 (Palpagos overworld) is single-sourced from map_constants.json.
+# treemap8 (The World Tree) is SEEDED equal to the overworld: the World Tree occupies a
+# world-coordinate block (X ~347k..689k) contiguous with the overworld (whose X ends at 349400),
+# so the in-game compass is almost certainly the same continuous 459-scale grid. If an in-game
+# check ever shows the World Tree uses a distinct compass grid, calibrate ONLY the treemap8 numbers
+# here -- a one-line change; nothing else in the map system assumes these values are equal.
+function Get-MapGrid([string]$mapId = 'map8') {
+    if ($mapId -eq 'treemap8') {
+        return [pscustomobject]@{ scale = 459; offsetX = 123888; offsetY = 158000 }
+    }
+    return Get-MapConstants
+}
+
+# A row's map id, defaulting to the overworld for every legacy row (which has no "map" field) so
+# no migration is needed -- only World Tree pins carry map='treemap8'.
+function Get-EntryMap($e) { if ($e.map) { $e.map } else { 'map8' } }
+
 # gx/gy (in-game grid coords) -> real world x/y. Inverse of the effigy tooltip's
 # cx=(y-offsetY)/scale, cy=(x+offsetX)/scale -- see the palbox-journal-overlay skill's
-# coordinate-transform section.
-function ConvertTo-WorldXY([int]$gx, [int]$gy) {
-    $mc = Get-MapConstants
+# coordinate-transform section. $mapId selects the per-map grid (default overworld); a World Tree
+# row passes 'treemap8' so its gx/gy derive into the World Tree world block.
+function ConvertTo-WorldXY([int]$gx, [int]$gy, [string]$mapId = 'map8') {
+    $mc = Get-MapGrid $mapId
     return @{ x = ($gy * $mc.scale) - $mc.offsetX; y = ($gx * $mc.scale) + $mc.offsetY }
 }
 
@@ -193,8 +211,8 @@ function ConvertTo-WorldXY([int]$gx, [int]$gy) {
 # still has grid coords for anything that displays them. Rounds to the nearest integer
 # rather than truncating, since a scrape's x/y is rarely an exact multiple of the 459
 # scale constant.
-function ConvertTo-GridXY([double]$x, [double]$y) {
-    $mc = Get-MapConstants
+function ConvertTo-GridXY([double]$x, [double]$y, [string]$mapId = 'map8') {
+    $mc = Get-MapGrid $mapId
     return @{ gx = [Math]::Round(($y - $mc.offsetY) / $mc.scale); gy = [Math]::Round(($x + $mc.offsetX) / $mc.scale) }
 }
 
@@ -264,9 +282,12 @@ function Get-MapCategoryJson([string]$category) {
             # whose row has only gx/gy reads back as null coords and the pin vanishes. That path
             # is now reachable: Edit-MapEntry nulls x/y/z on a coordinate edit, and
             # Add-CustomMapEntry creates effigy rows with gx/gy only.
+            # Per-map grid: derive x/y from gx/gy using the row's own map (default overworld), and
+            # emit "map" so the client routes the pin to the right base map (see pinOnActiveMap).
+            $rowMap = if ($c.map) { $c.map } else { 'map8' }
             $hasXY = ($null -ne $c.x -and $null -ne $c.y)
-            $xy = if ($hasXY) { @{ x = $c.x; y = $c.y } } else { ConvertTo-WorldXY $c.gx $c.gy }
-            $entry = @{ x = $xy.x; y = $xy.y; z = $c.z }
+            $xy = if ($hasXY) { @{ x = $c.x; y = $c.y } } else { ConvertTo-WorldXY $c.gx $c.gy $rowMap }
+            $entry = @{ x = $xy.x; y = $xy.y; z = $c.z; map = $rowMap }
             if ($c.verified -eq $true) { $entry.m = $true }
             if ($c.custom -eq $true) { $entry.custom = $true }
             $ents = ConvertTo-EntranceList $c
@@ -285,10 +306,11 @@ function Get-MapCategoryJson([string]$category) {
     $result = @()
     foreach ($c in $confirmed) {
         if ($c.category -ne $category) { continue }
+        $rowMap = if ($c.map) { $c.map } else { 'map8' }
         $hasXY = ($null -ne $c.x -and $null -ne $c.y)
-        $xy = if ($hasXY) { @{ x = $c.x; y = $c.y } } else { ConvertTo-WorldXY $c.gx $c.gy }
+        $xy = if ($hasXY) { @{ x = $c.x; y = $c.y } } else { ConvertTo-WorldXY $c.gx $c.gy $rowMap }
         $name = if ($c.name) { $c.name } else { $c.key }
-        $out = @{ name = $name; x = $xy.x; y = $xy.y; m = ($c.verified -eq $true) }
+        $out = @{ name = $name; x = $xy.x; y = $xy.y; m = ($c.verified -eq $true); map = $rowMap }
         if ($c.key) { $out.key = $c.key }
         if ($c.custom -eq $true) { $out.custom = $true }
         if ($category -eq 'bounty') {
@@ -308,7 +330,7 @@ function Get-MapCategoryJson([string]$category) {
             # Mine tab roster-fallback (getGxGy) read gx/gy straight off the roster item
             # instead of deriving it from x/y client-side -- keep emitting it to match.
             if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
-            else { $grid = ConvertTo-GridXY $xy.x $xy.y; $out.gx = $grid.gx; $out.gy = $grid.gy }
+            else { $grid = ConvertTo-GridXY $xy.x $xy.y $rowMap; $out.gx = $grid.gx; $out.gy = $grid.gy }
         }
         if ($category -eq 'itempickup') {
             # itempickup (Schematic) resolves a keyless pin by its gx/gy grid identity (like a
@@ -318,7 +340,7 @@ function Get-MapCategoryJson([string]$category) {
             # one is flagged pending so the client draws it untrackable + shows "Record next key",
             # same signal the effigy dict shape's "pending" carries.
             if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
-            else { $grid = ConvertTo-GridXY $xy.x $xy.y; $out.gx = $grid.gx; $out.gy = $grid.gy }
+            else { $grid = ConvertTo-GridXY $xy.x $xy.y $rowMap; $out.gx = $grid.gx; $out.gy = $grid.gy }
             if (-not $c.key) { $out.pending = $true }
         }
         $ents = ConvertTo-EntranceList $c
@@ -334,7 +356,8 @@ function Get-MapCategoryJson([string]$category) {
 # effigy/journal, species for bounty, name for tower/fugitive/eagle). $confirmed is the
 # array to search (caller's own Get-ConfirmedLocations() result, so a caller doing a
 # subsequent write reuses the same array instance rather than re-reading).
-function Find-ConfirmedRow($confirmed, [string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null) {
+function Find-ConfirmedRow($confirmed, [string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null, [string]$map = 'map8') {
+    $mapVal = if ([string]::IsNullOrEmpty($map)) { 'map8' } else { $map }
     if ($key) {
         $keyU = $key.ToUpper()
         return $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $keyU -and $_.category -eq $category } | Select-Object -First 1
@@ -343,7 +366,9 @@ function Find-ConfirmedRow($confirmed, [string]$category, [string]$key, [string]
         # Get-MapCategoryJson's __PENDING__/pending branch). Checked before $species/$name --
         # those are always empty for an effigy, and for an itempickup the name is a mutable
         # display attribute, never its identity, so a keyless one still resolves purely by coords.
-        return $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
+        # gx/gy is a per-map grid, so it's only unique WITHIN a map -- scope by map so a World Tree
+        # pin can't resolve to an overworld pin that happens to share the same grid coords.
+        return $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy -and (Get-EntryMap $_) -eq $mapVal } | Select-Object -First 1
     } elseif ($species) {
         $spU = $species.ToUpper()
         $matched = $confirmed | Where-Object { $_.species -and $_.species.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
@@ -411,8 +436,12 @@ $script:CustomIconCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eag
 # keyless "custom" effigy pin would silently never render. Every other category may be
 # keyless (bounty/fugitive/eagle routinely are, per the existing schema) and is
 # identified by name/species instead, same convention Find-ConfirmedRow already uses.
-function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [string]$species, $gx, $gy) {
+function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [string]$species, $gx, $gy, [string]$map = 'map8') {
     if ($category -notin $script:CustomIconCategories) { throw "Unsupported category: $category" }
+    # Which base map the pin belongs to. Only 'treemap8' (World Tree) is stored; the overworld
+    # default is left absent on the row (Get-EntryMap treats absent as 'map8'), so overworld pins
+    # serialize exactly as before -- no migration of existing rows.
+    $mapVal = if ($map -eq 'treemap8') { 'treemap8' } else { 'map8' }
     # A [string]-typed param re-coerces $null to '' on assignment, so it can never hold $null --
     # compute the stored key as an UNTYPED value below so a keyless pin serializes as "key": null
     # (the schema convention every -not $_.key / Find-ConfirmedRow check expects), not "key": "".
@@ -437,7 +466,9 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
         $existing = Find-ConfirmedRow $confirmed $category $key $null $null
         if ($existing) { throw "A $category pin with that key already exists." }
     } elseif ($category -in $script:CoordIdentityCategories) {
-        $clash = $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy } | Select-Object -First 1
+        # gx/gy is a per-map grid, so a clash is only a clash on the SAME map -- a World Tree effigy
+        # and an overworld effigy may legitimately share grid coords.
+        $clash = $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy -and (Get-EntryMap $_) -eq $mapVal } | Select-Object -First 1
         if ($clash) { throw "Another keyless $category pin is already at ($gx,$gy) -- move one first, or record its key." }
     } elseif ($nameVal) {
         # Name-identity categories: a SECOND keyless pin with the same name would be ambiguous to
@@ -454,6 +485,9 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
         x = $null; y = $null; z = $null; species = $speciesVal; lv = $null; source = $null
         origin = 'manual'; verified = $false; custom = $true
     }
+    # Only the World Tree carries an explicit map tag; overworld pins stay tag-free (Get-EntryMap
+    # reads absent as 'map8'), so this doesn't change how existing/overworld rows serialize.
+    if ($mapVal -eq 'treemap8') { $newEntry | Add-Member -NotePropertyName map -NotePropertyValue 'treemap8' }
     $confirmed = $confirmed + $newEntry
     Save-ConfirmedLocations $confirmed
 
@@ -478,9 +512,9 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
 # whose gx/gy is its only identity -- this function predates that work, so without them a
 # hand-added keyless Schematic/effigy row was unreachable from the Data Mine tab's Custom
 # Icons section ("No matching custom entry found") and could never be edited or deleted.
-function Edit-CustomMapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields, $identGx = $null, $identGy = $null) {
+function Edit-CustomMapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields, $identGx = $null, $identGy = $null, [string]$identMap = 'map8') {
     $confirmed = @(Get-ConfirmedLocations)
-    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName $identGx $identGy
+    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName $identGx $identGy $identMap
     if (-not $matched) { throw "No matching custom entry found." }
     if ($matched.custom -ne $true) { throw "Refusing to edit a non-custom entry through this route." }
     # Mutations below happen before the post-edit validation can run, so any throw past this point
@@ -499,7 +533,7 @@ function Edit-CustomMapEntry([string]$category, [string]$identKey, [string]$iden
         if ($category -notin $script:CoordIdentityCategories -and -not $matched.name) { throw "Display name is required for this category." }
         if ($category -in $script:CoordIdentityCategories -and -not $matched.key) {
             if ($null -eq $matched.gx -or $null -eq $matched.gy) { throw "A keyless $category pin needs grid coordinates (gx/gy) to stay on the map." }
-            $clash = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and -not $_.key -and $_.gx -eq $matched.gx -and $_.gy -eq $matched.gy } | Select-Object -First 1
+            $clash = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and -not $_.key -and $_.gx -eq $matched.gx -and $_.gy -eq $matched.gy -and (Get-EntryMap $_) -eq (Get-EntryMap $matched) } | Select-Object -First 1
             if ($clash) { throw "Another keyless $category pin is already at ($($matched.gx),$($matched.gy)) -- move one first." }
         }
         Save-ConfirmedLocations $confirmed
@@ -512,9 +546,9 @@ function Edit-CustomMapEntry([string]$category, [string]$identKey, [string]$iden
 
 # Deletes a custom-created row. Same custom:true guard as Edit-CustomMapEntry above, and the
 # same $gx/$gy keyless coord-identity resolution.
-function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null) {
+function Remove-CustomMapEntry([string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null, [string]$map = 'map8') {
     $confirmed = @(Get-ConfirmedLocations)
-    $matched = Find-ConfirmedRow $confirmed $category $key $species $name $gx $gy
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name $gx $gy $map
     if (-not $matched) { throw "No matching custom entry found." }
     if ($matched.custom -ne $true) { throw "Refusing to delete a non-custom entry through this route." }
     $remaining = @($confirmed | Where-Object { $_ -ne $matched })
@@ -559,13 +593,14 @@ $script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'ea
 # its Boss Defeat link (2026-07-15 -- previously a separate "bossKey" field this generic
 # field never touched; see Get-MapCategoryJson's comment), so it's edited exactly like every
 # other category's single-key model, no special-casing needed here.
-function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields, $identGx = $null, $identGy = $null) {
+function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpecies, [string]$identName, [hashtable]$fields, $identGx = $null, $identGy = $null, [string]$identMap = 'map8') {
     if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
     $confirmed = @(Get-ConfirmedLocations)
     # $identGx/$identGy resolve an ALREADY-keyless effigy (its gx/gy is its only identity) --
     # needed when editing/deleting a pin whose key was previously cleared. A keyed pin still
-    # resolves by $identKey as before.
-    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName $identGx $identGy
+    # resolves by $identKey as before. $identMap scopes the coord-identity match to the pin's map
+    # (gx/gy is only unique within a map).
+    $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName $identGx $identGy $identMap
     if (-not $matched) { throw "No matching map entry found." }
     # Hoisted above every mutation (2026-07-15): this is a pure precondition on $fields, and it
     # used to sit down with the gx/gy write -- i.e. AFTER the bounty branch below had already
@@ -596,7 +631,7 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
             $egx = if ($fields.ContainsKey('gx')) { $fields['gx'] } else { $matched.gx }
             $egy = if ($fields.ContainsKey('gy')) { $fields['gy'] } else { $matched.gy }
             if ($null -eq $egx -or $null -eq $egy) { throw "A keyless $category pin needs grid coordinates (gx/gy) to stay on the map." }
-            $clash = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and -not $_.key -and $_.gx -eq $egx -and $_.gy -eq $egy } | Select-Object -First 1
+            $clash = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and -not $_.key -and $_.gx -eq $egx -and $_.gy -eq $egy -and (Get-EntryMap $_) -eq (Get-EntryMap $matched) } | Select-Object -First 1
             if ($clash) { throw "Another keyless $category pin is already at ($egx,$egy) -- move one first." }
         }
         if ($newKey) {
@@ -659,11 +694,12 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
 # is ever re-run and the deleted pin is still in its source roster file, it can resurface as a
 # fresh verified:false row -- Anthony's explicit call (2026-07-12), simplest option, and easy
 # to just delete again if it happens.
-function Remove-MapEntry([string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null) {
+function Remove-MapEntry([string]$category, [string]$key, [string]$species, [string]$name, $gx = $null, $gy = $null, [string]$map = 'map8') {
     if ($category -notin $script:EditableMapCategories) { throw "Unsupported category: $category" }
     $confirmed = @(Get-ConfirmedLocations)
-    # $gx/$gy resolve a keyless effigy (its gx/gy is its only identity, see Edit-MapEntry).
-    $matched = Find-ConfirmedRow $confirmed $category $key $species $name $gx $gy
+    # $gx/$gy resolve a keyless effigy (its gx/gy is its only identity, see Edit-MapEntry); $map
+    # scopes that coord match to the pin's map.
+    $matched = Find-ConfirmedRow $confirmed $category $key $species $name $gx $gy $map
     if (-not $matched) { throw "No matching map entry found." }
     $remaining = @($confirmed | Where-Object { $_ -ne $matched })
     Save-ConfirmedLocations $remaining
