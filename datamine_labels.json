@@ -3678,5 +3678,165 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "KENDOFROG_DARK",
+        "name":  "Croajiro Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "KendoFrog_Dark",
+        "name":  "Croajiro Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FOXMAGE_DARK",
+        "name":  "Wixen Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FoxMage_Dark",
+        "name":  "Wixen Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "VOLCANODRAGON",
+        "name":  "Moldron",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "VolcanoDragon",
+        "name":  "Moldron",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "JELLYFISHGHOST",
+        "name":  "Jellroy",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "JellyfishGhost",
+        "name":  "Jellroy",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "REDARMORBIRD",
+        "name":  "Ragnahawk",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "RedArmorBird",
+        "name":  "Ragnahawk",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "TENTACLETURTLE_GROUND",
+        "name":  "Turtacle Terra",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "TentacleTurtle_Ground",
+        "name":  "Turtacle Terra",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "BAPHOMET_DARK",
+        "name":  "Incineram Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "Baphomet_Dark",
+        "name":  "Incineram Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "PANDAGIRL",
+        "name":  "Leafan",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "PandaGirl",
+        "name":  "Leafan",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "ICESEAL",
+        "name":  "Polapup",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "IceSeal",
+        "name":  "Polapup",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "TROPICALOSTRICH",
+        "name":  "Palumba",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "TropicalOstrich",
+        "name":  "Palumba",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

@@ -274,5 +274,13 @@
     {
         "key":  "81_5_YAMIJIMA_FBOSS_16",
         "species":  "IceHorse_Dark"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_30",
+        "species":  "ThunderBird"
+    },
+    {
+        "key":  "SANCTUARY_1_FOREST_FBOSS",
+        "species":  "Grizzbolt"
     }
 ]
