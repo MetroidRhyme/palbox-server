@@ -920,7 +920,7 @@ tr.save-live-row>td:first-child{box-shadow:inset 3px 0 0 var(--green);}
 
 <div id="pal-map-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:500;align-items:center;justify-content:center;">
   <div onclick="closePalMap()" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);"></div>
-  <div onclick="event.stopPropagation()" style="position:relative;background:var(--surface);border:1px solid var(--border);border-radius:12px;width:92vw;max-width:1000px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+  <div onclick="event.stopPropagation()" style="position:relative;background:var(--surface);border:1px solid var(--border);border-radius:12px;width:97vw;max-width:1500px;height:94vh;max-height:94vh;display:flex;flex-direction:column;overflow:hidden;">
     <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">
       <img id="pal-map-img" src="" alt="" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;">
       <div style="min-width:0;flex:1;">
@@ -3397,7 +3397,9 @@ async function showPalMapData(internal,displayName){
   var statusParts=[];
   try{
     var data=await palSpawnFetch(internal,sig);
-    var locs=(data&&data[palMapTime]&&data[palMapTime].locations)||[];
+    // paldb.cc capitalizes the inner key ("Locations"); check both since they've been
+    // inconsistent about casing here before.
+    var locs=(data&&data[palMapTime]&&(data[palMapTime].Locations||data[palMapTime].locations))||[];
     // Cache the points and draw the spawn zones (see drawSpawnZones); cached so a redraw can
     // re-cluster without re-fetching.
     palSpawnLocs=locs;
@@ -3409,7 +3411,7 @@ async function showPalMapData(internal,displayName){
     try{
       var bdata=await palSpawnFetch('BOSS_'+internal,sig);
       if(bdata){
-        var blocs=(bdata.dayTimeLocations&&bdata.dayTimeLocations.locations)||[];
+        var blocs=(bdata.dayTimeLocations&&(bdata.dayTimeLocations.Locations||bdata.dayTimeLocations.locations))||[];
         blocsCount=blocs.length;
         var bicon=makeBossIcon(palImg);
         blocs.forEach(function(rpos){
@@ -6856,6 +6858,48 @@ function addIconCategoryChanged(){
   keyLabel.textContent='Unmapped key (optional)';
 }
 
+// Field Boss duplicate-name guard (2026-07-22): Add-CustomMapEntry already hard-blocks a
+// second KEYLESS bounty pin sharing a name, but silently allows one to collide with a
+// pin that's already KEYED, and Edit-MapEntry's rename path has no check at all -- so a
+// second same-named Field Boss could slip in either way with no warning. This runs
+// client-side before either write path fires: on a name match it offers to rename the
+// OLD pin to "???" (freeing the name up) or cancel, instead of a silent duplicate or an
+// unexplained server error.
+function findBountyNameConflict(name,excludeIdent){
+  if(!name||!bossLocations) return null;
+  var nameU=name.trim().toUpperCase();
+  for(var i=0;i<bossLocations.length;i++){
+    var b=bossLocations[i];
+    if(!b.name||b.name.toUpperCase()!==nameU) continue;
+    if(excludeIdent){
+      if(excludeIdent.key&&b.key&&excludeIdent.key.toUpperCase()===b.key.toUpperCase()) continue;
+      if(!excludeIdent.key&&excludeIdent.species&&b.species&&excludeIdent.species.toUpperCase()===b.species.toUpperCase()) continue;
+    }
+    return b;
+  }
+  return null;
+}
+// Resolves a Field Boss name conflict before a create/rename proceeds. Returns true when
+// it's safe to continue (no conflict, or Anthony chose to override -- the old pin is
+// already renamed to "???" server-side by the time this resolves); false when he
+// cancelled, in which case the caller must abort its own save without POSTing anything.
+async function resolveBountyNameConflict(name,excludeIdent){
+  var conflict=findBountyNameConflict(name,excludeIdent);
+  if(!conflict) return true;
+  var ok=confirm('A Field Boss named "'+name+'" already exists on the map (species: '+(conflict.species||conflict.name)+').\n\n'
+    +'Click OK to override it -- the existing pin is renamed to "???" so this name is freed up.\n'
+    +'Click Cancel to keep the existing pin and pick a different name.');
+  if(!ok) return false;
+  try{
+    await api('/api/map-edit-icon','POST',{category:'bounty',identityKey:conflict.key||null,identitySpecies:conflict.species||null,identityName:conflict.name||null,name:'???'});
+    conflict.name='???'; // reflect immediately so a second check later this session doesn't re-trigger
+  }catch(e){
+    toast('Failed to clear the conflicting pin: '+String(e&&e.message||e),'error');
+    return false;
+  }
+  return true;
+}
+
 async function saveAddIcon(){
   var category=document.getElementById('ai-category').value;
   var name=document.getElementById('ai-name').value.trim();
@@ -6865,6 +6909,9 @@ async function saveAddIcon(){
   var key=(keyIdx!==''&&_aiKeyCandidates[parseInt(keyIdx,10)])?_aiKeyCandidates[parseInt(keyIdx,10)].key:null;
   if(category!=='effigy'&&category!=='itempickup'&&!name){ toast('Display name is required.','error'); return; }
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
+  if(category==='bounty'){
+    if(!(await resolveBountyNameConflict(name,null))) return;
+  }
   try{
     // Create on the currently-active map; the server stores its map so it renders on the right
     // base map (and its gx/gy are interpreted in that map's grid). Since it targets the active
@@ -7157,6 +7204,9 @@ async function saveIconDetailEdits(ident,marker){
   if(nameInput){
     var newName=nameInput.value.trim();
     if(!newName){ toast('Display name cannot be blank.','error'); return; }
+    if(category==='bounty'&&newName.toUpperCase()!==(ident.name||'').toUpperCase()){
+      if(!(await resolveBountyNameConflict(newName,ident))) return;
+    }
     body.name=newName;
   }
   var lvInput=document.getElementById('icon-detail-lv');
