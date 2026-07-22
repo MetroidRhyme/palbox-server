@@ -493,11 +493,20 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
         # and an overworld effigy may legitimately share grid coords.
         $clash = $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.gx -eq $gx -and $_.gy -eq $gy -and (Get-EntryMap $_) -eq $mapVal } | Select-Object -First 1
         if ($clash) { throw "Another keyless $category pin is already at ($gx,$gy) -- move one first, or record its key." }
-    } elseif ($nameVal) {
+    } elseif ($nameVal -and $nameVal.IndexOf('?') -lt 0) {
         # Name-identity categories: a SECOND keyless pin with the same name would be ambiguous to
         # Find-ConfirmedRow's name branch (it takes -First 1, so the edit/delete/confirm routes
         # would silently all hit the same one). Keyless-vs-keyless only -- a KEYED row with the
         # same name is the legitimate scraped-pin + mapped-key pair the importer reconciles.
+        #
+        # Skipped entirely for a placeholder name containing "?" (2026-07-22) -- unconfirmed Field
+        # Boss pins are deliberately named "???" (see the palbox-bounty-tracker skill), and MANY of
+        # them legitimately share that exact placeholder. Find-ConfirmedRow never resolves these
+        # pins by name anyway once they're keyed (bounty identity is key-first), so the ambiguity
+        # this guard exists to prevent doesn't apply to "?"-named rows.
+        # NOTE: use .IndexOf, not -like '*?*' -- PowerShell's -like treats "?" as a wildcard
+        # (matches any single character), so '*?*' would match every non-empty string, not just
+        # ones containing a literal "?".
         $nameU = $nameVal.ToUpper()
         $clash = $confirmed | Where-Object { $_.category -eq $category -and -not $_.key -and $_.name -and $_.name.ToUpper() -eq $nameU } | Select-Object -First 1
         if ($clash) { throw "A keyless $category pin named '$nameVal' already exists in this category." }

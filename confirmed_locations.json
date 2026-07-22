@@ -265,7 +265,6 @@
     },
     {
         "key":  null,
-        "name":  "Verdash",
         "gx":  285,
         "gy":  10,
         "verified":  false,
@@ -274,11 +273,11 @@
         "x":  -119298,
         "y":  288815,
         "species":  "GrassRabbitMan",
-        "z":  0
+        "z":  0,
+        "name":  "???"
     },
     {
         "key":  null,
-        "name":  "Vaelet",
         "gx":  129,
         "gy":  -51,
         "verified":  false,
@@ -287,7 +286,8 @@
         "x":  -147297,
         "y":  217211,
         "species":  "VioletFairy",
-        "z":  0
+        "z":  0,
+        "name":  "???"
     },
     {
         "key":  "81_1_GRASS_FBOSS_1",
@@ -305,7 +305,6 @@
     },
     {
         "key":  null,
-        "name":  "Bushi",
         "gx":  -116,
         "gy":  -491,
         "verified":  false,
@@ -314,11 +313,11 @@
         "x":  -349257,
         "y":  104756,
         "species":  "Ronin",
-        "z":  0
+        "z":  0,
+        "name":  "???"
     },
     {
         "key":  null,
-        "name":  "Jormuntide",
         "gx":  350,
         "gy":  -85,
         "verified":  false,
@@ -327,11 +326,11 @@
         "x":  -245982,
         "y":  77216,
         "species":  "Umihebi",
-        "z":  0
+        "z":  0,
+        "name":  "???"
     },
     {
         "key":  null,
-        "name":  "Grintale",
         "gx":  356,
         "gy":  -246,
         "verified":  false,
@@ -340,7 +339,8 @@
         "x":  -236727.1,
         "z":  -1909.38,
         "y":  321310.12,
-        "species":  "NaughtyCat"
+        "species":  "NaughtyCat",
+        "name":  "???"
     },
     {
         "species":  "KingAlpaca",
@@ -374,7 +374,6 @@
     },
     {
         "key":  null,
-        "name":  "Sweepa",
         "gx":  -227,
         "gy":  -593,
         "verified":  false,
@@ -383,7 +382,8 @@
         "x":  -396003.12,
         "z":  -1575.8,
         "y":  53772.16,
-        "species":  "MopKing"
+        "species":  "MopKing",
+        "name":  "???"
     },
     {
         "key":  "81_1_GRASS_FBOSS_23",
@@ -416,7 +416,6 @@
     },
     {
         "key":  null,
-        "name":  "Wumpo Botan",
         "gx":  449,
         "gy":  -51,
         "verified":  false,
@@ -425,7 +424,8 @@
         "x":  -147370,
         "z":  -1940,
         "y":  364010,
-        "species":  "Yeti_Grass"
+        "species":  "Yeti_Grass",
+        "name":  "???"
     },
     {
         "species":  "CaptainPenguin",
@@ -444,7 +444,6 @@
     },
     {
         "key":  null,
-        "name":  "Menasting",
         "gx":  516,
         "gy":  102,
         "verified":  false,
@@ -453,11 +452,11 @@
         "x":  -77080.27,
         "z":  575.36,
         "y":  394535.8,
-        "species":  "DarkScorpion"
+        "species":  "DarkScorpion",
+        "name":  "???"
     },
     {
         "key":  null,
-        "name":  "Jetragon",
         "gx":  -789,
         "gy":  -321,
         "verified":  false,
@@ -466,11 +465,11 @@
         "x":  -271220,
         "z":  3760,
         "y":  -204190,
-        "species":  "JetDragon"
+        "species":  "JetDragon",
+        "name":  "???"
     },
     {
         "key":  null,
-        "name":  "Blazamut",
         "gx":  -442,
         "gy":  -561,
         "verified":  false,
@@ -479,7 +478,8 @@
         "x":  -381240,
         "z":  8530,
         "y":  -44760,
-        "species":  "KingBahamut"
+        "species":  "KingBahamut",
+        "name":  "???"
     },
     {
         "species":  "PurpleSpider",
@@ -487,18 +487,17 @@
         "category":  "bounty",
         "origin":  "manual",
         "verified":  false,
-        "name":  "Tarantriss",
         "key":  null,
         "gx":  -1341,
         "gy":  -1429,
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  null
+        "lv":  null,
+        "name":  "???"
     },
     {
         "key":  null,
-        "name":  "Warsect Terra",
         "gx":  -1021,
         "gy":  -1448,
         "source":  "NormalBossDefeatFlag",
@@ -508,11 +507,11 @@
         "x":  -788310,
         "z":  9090,
         "y":  -310830,
-        "species":  "HerculesBeetle_Ground"
+        "species":  "HerculesBeetle_Ground",
+        "name":  "???"
     },
     {
         "key":  null,
-        "name":  "Dazzi Noct",
         "gx":  -1343,
         "gy":  -1580,
         "source":  "NormalBossDefeatFlag",
@@ -522,11 +521,11 @@
         "x":  -848870,
         "z":  370,
         "y":  -458610,
-        "species":  "RaijinDaughter_Water"
+        "species":  "RaijinDaughter_Water",
+        "name":  "???"
     },
     {
         "key":  null,
-        "name":  "Faleris Aqua",
         "gx":  -628,
         "gy":  -1048,
         "verified":  false,
@@ -535,7 +534,8 @@
         "x":  -605010.5,
         "z":  -2102.61,
         "y":  -130144.8,
-        "species":  "Horus_Water"
+        "species":  "Horus_Water",
+        "name":  "???"
     },
     {
         "key":  "834398374941399E503F70BFD132AE60",
@@ -1104,7 +1104,6 @@
     },
     {
         "key":  null,
-        "name":  "Petallia",
         "gx":  -19,
         "gy":  -264,
         "source":  "NormalBossDefeatFlag",
@@ -1114,7 +1113,8 @@
         "x":  -245064,
         "y":  149279,
         "species":  "FlowerDoll",
-        "z":  0
+        "z":  0,
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1689,14 +1689,14 @@
         "verified":  false,
         "category":  "bounty",
         "origin":  "manual",
-        "name":  "Anubis",
         "key":  null,
         "gx":  -134,
         "gy":  -94,
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  55
+        "lv":  55,
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1707,11 +1707,11 @@
         "x":  -320870,
         "y":  -124090,
         "z":  18490,
-        "name":  "Astegon",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1722,11 +1722,11 @@
         "x":  -727685.3,
         "y":  -349625.47,
         "z":  1178.61,
-        "name":  "Azurmane",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1737,11 +1737,11 @@
         "x":  -301521,
         "y":  133673,
         "z":  0,
-        "name":  "Azurobe",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "species":  "ThunderBird",
@@ -1770,8 +1770,8 @@
         "x":  -329427.8,
         "y":  81512.31,
         "z":  -1862.61,
-        "name":  "Broncherry Aqua",
-        "source":  "NormalBossDefeatFlag"
+        "source":  "NormalBossDefeatFlag",
+        "name":  "???"
     },
     {
         "species":  "BerryGoat_Dark",
@@ -1797,11 +1797,11 @@
         "x":  -663312.1,
         "y":  -284782.62,
         "z":  1422.1,
-        "name":  "Celesdir",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1812,11 +1812,11 @@
         "x":  -838350,
         "y":  -376940,
         "z":  4220,
-        "name":  "Cryolinx Terra",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1857,11 +1857,11 @@
         "x":  -196380,
         "y":  166870,
         "z":  -2050,
-        "name":  "Elizabee",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "species":  "CatVampire",
@@ -1890,8 +1890,8 @@
         "x":  -333940,
         "y":  39610,
         "z":  1600,
-        "name":  "Fenglope",
-        "source":  "NormalBossDefeatFlag"
+        "source":  "NormalBossDefeatFlag",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1902,11 +1902,11 @@
         "x":  -635928.44,
         "y":  -224786.02,
         "z":  -849.03,
-        "name":  "Fenglope Lux",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1917,11 +1917,11 @@
         "x":  -722610,
         "y":  -431080,
         "z":  10186.04,
-        "name":  "Foxparks Cryst",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1932,11 +1932,11 @@
         "x":  109790,
         "y":  -5880,
         "z":  22180,
-        "name":  "Frostallion",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1947,7 +1947,6 @@
         "x":  -729768,
         "y":  -338638,
         "z":  0,
-        "name":  "Frostallion Noct",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
@@ -1957,7 +1956,8 @@
                         "WhiteShieldDragon",
                         "BlueThunderHorse",
                         "GrimGirl"
-                    ]
+                    ],
+        "name":  "???"
     },
     {
         "key":  null,
@@ -1968,11 +1968,11 @@
         "x":  -685460,
         "y":  -191380,
         "z":  4870,
-        "name":  "Gildane",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "species":  "PlantSlime",
@@ -1998,11 +1998,11 @@
         "x":  91527.57,
         "y":  53307.61,
         "z":  17514.29,
-        "name":  "Kingpaca Cryst",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2013,11 +2013,11 @@
         "x":  -649355.75,
         "y":  -317586.72,
         "z":  20147.98,
-        "name":  "Kitsun Noct",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2028,11 +2028,11 @@
         "x":  -44230,
         "y":  -152230,
         "z":  -2100,
-        "name":  "Knocklem",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2043,11 +2043,11 @@
         "x":  -502070,
         "y":  -276210,
         "z":  -440,
-        "name":  "Loupmoon Cryst",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2058,11 +2058,11 @@
         "x":  33500,
         "y":  84430,
         "z":  5360,
-        "name":  "Lyleen Noct",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2073,11 +2073,11 @@
         "x":  28540,
         "y":  -105820,
         "z":  -1590,
-        "name":  "Menasting Terra",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2088,11 +2088,11 @@
         "x":  -206970,
         "y":  363810,
         "z":  1140,
-        "name":  "Mossanda Lux",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "species":  "PoseidonOrca",
@@ -2118,7 +2118,6 @@
         "x":  -589314,
         "y":  -265657,
         "z":  0,
-        "name":  "Nitemary",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
@@ -2128,7 +2127,8 @@
                         "Horus_Water",
                         "NightBlueHorse",
                         "FengyunDeeper_Electric"
-                    ]
+                    ],
+        "name":  "???"
     },
     {
         "species":  "HawkBird",
@@ -2154,11 +2154,11 @@
         "x":  -555394.56,
         "y":  -353314.03,
         "z":  22322.26,
-        "name":  "Nyafia",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2169,11 +2169,11 @@
         "x":  -807770,
         "y":  -385160,
         "z":  5590,
-        "name":  "Omascul",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2184,11 +2184,11 @@
         "x":  187860,
         "y":  363020,
         "z":  2650,
-        "name":  "Paladius",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2199,7 +2199,6 @@
         "x":  -568200,
         "y":  -463945,
         "z":  0,
-        "name":  "Prunelia",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
@@ -2208,7 +2207,8 @@
                         "Kitsunebi_Ice",
                         "PinkRabbit_Grass",
                         "BadCatgirl"
-                    ]
+                    ],
+        "name":  "???"
     },
     {
         "species":  "SkyDragon",
@@ -2231,14 +2231,14 @@
         "category":  "bounty",
         "origin":  "manual",
         "verified":  false,
-        "name":  "Bushi",
         "key":  null,
         "gx":  -203,
         "gy":  -346,
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  null
+        "lv":  null,
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2249,11 +2249,11 @@
         "x":  -745180,
         "y":  -398020,
         "z":  36400,
-        "name":  "Ribbuny Botan",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2264,11 +2264,11 @@
         "x":  -92217,
         "y":  273668,
         "z":  0,
-        "name":  "Sibelyx",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2279,7 +2279,6 @@
         "x":  -593142.44,
         "y":  -293751.53,
         "z":  1161.27,
-        "name":  "Silvegis",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
@@ -2289,7 +2288,8 @@
                               "gx":  -962,
                               "gy":  -979
                           }
-                      ]
+                      ],
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2300,7 +2300,6 @@
         "x":  -797241,
         "y":  -245461,
         "z":  0,
-        "name":  "Smokie",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
@@ -2309,7 +2308,8 @@
                         "HerculesBeetle_Ground",
                         "GoldenHorse",
                         "AmaterasuWolf_Dark"
-                    ]
+                    ],
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2320,7 +2320,6 @@
         "x":  -732424.9,
         "y":  -396803.44,
         "z":  10404.58,
-        "name":  "Splatterina",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
@@ -2330,7 +2329,8 @@
                               "gx":  -1203,
                               "gy":  -1386
                           }
-                      ]
+                      ],
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2341,11 +2341,11 @@
         "x":  -555190,
         "y":  -188780,
         "z":  -426.55,
-        "name":  "Starryon",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2356,11 +2356,11 @@
         "x":  -6430,
         "y":  343440,
         "z":  110,
-        "name":  "Suzaku",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -2371,11 +2371,11 @@
         "x":  262590,
         "y":  75839,
         "z":  0,
-        "name":  "Whalaska",
         "source":  "NormalBossDefeatFlag",
         "verified":  false,
         "category":  "bounty",
-        "origin":  "manual"
+        "origin":  "manual",
+        "name":  "???"
     },
     {
         "key":  null,
@@ -4073,7 +4073,6 @@
     {
         "key":  null,
         "category":  "bounty",
-        "name":  "Knocklem",
         "gx":  -585,
         "gy":  -250,
         "x":  null,
@@ -4084,7 +4083,8 @@
         "source":  null,
         "origin":  "manual",
         "verified":  false,
-        "custom":  true
+        "custom":  true,
+        "name":  "???"
     },
     {
         "key":  "8A90507C4072E64608261F823D164154",
@@ -4841,14 +4841,14 @@
                               "gy":  642
                           }
                       ],
-        "name":  "Frostallion Noct",
         "key":  null,
         "gx":  689,
         "gy":  648,
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  65
+        "lv":  65,
+        "name":  "???"
     },
     {
         "species":  null,
@@ -4969,14 +4969,14 @@
         "origin":  "manual",
         "verified":  false,
         "custom":  true,
-        "name":  "Caprity Noct",
         "key":  "81_1_GRASS_FBOSS_28",
         "gx":  -147,
         "gy":  -660,
         "x":  null,
         "y":  null,
         "z":  null,
-        "lv":  null
+        "lv":  null,
+        "name":  "???"
     },
     {
         "species":  null,

@@ -1327,6 +1327,10 @@ function switchView(name){
   if(name==='effigies') initEffigyView();
   if(name==='pals' && !palsData) fetchPals();
   if(name==='eggs') fetchEggs();
+  // Pull the shared player (see "Shared player selection" above) into whichever tab we're
+  // switching to -- a player picked while looking at a different tab should already be
+  // selected here, not just the first time this tab's data happened to load this session.
+  applyCurrentPlayerToView(name);
   if(name==='datamine' && typeof fetchDataMine==='function') fetchDataMine();
   if(_dmLivePollTimer){clearInterval(_dmLivePollTimer);_dmLivePollTimer=null;}
   // Same idea as the Map tab's live poll above: a key picked up in-game should show up in
@@ -1741,6 +1745,62 @@ var PAL_LIST=[
 ];
 var paldeckData=null;
 
+// ---- Shared player selection --------------------------------------------------
+// Pals / Eggs / Paldeck / Map each have their own player dropdown, but they're all
+// really "which of the Six am I looking at" -- picking a player on one tab should carry
+// over to the others instead of each tracking its own independent filter. Stored as an
+// 8-hex prefix (pal_team_reader._guid_prefix's format: guid.slice(0,8).toUpperCase()) --
+// Pals/Eggs only ever see that prefix, never the full save-file guid (see pal_team_reader
+// read_players/_egg_record), so prefix is the lowest common denominator all four tabs can
+// compare against. localStorage, not the server-side /api/prefs system (PREFS_ENABLED) --
+// that one is public-site-only and already scoped to a single viewer=single player.
+var CURRENT_PLAYER_KEY='palbox-current-player';
+function getCurrentPlayerPrefix(){
+  try{ return localStorage.getItem(CURRENT_PLAYER_KEY)||''; }catch(e){ return ''; }
+}
+function setCurrentPlayerPrefix(prefix){
+  try{
+    if(!prefix){ localStorage.removeItem(CURRENT_PLAYER_KEY); return; }
+    if(localStorage.getItem(CURRENT_PLAYER_KEY)===prefix)return; // skip redundant writes (called from every render/poll tick)
+    localStorage.setItem(CURRENT_PLAYER_KEY,prefix);
+  }catch(e){}
+}
+function guidPrefix(guid){ return (guid||'').slice(0,8).toUpperCase(); }
+// First option in `sel` whose value shares the given 8-hex prefix -- for paldeck-player/
+// effigy-player, whose option values are the full guid rather than just the prefix.
+function _optionByPrefix(sel,prefix){
+  if(!sel||!prefix)return null;
+  for(var i=0;i<sel.options.length;i++){ if(guidPrefix(sel.options[i].value)===prefix) return sel.options[i]; }
+  return null;
+}
+// Falls back to the Map's persisted "Set Default" player (see EFF_DEFAULT_PLAYER_KEY
+// below) when no player has been picked yet this session on ANY tab.
+function getDefaultPlayerPrefix(){ return guidPrefix(typeof getDefaultPlayerGuid==='function'?getDefaultPlayerGuid():''); }
+// Pulls the shared player into `name`'s dropdown when switching to it (switchView), so a
+// player picked while looking at a different tab is already selected here rather than
+// each tab only picking it up the first time its data loads. No-ops for a tab whose data
+// isn't loaded yet -- its own populate function (fetchPals/buildEggOwnerSelect/fetchPaldeck/
+// populateEffigyPlayerDropdown) already applies the shared player as its initial default.
+function applyCurrentPlayerToView(name){
+  var prefix=getCurrentPlayerPrefix();
+  if(!prefix)return;
+  if(name==='pals'){
+    var sel=document.getElementById('pals-player');
+    if(sel&&sel.value!==prefix&&_optExists(sel,prefix)){ sel.value=prefix; renderPals(); }
+  }else if(name==='eggs'){
+    var sel=document.getElementById('eggs-owner');
+    if(sel&&sel.value!==prefix&&_optExists(sel,prefix)){ sel.value=prefix; renderEggs(); }
+  }else if(name==='paldeck'){
+    var sel=document.getElementById('paldeck-player');
+    var opt=_optionByPrefix(sel,prefix);
+    if(opt&&sel.value!==opt.value){ sel.value=opt.value; renderPaldeck(); }
+  }else if(name==='effigies'){
+    var sel=document.getElementById('effigy-player');
+    var opt=_optionByPrefix(sel,prefix);
+    if(opt&&sel.value!==opt.value){ sel.value=opt.value; effigyPlayerChanged(); }
+  }
+}
+
 // ---- Pal Box (individual Pals: stats, IVs, location) -------------------------
 var palsData=null;
 var PAL_LOOKUP=null;
@@ -1862,6 +1922,7 @@ function palPortrait(name){
 // Eggs in base storage, joined to the species they hatch and the owning player.
 // Tier (the _NN in PalEgg_Element_NN) maps to a rarity ramp grey->gold.
 var eggsData=null;
+var _eggsOwnerDefaulted=false; // buildEggOwnerSelect: only apply the shared/default player once per session
 var EGG_RARITY={1:{n:'T1',c:'#9ca3af'},2:{n:'T2',c:'#3fb950'},3:{n:'T3',c:'#58a6ff'},4:{n:'T4',c:'#a371f7'},5:{n:'T5',c:'#ffd84d'}};
 function eggOwnerLabel(e){ return e.ownerName||(e.owner?('Player '+e.owner.slice(0,6)):'Unowned (ghost storage)'); }
 async function fetchEggs(silent){
@@ -1897,12 +1958,21 @@ function buildEggOwnerSelect(){
     if(seen[key])return; seen[key]=1;
     opts+='<option value="'+esc(key)+'">'+esc(eggOwnerLabel(e))+'</option>';
   });
-  var cur=sel.value; sel.innerHTML=opts; sel.value=cur;
+  var cur=sel.value; sel.innerHTML=opts;
+  if(cur){ sel.value=cur; }
+  else if(!_eggsOwnerDefaulted){
+    // Fresh dropdown this session -- default to whichever player the other tabs are
+    // already looking at (or the Map's persisted default) instead of "All owners".
+    _eggsOwnerDefaulted=true;
+    var _defo=getCurrentPlayerPrefix()||getDefaultPlayerPrefix();
+    sel.value=(_defo&&_optExists(sel,_defo))?_defo:cur;
+  }else{ sel.value=cur; }
 }
 function renderEggs(){
   var area=document.getElementById('eggs-area');
   if(!eggsData){ area.innerHTML='<div class="empty-state">Loading...</div>'; return; }
   var owner=document.getElementById('eggs-owner').value;
+  if(owner) setCurrentPlayerPrefix(owner);
   var fLoc=document.getElementById('eggs-location').value;
   var sort=document.getElementById('eggs-sort').value;
   var q=(document.getElementById('eggs-search').value||'').trim().toLowerCase();
@@ -2569,7 +2639,13 @@ async function fetchPals(silent){
     (data.players||[]).forEach(function(p){
       var o=document.createElement('option');o.value=p.prefix;o.textContent=p.name;psel.appendChild(o);
     });
-    if(prev)psel.value=prev;
+    if(prev){ psel.value=prev; }
+    else{
+      // Fresh dropdown this session -- default to whichever player the other tabs are
+      // already looking at (or the Map's persisted default) instead of "All players".
+      var _cur=getCurrentPlayerPrefix()||getDefaultPlayerPrefix();
+      if(_cur&&_optExists(psel,_cur)) psel.value=_cur;
+    }
     // Location selector
     var lsel=document.getElementById('pals-location');
     if(lsel.options.length<=1){
@@ -2590,6 +2666,7 @@ function renderPals(){
   var area=document.getElementById('pals-area');
   if(!palsData||!palsData.pals){area.innerHTML='<div class="empty-state">No pal data</div>';return;}
   var fPlayer=document.getElementById('pals-player').value;
+  if(fPlayer) setCurrentPlayerPrefix(fPlayer);
   var fLoc=document.getElementById('pals-location').value;
   var sort=document.getElementById('pals-sort').value;
   var q=(document.getElementById('pals-search').value||'').trim().toLowerCase();
@@ -3114,8 +3191,15 @@ async function fetchPaldeck(){
       opt.value=p.guid; opt.textContent=p.name;
       sel.appendChild(opt);
     });
-    if(prev) sel.value=prev;
-    else{if((data.players||[]).length)sel.value=data.players[0].guid;}
+    if(prev){ sel.value=prev; }
+    else{
+      // Fresh dropdown this session -- default to whichever player the other tabs are
+      // already looking at (or the Map's persisted default) instead of the first player.
+      var _curp=getCurrentPlayerPrefix()||getDefaultPlayerPrefix();
+      var _optp=_curp?_optionByPrefix(sel,_curp):null;
+      if(_optp) sel.value=_optp.value;
+      else if((data.players||[]).length) sel.value=data.players[0].guid;
+    }
     maybeApplyPaldeckPrefs();
     renderPaldeck();
   }catch(e){
@@ -3131,6 +3215,7 @@ function renderPaldeck(){
   }
   var sel=document.getElementById('paldeck-player');
   var guid=sel.value;
+  if(guid) setCurrentPlayerPrefix(guidPrefix(guid));
   var player=(paldeckData.players||[]).find(function(p){return p.guid===guid;});
   if(!player){player=paldeckData.players[0];if(sel&&player)sel.value=player.guid;}
   if(!player){area.innerHTML='<div class="empty-state">Select a player</div>';return;}
@@ -3469,7 +3554,7 @@ function drawSpawnZones(){
   zones.forEach(function(z){
     hulls.push(z.hull);
     var poly=L.polygon(smoothPoly(z.hull,2),{
-      color:'#1f6feb',weight:2,opacity:0.95,fillColor:'#58a6ff',fillOpacity:0.3,lineJoin:'round'
+      color:'#f0883e',weight:2,opacity:0.95,fillColor:'#ffa657',fillOpacity:0.3,lineJoin:'round'
     }).addTo(palMapLeaflet);
     palZoneLayers.push(poly);
   });
@@ -3478,7 +3563,7 @@ function drawSpawnZones(){
   smalls.forEach(function(p){
     var ll=[p.ll.lat,p.ll.lng];
     for(var z=0;z<hulls.length;z++){ if(pointInPoly(ll,hulls[z])) return; }
-    var m=L.circleMarker(p.ll,{radius:6,color:'#1f6feb',weight:2,fillColor:'#58a6ff',fillOpacity:0.3}).addTo(palMapLeaflet);
+    var m=L.circleMarker(p.ll,{radius:6,color:'#f0883e',weight:2,fillColor:'#ffa657',fillOpacity:0.3}).addTo(palMapLeaflet);
     palZoneLayers.push(m);
   });
 }
@@ -3516,6 +3601,80 @@ var EFFIGY_MAX_RANK=353;
 var EFFIGY_CONFIRM_ENABLED=true;
 // Bigger dots on touch devices (no hover there, and a 5px dot is a tiny tap target).
 var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
+// Custom on-screen numpad for .dm-coord gx/gy inputs (Add Icon wizard, cave-entrance
+// modal, Unmapped Keys/Confirmed Locations tables) -- admin-only fields, all stripped
+// from the public site, so this never ships there. Touch-only: the native number
+// keyboard has no sign key and covers the field being edited, so on touch devices these
+// inputs go readonly+inputmode=none (coordKbAttr, spliced into every dm-coord <input>
+// template) and route through #coord-kb instead. Desktop keeps typing normally.
+var COORD_KB_ENABLED=(('ontouchstart' in window)||(navigator.maxTouchPoints>0));
+function coordKbAttr(){return COORD_KB_ENABLED?' readonly inputmode="none"':'';}
+// type="number" inputs reject/reset an in-progress value like "-" (not yet a complete
+// number) back to empty, so the sign toggle only ever stuck once digits followed it --
+// text avoids that live validation; the custom keypad is the only way to type into these
+// on touch anyway, so number's spinner/native-numeric-keyboard behavior isn't needed there.
+function coordKbType(){return COORD_KB_ENABLED?'text':'number';}
+var _coordKbTarget=null;
+function coordKbRefreshVal(){
+  if(!_coordKbTarget) return;
+  document.getElementById('coord-kb-val').textContent=_coordKbTarget.value;
+}
+// Every gx/gy pair shares the "X-gx"/"X-gy" id convention (ai-gx/ai-gy, entrance-gx/
+// entrance-gy, icon-detail-gx/gy, rowId+'-gx'/'-gy') -- null if el isn't a gx field or
+// has no gy partner in the DOM.
+function coordKbGyPartner(el){
+  if(!el||!/-gx$/.test(el.id)) return null;
+  return document.getElementById(el.id.replace(/-gx$/,'-gy'));
+}
+function coordKbOpen(el){
+  _coordKbTarget=el;
+  document.getElementById('coord-kb-label').textContent=el.placeholder||el.id;
+  coordKbRefreshVal();
+  document.getElementById('coord-kb-done-btn').innerHTML=coordKbGyPartner(el)?'Next':'&#10003; Done';
+  document.getElementById('coord-kb').style.display='';
+  if(el.scrollIntoView) el.scrollIntoView({block:'center',behavior:'smooth'});
+}
+function coordKbTap(d){
+  if(!_coordKbTarget) return;
+  _coordKbTarget.value=(_coordKbTarget.value||'')+d;
+  coordKbRefreshVal();
+}
+function coordKbSign(){
+  if(!_coordKbTarget) return;
+  var v=_coordKbTarget.value||'';
+  _coordKbTarget.value=v.charAt(0)==='-'?v.slice(1):('-'+v);
+  coordKbRefreshVal();
+}
+function coordKbBackspace(){
+  if(!_coordKbTarget) return;
+  _coordKbTarget.value=(_coordKbTarget.value||'').slice(0,-1);
+  coordKbRefreshVal();
+}
+// Button reads "Next" on gx (tabs straight to its gy partner instead of closing) and
+// "Done" on gy (or a gx with no gy partner in the DOM), see coordKbGyPartner/coordKbOpen.
+function coordKbDone(){
+  var t=_coordKbTarget, gyEl=coordKbGyPartner(t);
+  if(gyEl){ gyEl.focus(); return; }
+  if(t) t.blur();
+  document.getElementById('coord-kb').style.display='none';
+  _coordKbTarget=null;
+}
+// Delegated so table rows rendered later (Unmapped Keys/Confirmed Locations, built long
+// after this listener attaches) are covered without per-row wiring. focusin on anything
+// outside the panel closes it instead of leaving it stuck open on some other field.
+function coordKbInit(){
+  if(!COORD_KB_ENABLED) return;
+  ['ai-gx','ai-gy','entrance-gx','entrance-gy'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.type='text'; el.readOnly=true; el.inputMode='none'; }
+  });
+  document.addEventListener('focusin',function(e){
+    var t=e.target, kb=document.getElementById('coord-kb');
+    if(t&&t.classList&&t.classList.contains('dm-coord')) coordKbOpen(t);
+    else if(_coordKbTarget&&!kb.contains(t)) coordKbDone();
+  });
+}
+document.addEventListener('DOMContentLoaded',coordKbInit);
 // Effigy/journal glyphs are divIcons, not SVG dots, so they need their own (slightly
 // larger, so the shape actually reads) size in px rather than a radius.
 var EFF_ACORN_SZ=EFF_DOT_R*4;
@@ -5593,13 +5752,20 @@ function populateEffigyPlayerDropdown(){
   if(prev&&paldeckData.players.some(function(p){return p.guid===prev;})){
     sel.value=prev;
   }else{
-    // No live selection to preserve -- prefer the saved default player (Set Default button),
-    // then fall back to the first player in the roster.
-    var _def=getDefaultPlayerGuid();
-    if(_def&&paldeckData.players.some(function(p){return p.guid===_def;})){
-      sel.value=_def;
-    }else if(paldeckData.players.length){
-      sel.value=paldeckData.players[0].guid;
+    // No live selection to preserve -- prefer whichever player another tab is already
+    // looking at this session, then the saved default player (Set Default button), then
+    // fall back to the first player in the roster.
+    var _cure=getCurrentPlayerPrefix();
+    var _opte=_cure?_optionByPrefix(sel,_cure):null;
+    if(_opte){
+      sel.value=_opte.value;
+    }else{
+      var _def=getDefaultPlayerGuid();
+      if(_def&&paldeckData.players.some(function(p){return p.guid===_def;})){
+        sel.value=_def;
+      }else if(paldeckData.players.length){
+        sel.value=paldeckData.players[0].guid;
+      }
     }
   }
   maybeApplyEffigyPrefs();
@@ -5616,6 +5782,7 @@ var _effigyPlayerFetchDown=false;
 async function fetchEffigyPlayer(){
   var sel=document.getElementById('effigy-player');
   var guid=sel?sel.value:'';
+  if(guid) setCurrentPlayerPrefix(guidPrefix(guid));
   if(!guid){effigyCollected=[];renderEffigyMap();fetchJournalPlayer(guid);fetchBossPlayer(guid);fetchFugitivePlayer(guid);fetchEaglePlayer(guid);fetchTowerBossPlayer(guid);fetchItemPickupPlayer(guid);return;}
   if(guid!==_effLastPlayerGuid) document.getElementById('effigy-summary').textContent='Loading...';
   _effLastPlayerGuid=guid;
@@ -6144,8 +6311,8 @@ function dmKeyRowHtml(prop,key,players){
   var pJs=dmEscJs(prop.name), kJs=dmEscJs(key);
   return '<tr><td class="syn-key">'+esc(key)+'</td>'
     +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[prop.kind]+'</span></td>'
-    +(prop.noCoords?'':'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
-      +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>')
+    +(prop.noCoords?'':'<td><input class="dm-edit-input dm-coord" type="'+coordKbType()+'"'+coordKbAttr()+' id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
+      +' <input class="dm-edit-input dm-coord" type="'+coordKbType()+'"'+coordKbAttr()+' id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>')
     +(prop.noName?'':'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+(m.name==null?'':esc(m.name))+'" placeholder="(unmapped)">'
       +(m.fallback?' <span class="dm-kind-badge" title="Not yet in confirmed_locations.json -- shown from the existing scraped roster (effigies.json/journal_locations.json). Click Save to promote it.">roster</span>':'')+'</td>')
     +(prop.showType?'<td>'+dmTypeCell(key)+'</td>':'')
@@ -6840,8 +7007,8 @@ function renderDataMine(){
         return '<tr><td>'+esc(r.prop.name)+'</td><td class="syn-key">'+esc(r.key)+'</td>'
           +'<td><span class="dm-kind-badge">'+DATAMINE_KIND_LABEL[r.prop.kind]+'</span></td>'
           +(r.prop.noCoords?'<td style="color:var(--muted);text-align:center;">&#8212;</td>'
-            :'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
-            +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>')
+            :'<td><input class="dm-edit-input dm-coord" type="'+coordKbType()+'"'+coordKbAttr()+' id="'+rowId+'-gx" value="'+(m.gx==null?'':esc(m.gx))+'" placeholder="gx">'
+            +' <input class="dm-edit-input dm-coord" type="'+coordKbType()+'"'+coordKbAttr()+' id="'+rowId+'-gy" value="'+(m.gy==null?'':esc(m.gy))+'" placeholder="gy"></td>')
           +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" placeholder="(unmapped)">'+mapSelect+'</td>'
           +'<td><button class="btn btn-ghost dm-save-btn" onclick="saveDatamineMapping(\''+pJs+'\',\''+kJs+'\',\'um\')">Save</button></td>'
           +dmUnmappedDelCell(r,umSelP,pJs,kJs)+'</tr>';
@@ -6964,6 +7131,11 @@ function addIconCategoryChanged(){
 // unexplained server error.
 function findBountyNameConflict(name,excludeIdent){
   if(!name||!bossLocations) return null;
+  // Unconfirmed Field Bosses are deliberately named "???" (2026-07-22 bulk pass, see the
+  // palbox-bounty-tracker skill) and many legitimately share that exact placeholder -- a
+  // name containing "?" is never a real ambiguous-identity conflict, so skip the check
+  // entirely rather than prompting to rename an already-"???" pin to "???" again.
+  if(name.indexOf('?')!==-1) return null;
   var nameU=name.trim().toUpperCase();
   for(var i=0;i<bossLocations.length;i++){
     var b=bossLocations[i];
@@ -7231,8 +7403,8 @@ function iconDetailFooterHtml(ident){
     +lvField
     +bossField
     +'<div class="ai-field"><label>Coordinates (gx / gy)</label><div style="display:flex;gap:8px;">'
-    +'<input id="icon-detail-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">'
-    +'<input id="icon-detail-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy"></div></div>'
+    +'<input id="icon-detail-gx" class="pf-input dm-coord" style="flex:1;" type="'+coordKbType()+'"'+coordKbAttr()+' placeholder="gx">'
+    +'<input id="icon-detail-gy" class="pf-input dm-coord" style="flex:1;" type="'+coordKbType()+'"'+coordKbAttr()+' placeholder="gy"></div></div>'
     +'<div style="display:flex;gap:8px;margin-top:14px;">'
     +'<button type="button" class="btn btn-primary" id="icon-detail-save-btn">Save changes</button>'
     +'<button type="button" class="btn btn-ghost" id="icon-detail-delete-btn" style="color:#f85149;">Delete icon</button>'
@@ -7558,8 +7730,8 @@ function dmRenderCustomIcons(){
       return '<tr><td>'+esc(ADDICON_CATEGORY_LABELS[c.category]||c.category)+'</td>'
         +'<td><input class="dm-edit-input dm-name" type="text" id="'+rowId+'-name" value="'+esc(c.name||'')+'"></td>'
         +'<td><input class="dm-edit-input" style="width:150px;" type="text" id="'+rowId+'-key" value="'+esc(c.key||'')+'" placeholder="(none)">'+keySelect+'</td>'
-        +'<td><input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gx" value="'+(c.gx==null?'':esc(c.gx))+'" placeholder="gx">'
-          +' <input class="dm-edit-input dm-coord" type="number" id="'+rowId+'-gy" value="'+(c.gy==null?'':esc(c.gy))+'" placeholder="gy"></td>'
+        +'<td><input class="dm-edit-input dm-coord" type="'+coordKbType()+'"'+coordKbAttr()+' id="'+rowId+'-gx" value="'+(c.gx==null?'':esc(c.gx))+'" placeholder="gx">'
+          +' <input class="dm-edit-input dm-coord" type="'+coordKbType()+'"'+coordKbAttr()+' id="'+rowId+'-gy" value="'+(c.gy==null?'':esc(c.gy))+'" placeholder="gy"></td>'
         // The row's CURRENT gx/gy travel as identity too: a keyless effigy/itempickup has no key,
         // species or name to resolve by, so without these the server can't find it at all
         // ("No matching custom entry found" on both buttons). Numeric literals, not quoted.
@@ -8975,6 +9147,14 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
 .pm-bar-fill{height:100%;background:var(--green);border-radius:5px;}
 .pm-bar-fill.bar-exp{background:#22d3ee;}
 .pm-bar-fill.bar-trust{background:#f472b6;}
+/* Custom on-screen numpad for .dm-coord gx/gy inputs on touch devices, see coordKbInit. */
+.coord-kb{position:fixed;left:0;right:0;bottom:0;z-index:5000;background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(0,0,0,.4);padding:8px 10px calc(8px + env(safe-area-inset-bottom));}
+.coord-kb-head{display:flex;align-items:center;gap:8px;padding:2px 4px 8px;}
+.coord-kb-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+.coord-kb-val{flex:1;font-size:16px;font-weight:600;font-family:'Cascadia Code','Consolas',monospace;}
+.coord-kb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.coord-kb-grid button{height:48px;font-size:20px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;}
+.coord-kb-grid button:active{background:var(--border);}
 </style>
 <div id="pal-modal-overlay" class="pal-modal-overlay" onclick="if(event.target===this)closePalModal()"><div class="pal-modal" id="pal-modal-body"></div></div>
 <div id="skill-modal-overlay" class="pal-modal-overlay" style="z-index:700;align-items:center;" onclick="if(event.target===this)closeSkillModal()"><div class="pal-modal" id="skill-modal-body" style="max-width:420px;"></div></div>
@@ -9022,8 +9202,8 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
       <div class="ai-field">
         <label>Coordinates (gx / gy)</label>
         <div style="display:flex;gap:8px;">
-          <input id="ai-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">
-          <input id="ai-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy">
+          <input id="ai-gx" class="pf-input dm-coord" style="flex:1;" type="number" placeholder="gx">
+          <input id="ai-gy" class="pf-input dm-coord" style="flex:1;" type="number" placeholder="gy">
         </div>
       </div>
       <div class="hint">Next you'll be walked through triggering this in-game so its save key records automatically.</div>
@@ -9066,8 +9246,8 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     <div class="ai-field">
       <label>Coordinates (gx / gy)</label>
       <div style="display:flex;gap:8px;">
-        <input id="entrance-gx" class="pf-input" style="flex:1;" type="number" placeholder="gx">
-        <input id="entrance-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy">
+        <input id="entrance-gx" class="pf-input dm-coord" style="flex:1;" type="number" placeholder="gx">
+        <input id="entrance-gy" class="pf-input dm-coord" style="flex:1;" type="number" placeholder="gy">
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
@@ -9104,6 +9284,27 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
       <button class="btn btn-ghost" onclick="closeIconDetail()" style="font-size:14px;">&times; Close</button>
     </div>
     <div id="icon-detail-body"></div>
+  </div>
+</div>
+<div id="coord-kb" class="coord-kb" style="display:none;">
+  <div class="coord-kb-head">
+    <span class="coord-kb-label" id="coord-kb-label"></span>
+    <span class="coord-kb-val" id="coord-kb-val"></span>
+    <button class="btn btn-primary" id="coord-kb-done-btn" onclick="coordKbDone()">&#10003; Done</button>
+  </div>
+  <div class="coord-kb-grid">
+    <button onclick="coordKbTap('1')">1</button>
+    <button onclick="coordKbTap('2')">2</button>
+    <button onclick="coordKbTap('3')">3</button>
+    <button onclick="coordKbTap('4')">4</button>
+    <button onclick="coordKbTap('5')">5</button>
+    <button onclick="coordKbTap('6')">6</button>
+    <button onclick="coordKbTap('7')">7</button>
+    <button onclick="coordKbTap('8')">8</button>
+    <button onclick="coordKbTap('9')">9</button>
+    <button onclick="coordKbSign()">&minus;</button>
+    <button onclick="coordKbTap('0')">0</button>
+    <button onclick="coordKbBackspace()" aria-label="Backspace">&#9003;</button>
   </div>
 </div>
 <script>
