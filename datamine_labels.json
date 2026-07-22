@@ -3886,5 +3886,85 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "BLUEPLATYPUS_FIRE",
+        "name":  "Fuack Ignis",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "BluePlatypus_Fire",
+        "name":  "Fuack Ignis",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "FEATHEROSTRICH",
+        "name":  "Dazemu",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "FeatherOstrich",
+        "name":  "Dazemu",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "MUMMYPAL",
+        "name":  "Gildra",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "MummyPal",
+        "name":  "Gildra",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "CUBETURTLE",
+        "name":  "Tetroise",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "CubeTurtle",
+        "name":  "Tetroise",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "CACTUSDOLL",
+        "name":  "Needoll",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "CactusDoll",
+        "name":  "Needoll",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

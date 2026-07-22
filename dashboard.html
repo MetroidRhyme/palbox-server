@@ -57,7 +57,7 @@ html.map-locked,body.map-locked{overflow:hidden;overscroll-behavior:none;height:
    frame around the book glyph / Pal portrait, colored red/yellow/green per status inline
    (see statusRingIcon's JS), same divIcon plumbing as the acorn glyph above. Journals never
    dim like effigies never dim -- the ring color itself is the status signal. */
-.status-ring{width:100%;height:100%;border-radius:50%;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.85);background:#1a1a1a;box-sizing:border-box;}
+.status-ring{width:100%;height:100%;border-radius:50%;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.85);background:#1a1a1a;box-sizing:border-box;display:flex;align-items:center;justify-content:center;}
 .status-ring img{border-radius:50%;object-fit:cover;}
 /* Map fullscreen (toggleEffigyFullscreen) -- the Fullscreen API makes #eff-map-wrap fill
    the physical screen outside normal page layout, so it needs its own explicit size/bg
@@ -271,6 +271,17 @@ tr.save-live-row>td:first-child{box-shadow:inset 3px 0 0 var(--green);}
 
   /* Map "Filters" panel: taller touch rows than the ~20px mouse-sized default */
   #eff-filter-body button{padding:8px!important;}
+
+  /* Map top-right controls + World Tree switcher: the switcher used to sit centered
+     at the same top:8px row as Follow/Fullscreen and was wide enough (both map-name
+     buttons) to overlap them on phone widths -- "The World Tree" button landed right
+     on top of "Follow". Moving the switcher to the bottom of the map avoids that row
+     entirely (nothing else is docked at the bottom), and all three get bigger
+     touch targets. !important is needed because the buttons carry inline
+     font-size/padding. */
+  #eff-follow-btn,#eff-fullscreen-btn{padding:8px 12px!important;font-size:13px!important;}
+  #eff-map-switch{top:auto!important;bottom:8px!important;}
+  #eff-map-switch button{padding:8px 14px!important;font-size:12px!important;}
 }
 
 /* ---- Pal Box ---- */
@@ -3658,7 +3669,7 @@ function towerIcon(bossStatus,locked){
 // same red/yellow/green status convention as every other category via statusRingIcon; the
 // rocket body itself stays a fixed silver/gray regardless of status, same as how the eagle/
 // tower compass images don't change color themselves.
-var ROCKET_IMG='<svg viewBox="0 0 24 24" width="15" height="15" style="display:block;margin:auto;">'
+var ROCKET_IMG='<svg viewBox="0 0 24 24" width="70%" height="70%" style="display:block;">'
   +'<path fill="#cfd6e0" d="M12 2c-2.2 2.6-3.4 6-3.4 9.6 0 2.1 1 4.3 3.4 5.6 2.4-1.3 3.4-3.5 3.4-5.6C15.4 8 14.2 4.6 12 2z"></path>'
   +'<circle cx="12" cy="9.4" r="1.5" fill="#0d1117"></circle>'
   +'<path fill="#8a94a6" d="M8.6 11.4l-2.6 4.2 3.4-1.2z"></path>'
@@ -3673,7 +3684,7 @@ function samSiteIcon(status){
 // Schematic (itempickup) marker (added 2026-07-14): locked-building blueprint chests. No paldb
 // compass icon exists, so a hand-drawn ASCII-only inline SVG (per the global no-non-ASCII rule)
 // -- a blueprint page (folded corner + line rulings), same statusRingIcon convention as SAM.
-var BLUEPRINT_IMG='<svg viewBox="0 0 24 24" width="15" height="15" style="display:block;margin:auto;">'
+var BLUEPRINT_IMG='<svg viewBox="0 0 24 24" width="70%" height="70%" style="display:block;">'
   +'<path fill="#e6ebf2" d="M6 2h9l4 4v16H6z"></path>'
   +'<path fill="#9aa4b5" d="M15 2l4 4h-4z"></path>'
   +'<rect x="8" y="9" width="8" height="1.4" fill="#2f6fb0"></rect>'
@@ -3979,7 +3990,7 @@ function caveMarkerIcon(color){
   var k='cave|'+color;
   if(_iconMemo[k]) return _iconMemo[k];
   // Cave-mouth arch (ASCII-only inline SVG -- no emoji, per the global encoding rule).
-  var svg='<svg viewBox="0 0 24 24" width="15" height="15" style="display:block;margin:auto;">'
+  var svg='<svg viewBox="0 0 24 24" width="70%" height="70%" style="display:block;">'
     +'<path fill="'+color+'" d="M12 4C7.6 4 4 7.6 4 12v8h4v-6a4 4 0 0 1 8 0v6h4v-8c0-4.4-3.6-8-8-8z"></path></svg>';
   var html='<div class="status-ring" style="border:2px solid '+color+';background:#0d1117;display:flex;align-items:center;justify-content:center;">'+svg+'</div>';
   return _iconMemo[k]=L.divIcon({className:'eff-map-marker',html:html,iconSize:[EFF_ACORN_SZ,EFF_ACORN_SZ],iconAnchor:[EFF_ACORN_SZ/2,EFF_ACORN_SZ/2]});
