@@ -3838,5 +3838,53 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "PINKLIZARD",
+        "name":  "Lovander",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "PinkLizard",
+        "name":  "Lovander",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "CACTUSDOLL_DARK",
+        "name":  "Needoll Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "CactusDoll_Dark",
+        "name":  "Needoll Noct",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "SKYDRAGON_GRASS",
+        "name":  "Quivern Botan",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "SkyDragon_Grass",
+        "name":  "Quivern Botan",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]
