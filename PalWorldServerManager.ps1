@@ -2569,7 +2569,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         # Which base map the pin lands on (World Tree vs. overworld) -- the client
                         # sends the Map tab's active map. Allowlisted; anything else is overworld.
                         $map = if ([string]$body.map -eq 'treemap8') { 'treemap8' } else { 'map8' }
-                        $newRow = Add-CustomMapEntry $category $key $name $species $gx $gy $map
+                        # lv/boss/bossPal (2026-07-22): Add Icon wizard fields for Field Boss/
+                        # Wanted Fugitive (level) and Tower (level + boss/partner names),
+                        # captured on the same page as the display name, before recording starts.
+                        $lv = if ($null -ne $body.lv -and [string]$body.lv -ne '') { [int]$body.lv } else { $null }
+                        $boss = if ($body.boss) { [string]$body.boss } else { $null }
+                        $bossPal = if ($body.bossPal) { [string]$body.bossPal } else { $null }
+                        $newRow = Add-CustomMapEntry $category $key $name $species $gx $gy $map $lv $boss $bossPal
                         Send-Response $res 200 "application/json" (ConvertTo-Json @{ ok=$true; entry=$newRow } -Depth 6 -Compress)
                     } catch {
                         Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
@@ -3446,12 +3452,17 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             $coordCat = switch ($property) {
                                 'RelicObtainForInstanceFlag' { 'effigy' }
                                 'ItemPickupObtainForInstanceFlag' { 'itempickup' }
+                                # sam/journal added 2026-07-22 alongside their Add Icon wizard steps --
+                                # both can now be keyless-and-nameless too (see CoordIdentityCategories).
+                                'DestroyedWeapon' { 'sam' }
+                                'NoteObtainForInstanceFlag' { 'journal' }
                                 default { $null }
                             }
                             if (-not $existing -and $coordCat -and $null -ne $gx -and $null -ne $gy) {
-                                # Effigy/itempickup pins can be keyless-and-nameless (a coords-first pin
-                                # you record the key for by playing), so the name-fallback above can't
-                                # attach a freshly-recorded key to the existing keyless pin. Match by
+                                # Effigy/itempickup/sam/journal pins can be keyless-and-nameless (a
+                                # coords-first pin you record the key for by playing), so the
+                                # name-fallback above can't attach a freshly-recorded key to the
+                                # existing keyless pin. Match by
                                 # gx/gy instead -- its only identity while keyless (2026-07-13 effigy,
                                 # 2026-07-14 itempickup "Record next key") -- so recording re-keys that
                                 # pin in place rather than creating a visually-duplicate second pin at

@@ -331,6 +331,11 @@ function Get-MapCategoryJson([string]$category) {
             # instead of deriving it from x/y client-side -- keep emitting it to match.
             if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
             else { $grid = ConvertTo-GridXY $xy.x $xy.y $rowMap; $out.gx = $grid.gx; $out.gy = $grid.gy }
+            # A keyless AND nameless journal only exists mid-wizard (2026-07-22, "coords ->
+            # record -> name") -- every real (scraped or hand-typed) journal row already has a
+            # name even while keyless, so this deliberately does NOT fire for any of them; only
+            # gates the transient wizard state before its display name is saved.
+            if (-not $c.key -and -not $c.name) { $out.pending = $true }
         }
         if ($category -eq 'itempickup') {
             # itempickup (Schematic) resolves a keyless pin by its gx/gy grid identity (like a
@@ -342,6 +347,16 @@ function Get-MapCategoryJson([string]$category) {
             if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
             else { $grid = ConvertTo-GridXY $xy.x $xy.y $rowMap; $out.gx = $grid.gx; $out.gy = $grid.gy }
             if (-not $c.key) { $out.pending = $true }
+        }
+        if ($category -eq 'sam' -and -not $c.key -and -not $c.name) {
+            # SAM Site's Add Icon wizard is "coords -> record" with no name step at all
+            # (2026-07-22) -- a brand-new pin starts fully keyless AND nameless, identified
+            # purely by gx/gy exactly like effigy/itempickup. Every existing (scraped) SAM row
+            # already has a real name even while keyless, so this never fires for them -- only
+            # for the transient state between wizard creation and its key being recorded.
+            if ($null -ne $c.gx -and $null -ne $c.gy) { $out.gx = $c.gx; $out.gy = $c.gy }
+            else { $grid = ConvertTo-GridXY $xy.x $xy.y $rowMap; $out.gx = $grid.gx; $out.gy = $grid.gy }
+            $out.pending = $true
         }
         $ents = ConvertTo-EntranceList $c
         if ($ents) { $out.entrances = @($ents) }
@@ -417,7 +432,15 @@ function Set-MapConfirmVerified([string]$category, [string]$key, [string]$specie
 # two keyless ones can't share a spot (ambiguous to the key recorder). Every other category
 # resolves a keyless pin by name/species instead. Used by Find-ConfirmedRow / Add-CustomMapEntry
 # / Edit-MapEntry below.
-$script:CoordIdentityCategories = @('effigy', 'itempickup')
+#
+# sam and journal joined 2026-07-22 for the same reason as itempickup: their Add Icon wizard
+# steps are "coords -> record" (sam) / "coords -> record -> name" (journal), i.e. a brand-new
+# pin is created with no name at all yet. Both categories' EXISTING data is exclusively
+# keyless-but-NAMED (every scraped sam/journal row already carries a real display name) --
+# Get-MapCategoryJson only sets the "pending" flag (and buildSamMarker/buildJournalMarker only
+# hide Confirm/cave) when a row is BOTH keyless AND nameless, so none of that existing data is
+# affected; this only ever fires for a wizard-created row before its key is recorded.
+$script:CoordIdentityCategories = @('effigy', 'itempickup', 'sam', 'journal')
 
 # The 8 map categories the "Add Icon" manual-creation feature supports -- npc/landmark
 # stay retired (see Get-CategoryForEntry's note below on why), so they're deliberately
@@ -436,7 +459,7 @@ $script:CustomIconCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'eag
 # keyless "custom" effigy pin would silently never render. Every other category may be
 # keyless (bounty/fugitive/eagle routinely are, per the existing schema) and is
 # identified by name/species instead, same convention Find-ConfirmedRow already uses.
-function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [string]$species, $gx, $gy, [string]$map = 'map8') {
+function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [string]$species, $gx, $gy, [string]$map = 'map8', $lv = $null, $boss = $null, $bossPal = $null) {
     if ($category -notin $script:CustomIconCategories) { throw "Unsupported category: $category" }
     # Which base map the pin belongs to. Only 'treemap8' (World Tree) is stored; the overworld
     # default is left absent on the row (Get-EntryMap treats absent as 'map8'), so overworld pins
@@ -485,6 +508,14 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
         x = $null; y = $null; z = $null; species = $speciesVal; lv = $null; source = $null
         origin = 'manual'; verified = $false; custom = $true
     }
+    # lv/boss/bossPal (2026-07-22): the Add Icon wizard captures Field Boss/Wanted Fugitive's
+    # level and Tower's level + boss/partner-Pal names on the SAME page as the display name
+    # (before recording starts), unlike a scraped import which never has these at creation.
+    # Untyped params (not [string]/[int]) so $null passes through as $null instead of coercing
+    # to '' or 0 -- same reasoning as $keyVal/$nameVal/$speciesVal above.
+    if ($null -ne $lv -and [string]$lv -ne '') { $newEntry.lv = $lv }
+    if ($boss) { $newEntry | Add-Member -NotePropertyName boss -NotePropertyValue $boss }
+    if ($bossPal) { $newEntry | Add-Member -NotePropertyName bossPal -NotePropertyValue $bossPal }
     # Only the World Tree carries an explicit map tag; overworld pins stay tag-free (Get-EntryMap
     # reads absent as 'map8'), so this doesn't change how existing/overworld rows serialize.
     if ($mapVal -eq 'treemap8') { $newEntry | Add-Member -NotePropertyName map -NotePropertyValue 'treemap8' }

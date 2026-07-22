@@ -1364,38 +1364,31 @@ var _mapRosterPollTimer=null;
 var _mapDataminePollTimer=null;
 var _instancesPollTimer=null;
 // Same data fetch the Data Mine tab's own dmLivePollTick uses, but scoped to the Map tab:
-// refreshes dmFullPlayers/dmMappings so dmComputeUnmappedRows() (the shared source for both
-// the Add Icon modal's key dropdown and the Key Available badge) is never stale just because
-// Anthony hasn't visited the Data Mine tab this session. Doesn't call renderDataMine -- that
-// tab isn't on screen -- only refreshes what's actually visible here: an already-open Add
-// Icon modal's dropdown (skipped while that dropdown itself is focused, so a poll tick can't
-// yank a selection out from under a click) and the badge.
+// refreshes dmFullPlayers/dmMappings so dmComputeUnmappedRows() (the shared source for the Data
+// Mine tab's Custom Icons "Relink key..." dropdown and the Key Available badge) is never stale
+// just because Anthony hasn't visited the Data Mine tab this session. Doesn't call
+// renderDataMine -- that tab isn't on screen -- only refreshes the badge, the only thing
+// actually visible here (the Add Icon modal itself has no key dropdown of its own to refresh
+// since 2026-07-22 -- every category is wizard-only now, see AIW_WIZARD_CATEGORIES).
 async function mapDataminePollTick(){
-  // dmFetchAndApply/addIconCategoryChanged live inside the "-- Data Mine tab --" JS block
-  // that gen_public_site.ps1 strips entirely for the public build (admin-only feature) --
-  // typeof-guard rather than calling directly, same idiom switchView already uses for
-  // fetchDataMine, so this is a silent no-op on the public site instead of a ReferenceError.
+  // dmFetchAndApply lives inside the "-- Data Mine tab --" JS block that gen_public_site.ps1
+  // strips entirely for the public build (admin-only feature) -- typeof-guard rather than
+  // calling directly, same idiom switchView already uses for fetchDataMine, so this is a
+  // silent no-op on the public site instead of a ReferenceError.
   if(typeof dmFetchAndApply!=='function') return;
   try{
     await dmFetchAndApply();
   }catch(e){
     return;
   }
-  var overlay=document.getElementById('addicon-modal-overlay');
-  var keySel=document.getElementById('ai-key');
-  // Only re-populate the open modal's key dropdown while it's still on its default/blank
-  // selection -- once Anthony has actually picked a key, a poll tick must never yank that
-  // choice out from under him (rebuilding the <select>'s options resets it to index 0).
-  if(overlay && overlay.style.display==='flex' && keySel && document.activeElement!==keySel && keySel.value===''){
-    addIconCategoryChanged();
-  }
   updateKeyAvailableBadge();
 }
 // Lights up the "Key Available" badge next to + Add Icon whenever at least one unmapped
-// save-flag key is linkable to one of the 6 Add-Icon categories (same subset
-// dmUnmappedKeysForCategory draws from -- iconCategories is the whitelist of properties an
-// Add Icon dropdown can ever show a real key for; effigy's RelicObtainForInstanceFlag has none,
-// by design, see dmUnmappedKeysForCategory's comment).
+// save-flag key is linkable to a category (same subset dmUnmappedKeysForCategory draws from --
+// iconCategories is the whitelist of properties the Data Mine tab's Custom Icons "Relink key..."
+// dropdown can ever show a real key for; effigy's RelicObtainForInstanceFlag has none, by
+// design, see dmUnmappedKeysForCategory's comment). The Add Icon modal itself has no key
+// dropdown of its own (2026-07-22) -- badge just signals "something's ready to Record".
 function updateKeyAvailableBadge(){
   var badge=document.getElementById('eff-key-available-badge');
   // badge is stripped from the DOM entirely on the public build, and dmComputeUnmappedRows
@@ -3981,7 +3974,7 @@ function buildDotMarker(ll,cat,status,tip){
 // glance shows which surface opening leads to which buried icon. buildCaveMarker/
 // caveMarkerIcon/desireEntrances all live OUTSIDE the Data Mine strip zone (they must run on
 // the public site too -- the cave + line are map data); only the admin add/remove controls
-// (openEntranceModal etc., near saveAddIcon) are stripped/gated behind EFFIGY_CONFIRM_ENABLED.
+// (openEntranceModal etc., near aiWizardStartRecord) are stripped/gated behind EFFIGY_CONFIRM_ENABLED.
 function caveMarkerIcon(color){
   var k='cave|'+color;
   if(_iconMemo[k]) return _iconMemo[k];
@@ -4353,34 +4346,47 @@ function journalTipBody(j,confirmed,jGot,jStatus,trackable,panel){
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet found</b>'
     : jGot ? '<b style="color:#58a6ff">Found (not yet logged)</b>'
     : confirmed ? '<b style="color:#e3b341">Manually logged (not yet found)</b>'
+    : j.pending ? '<span style="color:#8a8f98">Pending -- record its key</span>'
     : trackable ? '<b style="color:#f85149">Unconfirmed</b>'
     : '<span style="color:#8a8f98">Found status unknown</span>';
   return jStatusLabel+tipCoordsHtml(j.gx,j.gy,panel);
 }
+// journalLabel/j.name may be null while j.pending (2026-07-22, Add Icon wizard's "coords ->
+// record -> name" flow -- see COORD_IDENTITY_CATEGORIES) -- every real (scraped/hand-typed)
+// journal entry already has a name even while keyless, so this only shows for that transient
+// wizard state, mirroring itemPickupLabel.
+function journalLabel(j){ return j&&j.name ? j.name : 'Journal (unnamed)'; }
 function buildJournalMarker(j,confirmed,jGot,jStatus,trackable){
+  var lbl=journalLabel(j);
   var jm=L.marker(effigyRposToLatLng(j.x,j.y),{icon:journalBookIcon(jStatus),interactive:true});
   var jTip=journalTipBody(j,confirmed,jGot,jStatus,trackable);
-  jm.bindTooltip('<b style="color:#1673d1">'+j.name+'</b><br>'+jTip,
+  jm.bindTooltip('<b style="color:#1673d1">'+esc(lbl)+'</b><br>'+jTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   jm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   if(EFFIGY_CONFIRM_ENABLED){
-    var jChkId='journal-confirm-'+(j.key||j.name).replace(/[^a-zA-Z0-9]/g,'_');
-    var jMapBtnId='journal-mapkey-'+j.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var pending=!!j.pending;
+    var idBase=String(j.key||('c'+j.gx+'x'+j.gy)).replace(/[^a-zA-Z0-9]/g,'_');
+    var jChkId='journal-confirm-'+idBase;
+    var jMapBtnId='journal-mapkey-'+idBase;
     jm.on('click',function(){
-      var ident={category:'journal',map:(j&&j.map)||'map8',key:j.key||null,species:null,name:j.name,lv:null,gx:j.gx,gy:j.gy,label:j.name};
+      var ident={category:'journal',map:(j&&j.map)||'map8',key:j.key||null,species:null,name:j.name||null,lv:null,gx:j.gx,gy:j.gy,label:lbl};
+      // Pending (keyless AND nameless): confirm/cave resolve by an identity that doesn't exist
+      // yet, so hide them (same as a pending Schematic/effigy) -- "Map to key..." still applies.
       var bodyHtml=detailSectionHtml('Status',journalTipBody(j,confirmed,jGot,jStatus,trackable,true))
-        +detailActionsHtml([detailConfirmHtml(jChkId,confirmed)],
-          [(!trackable&&mapKeyAvailableForCategory('Journal'))?mapKeyButtonHtml(jMapBtnId):'',caveAddButtonHtml()]);
-      openIconDetail('Journal',j.name,bodyHtml,ident,jm,function(el){
+        +(pending?detailActionsHtml([],mapKeyAvailableForCategory('Journal')?[mapKeyButtonHtml(jMapBtnId)]:[])
+                 :detailActionsHtml([detailConfirmHtml(jChkId,confirmed)],
+                    [(!trackable&&mapKeyAvailableForCategory('Journal'))?mapKeyButtonHtml(jMapBtnId):'',caveAddButtonHtml()]));
+      openIconDetail('Journal',lbl,bodyHtml,ident,jm,function(el){
+        if(pending){ wireMapKeyButton(el,jMapBtnId,'Journal',j.name||null,j.gx,j.gy,jm,(j&&j.map)||'map8'); return; }
         var box=el.querySelector('#'+jChkId);
-        if(box) box.onchange=function(){ toggleMapConfirm('journal',j.key||null,box.checked,j.name); };
-        if(!trackable) wireMapKeyButton(el,jMapBtnId,'Journal',j.name,j.gx,j.gy,jm,(j&&j.map)||'map8');
-        wireCaveAdd(el,{category:'journal',key:j.key,name:j.name,label:j.name});
+        if(box) box.onchange=function(){ toggleMapConfirm('journal',j.key||null,box.checked,j.name||null); };
+        if(!trackable) wireMapKeyButton(el,jMapBtnId,'Journal',j.name||null,j.gx,j.gy,jm,(j&&j.map)||'map8');
+        wireCaveAdd(el,{category:'journal',key:j.key,name:j.name||null,label:lbl});
       });
     });
   } else {
-    jm.bindPopup('<b style="color:#1673d1">'+esc(j.name)+'</b><br>'+jTip+reportButtonHtml('journal',j.key||j.name,j.name),{className:'eff-tip'});
-    jm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'journal',j.key||j.name,j.name); });
+    jm.bindPopup('<b style="color:#1673d1">'+esc(lbl)+'</b><br>'+jTip+reportButtonHtml('journal',j.key||lbl,lbl),{className:'eff-tip'});
+    jm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'journal',j.key||lbl,lbl); });
   }
   return jm;
 }
@@ -4598,34 +4604,51 @@ function samTipBody(s,confirmed,sGot,sStatus,panel){
     : MAP_STATUS_TWO_STATE ? '<b style="color:#f85149">Not yet destroyed</b>'
     : sGot ? '<b style="color:#58a6ff">Destroyed (not yet confirmed)</b>'
     : confirmed ? '<b style="color:#e3b341">Confirmed (not yet destroyed)</b>'
+    : s.pending ? '<span style="color:#8a8f98">Pending -- record its key</span>'
     : '<b style="color:#f85149">Unconfirmed</b>';
   return sLabel+tipCoordsHtml(cx,cy,panel);
 }
+// samLabel/s.name may be null while s.pending (2026-07-22, Add Icon wizard's "coords -> record"
+// flow, no name step at all -- see COORD_IDENTITY_CATEGORIES) -- every real (scraped/hand-typed)
+// SAM Site already has a name even while keyless, so this only shows for that transient wizard
+// state, mirroring itemPickupLabel.
+function samLabel(s){ return s&&s.name ? s.name : 'SAM Site (unnamed)'; }
 function buildSamMarker(s,confirmed,sGot,sStatus){
+  var lbl=samLabel(s);
   var sm=L.marker(effigyRposToLatLng(s.x,s.y),{icon:samSiteIcon(sStatus),interactive:true});
   var sTip=samTipBody(s,confirmed,sGot,sStatus);
-  sm.bindTooltip('<b style="color:#111;">'+s.name+'</b><br>'+sTip,
+  sm.bindTooltip('<b style="color:#111;">'+esc(lbl)+'</b><br>'+sTip,
     {direction:'top',offset:[0,-6],className:'eff-tip',opacity:0.97});
   sm.on('mouseover',_effMarkerOver).on('mouseout',_effMarkerOut);
   if(EFFIGY_CONFIRM_ENABLED){
-    var sChkId='sam-confirm-'+s.name.replace(/[^a-zA-Z0-9]/g,'_');
-    var sMapBtnId='sam-mapkey-'+s.name.replace(/[^a-zA-Z0-9]/g,'_');
+    var pending=!!s.pending;
+    var idBase=String(s.key||('c'+s.gx+'x'+s.gy)).replace(/[^a-zA-Z0-9]/g,'_');
+    var sChkId='sam-confirm-'+idBase;
+    var sMapBtnId='sam-mapkey-'+idBase;
     sm.on('click',function(){
       var g=worldToGrid(s.x,s.y);
-      var ident={category:'sam',map:(s&&s.map)||'map8',key:s.key||null,species:null,name:s.name,lv:null,gx:g.cx,gy:g.cy,label:s.name};
+      // Keyless identity is gx/gy (like a pending effigy/Schematic). Carry the EXACT stored
+      // gx/gy the backend emitted -- NOT the round-tripped worldToGrid -- so edit/record
+      // resolve the row (see buildItemPickupMarker's identical comment).
+      var gx=(s.gx!=null?s.gx:g.cx), gy=(s.gy!=null?s.gy:g.cy);
+      var ident={category:'sam',map:(s&&s.map)||'map8',key:s.key||null,species:null,name:s.name||null,lv:null,gx:gx,gy:gy,label:lbl};
+      // Pending (keyless AND nameless): confirm/cave resolve by an identity that doesn't exist
+      // yet, so hide them (same as a pending Schematic/effigy) -- "Map to key..." still applies.
       var bodyHtml=detailSectionHtml('Status',samTipBody(s,confirmed,sGot,sStatus,true))
-        +detailActionsHtml([detailConfirmHtml(sChkId,confirmed)],
-          [(!s.key&&mapKeyAvailableForCategory('SAM Site'))?mapKeyButtonHtml(sMapBtnId):'',caveAddButtonHtml()]);
-      openIconDetail('SAM Site',s.name,bodyHtml,ident,sm,function(el){
+        +(pending?detailActionsHtml([],mapKeyAvailableForCategory('SAM Site')?[mapKeyButtonHtml(sMapBtnId)]:[])
+                 :detailActionsHtml([detailConfirmHtml(sChkId,confirmed)],
+                    [(!s.key&&mapKeyAvailableForCategory('SAM Site'))?mapKeyButtonHtml(sMapBtnId):'',caveAddButtonHtml()]));
+      openIconDetail('SAM Site',lbl,bodyHtml,ident,sm,function(el){
+        if(pending){ wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name||null,gx,gy,sm,(s&&s.map)||'map8'); return; }
         var box=el.querySelector('#'+sChkId);
-        if(box) box.onchange=function(){ toggleMapConfirm('sam',s.key||null,box.checked,s.name); };
-        if(!s.key) wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name,g.cx,g.cy,sm,(s&&s.map)||'map8');
-        wireCaveAdd(el,{category:'sam',key:s.key||null,name:s.name,label:s.name});
+        if(box) box.onchange=function(){ toggleMapConfirm('sam',s.key||null,box.checked,s.name||null); };
+        if(!s.key) wireMapKeyButton(el,sMapBtnId,'SAM Site',s.name||null,gx,gy,sm,(s&&s.map)||'map8');
+        wireCaveAdd(el,{category:'sam',key:s.key||null,name:s.name||null,label:lbl});
       });
     });
   } else {
-    sm.bindPopup('<b style="color:#111;">'+esc(s.name)+'</b><br>'+sTip+reportButtonHtml('sam',s.name,s.name),{className:'eff-tip'});
-    sm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'sam',s.name,s.name); });
+    sm.bindPopup('<b style="color:#111;">'+esc(lbl)+'</b><br>'+sTip+reportButtonHtml('sam',s.name||lbl,lbl),{className:'eff-tip'});
+    sm.on('popupopen',function(e){ wireReportButton(e.popup.getElement(),'sam',s.name||lbl,lbl); });
   }
   return sm;
 }
@@ -6461,7 +6484,10 @@ function _recordViewOwns(rec){
 // Categories whose KEYLESS pins are identified purely by gx/gy -- effigy has no name at all,
 // and a Schematic is created coords-first and named later. Mirrors map_data_lib.ps1's
 // $script:CoordIdentityCategories; every other category resolves a keyless pin by name/species.
-var COORD_IDENTITY_CATEGORIES=['effigy','itempickup'];
+// sam/journal joined 2026-07-22 (their Add Icon wizard steps also start coords-first, with no
+// name yet) -- see that file's CoordIdentityCategories comment for why their existing
+// keyless-but-named data is unaffected.
+var COORD_IDENTITY_CATEGORIES=['effigy','itempickup','sam','journal'];
 
 function isRecordableKeyless(ident){
   return !!(ident&&!ident.key&&RECORD_CAT_LABEL.hasOwnProperty(ident.category));
@@ -6825,7 +6851,6 @@ function renderDataMine(){
 // so they're deliberately not offered here. The labels double as the lookup into
 // DATAMINE_PROPERTIES' iconCategories, so they must match those strings exactly.
 var ADDICON_CATEGORY_LABELS={effigy:'Effigy',journal:'Journal',bounty:'Field Boss',fugitive:'Wanted Fugitive',eagle:'Eagle Statue',sam:'SAM Site',tower:'Tower',itempickup:'Schematic'};
-var _aiKeyCandidates=[];
 
 // Unmapped-key candidates relevant to one Add Icon category, drawn from the same
 // dmComputeUnmappedRows() list the Unmapped Keys table shows. Effigy has no linked
@@ -6834,6 +6859,9 @@ var _aiKeyCandidates=[];
 // expected, not a bug. NormalBossDefeatFlag backs BOTH Field Boss and Wanted Fugitive,
 // so those two are split by key shape client-side, mirroring the server's
 // Test-SyndicateKeyShape (a BOSS_ prefix means Wanted Fugitive/syndicate, not Field Boss).
+// Still used by the Data Mine tab's Custom Icons "Relink key..." dropdown (dmRenderCustomIcons/
+// dmApplyCustomKeySelect) even though the Add Icon modal itself no longer has its own key picker
+// (2026-07-22 -- every category is wizard-only now, see AIW_WIZARD_CATEGORIES below).
 function dmUnmappedKeysForCategory(category){
   var label=ADDICON_CATEGORY_LABELS[category];
   return dmComputeUnmappedRows().filter(function(r){
@@ -6846,22 +6874,34 @@ function dmUnmappedKeysForCategory(category){
   });
 }
 
-// Categories that go through the guided wizard (Step 1 coords -> Step 2 auto-record -> Step 3
-// name for the ones that have one) instead of the classic single-page name+key+coords form.
-// Both are coords-first, keyless-by-design, recordable-by-playing categories (see
-// COORD_IDENTITY_CATEGORIES/RECORD_CAT_LABEL) -- the wizard is just a guided front end over the
-// exact same /api/map-add-icon + "Record next key" + /api/map-edit-icon calls the classic flow
-// and the icon detail panel already make, not a new write path.
-var AIW_WIZARD_CATEGORIES=['effigy','itempickup'];
-// Of those, which ones ask for a display name AFTER the key records -- effigy has no
-// display-name concept at all (see Get-MapCategoryJson's effigy dict shape / iconDetailFooterHtml),
-// so it saves and finishes immediately once its key is recorded.
-var AIW_NAME_STEP_CATEGORIES=['itempickup'];
+// Every Add Icon category now goes through the guided wizard (Step 1 coords/pre-record fields ->
+// Step 2 auto-record -> Step 3 name for the ones that have one), 2026-07-22 -- previously only
+// effigy/itempickup did, with every other category using a classic single-page name+key+coords
+// form (now removed). The wizard is just a guided front end over the exact same
+// /api/map-add-icon + "Record next key" + /api/map-edit-icon calls that old flow and the icon
+// detail panel already make, not a new write path.
+var AIW_WIZARD_CATEGORIES=['effigy','itempickup','journal','bounty','fugitive','eagle','sam','tower'];
+// Of those, which ones ask for a display name AFTER the key records, on Step 3 -- because they
+// CAN be created with no name at all (see COORD_IDENTITY_CATEGORIES). Effigy/SAM Site have no
+// name step at all (effigy has no display-name concept; SAM's wizard is coords-only per
+// Anthony's spec). Field Boss/Wanted Fugitive/Eagle Statue/Tower are NOT here -- they aren't
+// coord-identity, so Add-CustomMapEntry requires a name to create the pin at all, meaning their
+// name has to be captured on Step 1 (see AIW_PRE_FIELDS) instead of after.
+var AIW_NAME_STEP_CATEGORIES=['itempickup','journal'];
+// Which fields Step 1 (ai-step-main) shows/requires BEFORE recording starts, per category, in
+// display order -- anything not listed here shows none of these (coords only). Field Boss/
+// Wanted Fugitive/Eagle Statue/Tower need 'name' up front because they aren't coord-identity
+// (see above); Tower additionally carries its raid-boss/partner-Pal names, which -- like lv --
+// have no meaningful "record" concept of their own, so they're just typed in alongside the name.
+var AIW_PRE_FIELDS={bounty:['name','lv'],fugitive:['name','lv'],eagle:['name'],tower:['name','lv','boss']};
 var _aiWizardIdent=null; // {category,key,species,name,lv,gx,gy,map} for the pin currently mid-wizard
 
 function openAddIconModal(){
   document.getElementById('ai-category').value='effigy';
   document.getElementById('ai-name').value='';
+  document.getElementById('ai-lv').value='';
+  document.getElementById('ai-boss').value='';
+  document.getElementById('ai-bosspal').value='';
   document.getElementById('ai-gx').value='';
   document.getElementById('ai-gy').value='';
   // The pin is created on whichever map the Map tab is currently showing (its gx/gy are read in
@@ -6893,22 +6933,15 @@ function aiShowStep(step){
 
 function addIconCategoryChanged(){
   var category=document.getElementById('ai-category').value;
-  var wizard=AIW_WIZARD_CATEGORIES.indexOf(category)!==-1;
-  document.getElementById('ai-name-field').style.display=wizard?'none':'';
+  var pre=AIW_PRE_FIELDS[category]||[];
   document.getElementById('ai-type-field').style.display=(category==='effigy')?'':'none';
-  document.getElementById('ai-key-field').style.display=wizard?'none':'';
-  document.getElementById('ai-wizard-hint').style.display=wizard?'':'none';
-  var mainBtn=document.getElementById('ai-main-action-btn');
-  mainBtn.textContent=wizard?'Next: Record key':'Add Icon';
-  mainBtn.onclick=wizard?aiWizardStartRecord:saveAddIcon;
-  if(wizard) return; // key dropdown is hidden/unused for wizard categories, no need to compute it
-  var keySel=document.getElementById('ai-key');
-  var keyLabel=document.getElementById('ai-key-label');
-  _aiKeyCandidates=dmUnmappedKeysForCategory(category);
-  var opts='<option value="">No key yet</option>'
-    +_aiKeyCandidates.map(function(r,i){return '<option value="'+i+'">'+esc(r.key)+' ('+esc(r.prop.name)+')</option>';}).join('');
-  keySel.innerHTML=opts;
-  keyLabel.textContent='Unmapped key (optional)';
+  document.getElementById('ai-name-field').style.display=(pre.indexOf('name')!==-1)?'':'none';
+  document.getElementById('ai-lv-field').style.display=(pre.indexOf('lv')!==-1)?'':'none';
+  document.getElementById('ai-boss-field').style.display=(pre.indexOf('boss')!==-1)?'':'none';
+  document.getElementById('ai-name').value='';
+  document.getElementById('ai-lv').value='';
+  document.getElementById('ai-boss').value='';
+  document.getElementById('ai-bosspal').value='';
 }
 
 // Field Boss duplicate-name guard (2026-07-22): Add-CustomMapEntry already hard-blocks a
@@ -6953,49 +6986,19 @@ async function resolveBountyNameConflict(name,excludeIdent){
   return true;
 }
 
-async function saveAddIcon(){
-  var category=document.getElementById('ai-category').value;
-  var name=document.getElementById('ai-name').value.trim();
-  var gx=document.getElementById('ai-gx').value.trim();
-  var gy=document.getElementById('ai-gy').value.trim();
-  var keyIdx=document.getElementById('ai-key').value;
-  var key=(keyIdx!==''&&_aiKeyCandidates[parseInt(keyIdx,10)])?_aiKeyCandidates[parseInt(keyIdx,10)].key:null;
-  if(category!=='effigy'&&category!=='itempickup'&&!name){ toast('Display name is required.','error'); return; }
-  if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
-  if(category==='bounty'){
-    if(!(await resolveBountyNameConflict(name,null))) return;
-  }
-  try{
-    // Create on the currently-active map; the server stores its map so it renders on the right
-    // base map (and its gx/gy are interpreted in that map's grid). Since it targets the active
-    // map, the new pin is always on the map you're looking at, so it appears immediately.
-    var targetMap=effigyActiveMapId;
-    var resp=await api('/api/map-add-icon','POST',{category:category,name:name||null,gx:gx,gy:gy,key:key,map:targetMap});
-    dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).concat([resp.entry]);
-    closeAddIconModal();
-    toast('Pin added to '+effigyActiveMap().label+'.','success');
-    renderDataMine();
-    // dmMappings.confirmedLocations already reflects the newly-linked key above, so the
-    // badge can update immediately rather than waiting for the next 15s mapDataminePollTick.
-    updateKeyAvailableBadge();
-    var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
-      fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations,sam:fetchSamSites,itempickup:fetchItemPickupLocations}[category];
-    if(typeof refetch==='function') refetch(true);
-  }catch(e){
-    toast('Failed to add icon: '+String(e&&e.message||e),'error');
-  }
-}
-
-// -- Add Icon wizard (Step 2/3 for effigy/itempickup) -------------------------------
-// Step 1 (aiShowStep('main'), still the shared HTML above) creates the pin exactly like
-// saveAddIcon does (name:null, key:null -- a pending/keyless pin), then immediately starts
-// "Record next key" against it instead of leaving that as a separate action to find later on
-// the map. _recordView (declared next to _keyRecord) is what lets the shared record-rendering
-// functions (recordRenderIdle/Active/PickList, keyRecordTick, recordCommitKey) paint into THIS
-// modal's #ai-record-status instead of the icon detail panel's #icon-detail-record-status --
-// the two are mutually exclusive full-viewport/modal overlays, so at most one is ever "the view"
-// for a given render, but the underlying _keyRecord poll itself keeps running regardless of
-// which (if either) is currently showing it, same as always.
+// -- Add Icon wizard (Step 2/3) -----------------------------------------------------
+// Step 1 (aiShowStep('main'), the shared HTML above) creates the pin -- keyless always, and
+// nameless too for the coord-identity categories (effigy/itempickup/journal/sam) -- then
+// immediately starts "Record next key" against it instead of leaving that as a separate action
+// to find later on the map. Field Boss/Wanted Fugitive/Eagle Statue/Tower aren't coord-identity,
+// so their name (and Field Boss/Wanted Fugitive's level, Tower's level+boss/partner) has to be
+// captured HERE, before creation, per AIW_PRE_FIELDS -- Add-CustomMapEntry would otherwise
+// reject a nameless row for them outright. _recordView (declared next to _keyRecord) is what
+// lets the shared record-rendering functions (recordRenderIdle/Active/PickList, keyRecordTick,
+// recordCommitKey) paint into THIS modal's #ai-record-status instead of the icon detail panel's
+// #icon-detail-record-status -- the two are mutually exclusive full-viewport/modal overlays, so
+// at most one is ever "the view" for a given render, but the underlying _keyRecord poll itself
+// keeps running regardless of which (if either) is currently showing it, same as always.
 async function aiWizardStartRecord(){
   var category=document.getElementById('ai-category').value;
   var gx=document.getElementById('ai-gx').value.trim();
@@ -7003,13 +7006,30 @@ async function aiWizardStartRecord(){
   if(gx===''||gy===''){ toast('Coordinates are required.','error'); return; }
   var recGuid=(document.getElementById('effigy-player')||{}).value||'';
   if(!recGuid){ toast('Pick a player on the map before recording a key.','error'); return; }
+  var pre=AIW_PRE_FIELDS[category]||[];
+  var name=null,lv=null,boss=null,bossPal=null;
+  if(pre.indexOf('name')!==-1){
+    name=document.getElementById('ai-name').value.trim();
+    if(!name){ toast('Display name is required.','error'); return; }
+  }
+  if(pre.indexOf('lv')!==-1){
+    var lvRaw=document.getElementById('ai-lv').value.trim();
+    lv=lvRaw===''?null:lvRaw;
+  }
+  if(pre.indexOf('boss')!==-1){
+    boss=document.getElementById('ai-boss').value.trim()||null;
+    bossPal=document.getElementById('ai-bosspal').value.trim()||null;
+  }
+  if(category==='bounty'&&name){
+    if(!(await resolveBountyNameConflict(name,null))) return;
+  }
   try{
     var targetMap=effigyActiveMapId;
-    var resp=await api('/api/map-add-icon','POST',{category:category,name:null,gx:gx,gy:gy,key:null,map:targetMap});
+    var resp=await api('/api/map-add-icon','POST',{category:category,name:name,gx:gx,gy:gy,key:null,map:targetMap,lv:lv,boss:boss,bossPal:bossPal});
     dmMappings.confirmedLocations=(dmMappings.confirmedLocations||[]).concat([resp.entry]);
     updateKeyAvailableBadge();
     refetchMapCategory(category);
-    _aiWizardIdent={category:category,key:null,species:null,name:null,lv:null,gx:Number(gx),gy:Number(gy),map:targetMap};
+    _aiWizardIdent={category:category,key:null,species:null,name:name,lv:lv,gx:Number(gx),gy:Number(gy),map:targetMap};
     document.getElementById('ai-record-cat-label').textContent=ADDICON_CATEGORY_LABELS[category];
     document.getElementById('ai-record-coord-label').textContent=gx+', '+gy;
     aiShowStep('record');
@@ -7077,7 +7097,7 @@ window.closeEntranceModal=function(){
   _entranceTarget=null;
 };
 // Force-refetch the one roster a category is served from, then re-render on change -- same
-// convention as saveAddIcon (never null-then-fetch, see /palbox-map-performance).
+// convention as aiWizardStartRecord (never null-then-fetch, see /palbox-map-performance).
 function refetchMapCategory(category){
   var refetch={effigy:fetchEffigyLocations,journal:fetchJournalLocations,bounty:fetchBossLocations,
     fugitive:fetchWantedFugitives,eagle:fetchEagleStatues,tower:fetchTowerLocations,sam:fetchSamSites,itempickup:fetchItemPickupLocations}[category];
@@ -8952,11 +8972,9 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
     <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Add Icon</div>
     <div id="ai-target-map" style="font-size:12px;color:var(--muted);margin-bottom:10px;"></div>
 
-    <!-- Step 1: category + coordinates (+ name/key for the non-wizard categories). Effigy and
-         Schematic are "wizard" categories (see aiWizardStartRecord below) -- coords-first,
-         keyless-by-design, recordable by playing -- so their name/key fields are hidden here and
-         picked up in later steps instead; every other category keeps the original single-page
-         flow (name + optional key + Add Icon), unchanged. -->
+    <!-- Step 1: category + coordinates + whichever of name/level/boss-partner Step 2's category
+         needs captured up front (see AIW_PRE_FIELDS) -- every category is coords-first and
+         keyless-by-design here (see aiWizardStartRecord below), recorded by playing. -->
     <div id="ai-step-main">
       <div class="ai-field">
         <label>Category</label>
@@ -8975,9 +8993,20 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
         <label>Relic type</label>
         <div style="font-size:12px;color:var(--muted);line-height:1.4;">Detected automatically from the save when the effigy is collected -- every relic type (Capture Power, Glider Speed, Jump Power, Hunger Reduction, ...) is tracked. It can't be chosen by hand: the type comes from which effigy GUID the game records, so a manually-added pin shows its type once some player picks it up.</div>
       </div>
-      <div class="ai-field" id="ai-name-field">
+      <div class="ai-field" id="ai-name-field" style="display:none;">
         <label>Display name</label>
         <input id="ai-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name">
+      </div>
+      <div class="ai-field" id="ai-lv-field" style="display:none;">
+        <label>Level</label>
+        <input id="ai-lv" class="pf-input" style="width:140px;" type="number" min="1" placeholder="Level">
+      </div>
+      <div class="ai-field" id="ai-boss-field" style="display:none;">
+        <label>Boss name / Partner Pal</label>
+        <div style="display:flex;gap:8px;">
+          <input id="ai-boss" class="pf-input" style="flex:1;" type="text" placeholder="Boss name">
+          <input id="ai-bosspal" class="pf-input" style="flex:1;" type="text" placeholder="Partner Pal">
+        </div>
       </div>
       <div class="ai-field">
         <label>Coordinates (gx / gy)</label>
@@ -8986,14 +9015,10 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
           <input id="ai-gy" class="pf-input" style="flex:1;" type="number" placeholder="gy">
         </div>
       </div>
-      <div class="ai-field" id="ai-key-field">
-        <label id="ai-key-label">Unmapped key</label>
-        <select id="ai-key" class="sel" style="width:100%;"></select>
-      </div>
-      <div class="hint" id="ai-wizard-hint" style="display:none;margin-bottom:6px;">Next you'll be walked through triggering this in-game so its save key records automatically.</div>
+      <div class="hint">Next you'll be walked through triggering this in-game so its save key records automatically.</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
         <button class="btn btn-ghost" onclick="closeAddIconModal()">Cancel</button>
-        <button class="btn btn-primary" id="ai-main-action-btn" onclick="saveAddIcon()">Add Icon</button>
+        <button class="btn btn-primary" id="ai-main-action-btn" onclick="aiWizardStartRecord()">Next: Record key</button>
       </div>
     </div>
 
@@ -9008,7 +9033,11 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
       </div>
     </div>
 
-    <!-- Step 3 (Schematic only -- effigy has no display-name concept, see iconDetailFooterHtml): -->
+    <!-- Step 3 (Schematic/Journal only -- their name is captured AFTER the key records, unlike
+         Field Boss/Wanted Fugitive/Eagle Statue/Tower which capture it on Step 1 up front, since
+         those require a name to even create the pin -- see AIW_PRE_FIELDS/AIW_NAME_STEP_CATEGORIES.
+         Effigy/SAM Site have no name step at all -- effigy has no display-name concept, and SAM's
+         wizard is coords-only, see iconDetailFooterHtml/aiWizardOnKeyRecorded): -->
     <div id="ai-step-name" style="display:none;">
       <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Key recorded. Last step:</div>
       <div class="ai-field"><label>Display name</label><input id="ai-wiz-name" class="pf-input" style="width:100%;" type="text" placeholder="Display name"></div>
