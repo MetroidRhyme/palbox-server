@@ -28,10 +28,6 @@
         "species":  "PlantSlime"
     },
     {
-        "key":  "81_1_GRASS_FBOSS_28",
-        "species":  "BerryGoat_Dark"
-    },
-    {
         "key":  "81_1_FOREST_FBOSS_2",
         "species":  "HerculesBeetle"
     },
@@ -282,5 +278,9 @@
     {
         "key":  "SANCTUARY_1_FOREST_FBOSS",
         "species":  "Grizzbolt"
+    },
+    {
+        "key":  "81_1_GRASS_FBOSS_28",
+        "species":  "Caprity Noct"
     }
 ]
