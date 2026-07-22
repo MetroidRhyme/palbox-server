@@ -123,8 +123,13 @@ if ($html -eq $before) { throw "header 'Refresh now' row was not removed" }
 # (2a2) Remove the "+ Add Icon" header button, its "Key Available" badge, and the modal --
 # admin-only manual map-pin creation (POSTs to /api/map-add-icon, which only exists in the
 # Manager's own HttpListener, not in _worker.js). The modal's own JS (openAddIconModal/
-# saveAddIcon/dmRenderCustomIcons/etc.) already falls inside the "-- Data Mine tab --" JS
-# block removed in step (3c) below, so only the HTML markup needs stripping here.
+# saveAddIcon/aiWizardStartRecord/dmRenderCustomIcons/etc.) already falls inside the
+# "-- Data Mine tab --" JS block removed in step (3c) below, so only the HTML markup needs
+# stripping here. Anchored on the "<!-- /addicon-modal -->" end marker (added 2026-07-22
+# alongside the wizard's Step 2/3 sub-divs) rather than a fixed "three closing </div>" count --
+# that generic count broke the moment the modal grew per-step nested content, since the
+# non-greedy regex then matched the first three-deep close it found (partway through Step 1)
+# instead of the real end of the overlay.
 $before = $html
 $html = $html.Replace(
   '<span id="eff-key-available-badge" class="btn btn-ghost" style="display:none;cursor:pointer;" onclick="openAddIconModal()" title="An unmapped save-flag key is available to link to a new map pin -- open Add Icon and pick it from the Unmapped Key dropdown">&#128273; Key Available</span>', '')
@@ -135,7 +140,7 @@ $html = $html.Replace(
 if ($html -eq $before) { throw "Add Icon header button was not removed" }
 $before = $html
 $html = [System.Text.RegularExpressions.Regex]::Replace(
-  $html, '<div id="addicon-modal-overlay".*?</div>\s*</div>\s*</div>', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+  $html, '<div id="addicon-modal-overlay".*?<!-- /addicon-modal -->', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
 if ($html -eq $before) { throw "Add Icon modal markup was not removed" }
 
 # (2a3) Remove the "Add cave entrance" modal -- admin-only sub-pin creation (POSTs to
