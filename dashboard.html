@@ -3299,6 +3299,45 @@ var palMapLeaflet=null,palMapMarkers=[],palMapTime='dayTimeLocations',palMapCurr
 // the boss markers), and the clustering tightness (lower = more, smaller zones).
 var palSpawnLocs=[], palZoneLayers=[], palZoneTight=0.01;
 
+// World-fixed Fishing Spot / Rare Fishing Spot coordinates (see /api/fishingspots), loaded once
+// and reused for every pal opened in the Paldeck spawn map -- lets showPalMapData tell which of
+// a pal's "Wild" spawn points are an actual fishing dock vs. a roaming spawn (paldb.cc's own
+// spawn table has no such distinction per point). null = not yet loaded/failed; fetch once.
+var fishingSpots=null;
+async function fetchFishingSpots(){
+  if(fishingSpots) return fishingSpots;
+  try{
+    var r=await fetch('/api/fishingspots');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    fishingSpots=await r.json();
+  }catch(e){
+    fishingSpots=[];
+  }
+  return fishingSpots;
+}
+// A pal spawn point within this many world units of a known Fishing Spot counts as "the same
+// spot". Checked against 9 non-fishable ground pals to find the real noise floor: Lamball and
+// PinkCat both have an incidental near-miss at exactly 468 units (likely both spawn near the
+// same starting-area dock), while every other one checked (Carbunclo, ChickenPal, CuteFox,
+// Deer, Gorilla, HerculesBeetle, Yeti) sits at 1000+. 400 clears that one known false positive
+// with margin. This does cost some recall on genuine fishing pals -- Fuack Ignis has real
+// matches out to ~772 units -- but zero false positives on non-fishable pals matters more here.
+var FISHING_SPOT_TOLERANCE=400;
+// Wider radius used only to clear leftover near-duplicate points out of the zone data once a
+// pal has at least one real hook (see the second-pass filter in showPalMapData) -- checked
+// against Fuack Ignis: near-duplicate points top out around 488 units from their matching hook,
+// then jump straight to 86,000+ for genuinely separate roam areas, so this has a wide margin
+// on both sides.
+var FISH_ZONE_CLEARANCE=2000;
+function nearestFishingSpotDist(rpos){
+  var best=Infinity;
+  for(var i=0;i<fishingSpots.length;i++){
+    var d=Math.hypot(rpos.X-fishingSpots[i].x, rpos.Y-fishingSpots[i].y);
+    if(d<best) best=d;
+  }
+  return best;
+}
+
 // /api/palspawn responses memoized per pal name ('BOSS_'+internal for alphas): the payload
 // is static reference data (server caches paldb.cc with a 24h TTL) and already contains
 // BOTH day and night sets, so reopening a pal or toggling day/night should never refetch.
@@ -3473,6 +3512,23 @@ function makeBossIcon(imgUrl){
     iconSize:[38,38],iconAnchor:[19,19],className:''
   });
 }
+// Small hook marker for a spawn point that lines up with a known Fishing Spot (see
+// fetchFishingSpots/nearestFishingSpotDist). Plain SVG, no image fetch needed.
+var _fishIcon=null;
+function makeFishIcon(){
+  if(_fishIcon) return _fishIcon;
+  _fishIcon=L.divIcon({
+    html:'<div style="width:22px;height:22px;border-radius:50%;background:#1f6feb;'
+        +'border:2px solid #58a6ff;box-shadow:0 1px 4px rgba(0,0,0,0.75);'
+        +'display:flex;align-items:center;justify-content:center;">'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">'
+        +'<circle cx="11" cy="3" r="1.5" fill="#ffffff"/>'
+        +'<path d="M11 3.5 L11 16 C11 20 16 20 16 16 C16 13.5 14 13 13 14.5"/>'
+        +'</svg></div>',
+    iconSize:[22,22],iconAnchor:[11,11],className:''
+  });
+  return _fishIcon;
+}
 
 async function showPalMapData(internal,displayName){
   if(palMapAbort){palMapAbort.abort();}
@@ -3489,27 +3545,71 @@ async function showPalMapData(internal,displayName){
     // paldb.cc capitalizes the inner key ("Locations"); check both since they've been
     // inconsistent about casing here before.
     var locs=(data&&data[palMapTime]&&(data[palMapTime].Locations||data[palMapTime].locations))||[];
-    // Cache the points and draw the spawn zones (see drawSpawnZones); cached so a redraw can
-    // re-cluster without re-fetching.
-    palSpawnLocs=locs;
+    // Split each spawn point by whether it lines up with a real, world-fixed Fishing Spot (see
+    // fetchFishingSpots/nearestFishingSpotDist) -- paldb.cc's own spawn table has no such
+    // distinction per point (two earlier attempts here, isVariant then a curated aquatic-species
+    // allowlist, both wrongly classified by SPECIES and got reverted 2026-07-23 for turning
+    // legitimate roam zones into hook swarms). Fishing points get individual hook markers
+    // (deduped by exact coordinate, since paldb repeats them per catch-table row); everything
+    // else still feeds the normal zone clustering.
+    await fetchFishingSpots();
+    var zoneLocs=[], fishLocs=[], seenFish={};
+    locs.forEach(function(rpos){
+      if(fishingSpots.length && nearestFishingSpotDist(rpos)<=FISHING_SPOT_TOLERANCE){
+        var key=rpos.X+'_'+rpos.Y+'_'+rpos.Z;
+        if(!seenFish[key]){ seenFish[key]=true; fishLocs.push(rpos); }
+      } else {
+        zoneLocs.push(rpos);
+      }
+    });
+    // Second pass: a point that just barely missed the hook cutoff (e.g. a duplicate day/night
+    // catch-table row for the same dock, sitting a few hundred units past FISHING_SPOT_TOLERANCE)
+    // is still the same physical spot as one of this pal's own hooks, not a separate roam area --
+    // left in zoneLocs, it clusters into an orange zone that visually overlaps the hook right
+    // next to it. Drop anything within FISH_ZONE_CLEARANCE of one of THIS pal's hooks (not the
+    // full global fishing-spot list, so non-fishing pals with zero hooks are unaffected).
+    if(fishLocs.length){
+      zoneLocs=zoneLocs.filter(function(rpos){
+        for(var i=0;i<fishLocs.length;i++){
+          if(Math.hypot(rpos.X-fishLocs[i].X, rpos.Y-fishLocs[i].Y)<=FISH_ZONE_CLEARANCE) return false;
+        }
+        return true;
+      });
+    }
+    palSpawnLocs=zoneLocs;
     drawSpawnZones();
+    if(fishLocs.length){
+      var ficon=makeFishIcon();
+      fishLocs.forEach(function(rpos){
+        var m=L.marker(palRposToLatLng(rpos),{icon:ficon}).addTo(palMapLeaflet);
+        palMapMarkers.push(m);
+      });
+      statusParts.push(fishLocs.length+' fishing spot'+(fishLocs.length===1?'':'s'));
+    }
 
-    // Alpha (BOSS_) spawns -- portrait icons, always shown regardless of day/night
+    // Alpha (BOSS_) spawns -- portrait icons, but ONLY for pals with a real, curated Field
+    // Boss (bounty_bosses.json/bossLocations). paldb.cc's BOSS_ prefix also covers the generic
+    // "Alpha of this species" spawn (often hundreds of points for common species), which is NOT
+    // a Field Boss and used to render as a misleading giant boss icon over every spawn point.
     var blocsCount=0;
     var palImg='/api/palicon?name='+encodeURIComponent(displayName||internal);
-    try{
-      var bdata=await palSpawnFetch('BOSS_'+internal,sig);
-      if(bdata){
-        var blocs=(bdata.dayTimeLocations&&(bdata.dayTimeLocations.Locations||bdata.dayTimeLocations.locations))||[];
-        blocsCount=blocs.length;
-        var bicon=makeBossIcon(palImg);
-        blocs.forEach(function(rpos){
-          var m=L.marker(palRposToLatLng(rpos),{icon:bicon,zIndexOffset:1000}).addTo(palMapLeaflet);
-          palMapMarkers.push(m);
-        });
-        if(blocs.length) statusParts.push(blocs.length+' alpha'+(blocs.length===1?'':'s'));
-      }
-    }catch(e){if(e.name==='AbortError')throw e;}
+    await fetchBossLocations();
+    var isFieldBoss=bossLocations&&bossLocations.some(function(b){return b.species&&b.species.toUpperCase()===internal.toUpperCase();});
+    if(isFieldBoss){
+      try{
+        var bdata=await palSpawnFetch('BOSS_'+internal,sig);
+        if(bdata){
+          var blocs=(bdata.dayTimeLocations&&(bdata.dayTimeLocations.Locations||bdata.dayTimeLocations.locations))||[];
+          blocsCount=blocs.length;
+          var bicon=makeBossIcon(palImg);
+          blocs.forEach(function(rpos){
+            var m=L.marker(palRposToLatLng(rpos),{icon:bicon,zIndexOffset:1000}).addTo(palMapLeaflet);
+            palMapMarkers.push(m);
+          });
+          if(blocs.length) statusParts.push(blocs.length+' field boss'+(blocs.length===1?'':'es'));
+        }
+      }catch(e){if(e.name==='AbortError')throw e;}
+    }
 
     // Nothing to plot (no spawns AND no alphas) -> show a big "?" over the map instead of a
     // blank tile; otherwise hide it and frame whatever we drew.

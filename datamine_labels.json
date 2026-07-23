@@ -3966,5 +3966,21 @@
         "gx":  null,
         "gy":  null,
         "verified":  false
+    },
+    {
+        "property":  "PaldeckUnlockFlag",
+        "key":  "GHOSTBEAST",
+        "name":  "Maraith",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
+    },
+    {
+        "property":  "PalCaptureBonusCount",
+        "key":  "GhostBeast",
+        "name":  "Maraith",
+        "gx":  null,
+        "gy":  null,
+        "verified":  false
     }
 ]

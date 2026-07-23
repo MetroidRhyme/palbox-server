@@ -1226,6 +1226,8 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     $script:lastEggStamp  = ''
     $script:metricAppendCount = 0
     $script:palSpawnRaw   = $null
+    $script:fishingSpots  = $null
+    $script:fishingSpotsFetched = $null
     $script:palTileCache  = @{}
     $script:effigyData    = $null
     $script:palIconCache  = @{}
@@ -1402,6 +1404,11 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                 # while, this frees the memory instead of holding stale data indefinitely.
                 if ($script:palSpawnRaw -and $script:palSpawnFetched -and (((Get-Date) - $script:palSpawnFetched).TotalHours -ge 24)) {
                     $script:palSpawnRaw = $null
+                }
+                # Same 24h TTL for the Fishing Spot list (see /api/fishingspots) -- small (~530
+                # entries), so this is about freshness (new DLC spots) rather than memory.
+                if ($script:fishingSpots -and $script:fishingSpotsFetched -and (((Get-Date) - $script:fishingSpotsFetched).TotalHours -ge 24)) {
+                    $script:fishingSpots = $null
                 }
             }
 
@@ -2496,6 +2503,57 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             $palJson = $script:palSpawnRaw.Substring($start, $end - $start + 1)
                             Send-Response $res 200 'application/json' $palJson
                         }
+                    } catch {
+                        Send-Response $res 500 'application/json' (ConvertTo-Json @{ error = $_.Exception.Message } -Compress)
+                    }
+                    break
+                }
+
+                ($path -eq '/api/fishingspots' -and $method -eq 'GET') {
+                    # World-fixed Fishing Spot / Rare Fishing Spot coordinates, used by the
+                    # Paldeck spawn map (dashboard.html showPalMapData) to tell which of a Pal's
+                    # "Wild" spawn points are actually a fishing dock vs. a roaming spawn --
+                    # paldb.cc's own DT_PaldexDistributionData has no such distinction per point
+                    # (see the 2026-07-23 comment in showPalMapData). Source is paldb.cc's map
+                    # data bundle (map_data_en.js), NOT the Paldex spawn table -- its `fixedDungeon`
+                    # var is actually the site's whole world-POI list (ore, effigies, dungeons,
+                    # fishing spots, etc.), despite the name. Must cache-bust the request (a fixed
+                    # query string here served a stale CDN copy that was missing Fishing Spot
+                    # entries entirely during initial research).
+                    try {
+                        $fishFresh = $script:fishingSpots -and $script:fishingSpotsFetched -and (((Get-Date) - $script:fishingSpotsFetched).TotalHours -lt 24)
+                        if (-not $fishFresh) {
+                            $wc = New-Object System.Net.WebClient
+                            $wc.Headers.Add('User-Agent', 'Mozilla/5.0')
+                            $wc.Headers.Add('Referer', 'https://paldb.cc/')
+                            $bust = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+                            $mapDataRaw = $wc.DownloadString("https://paldb.cc/js/map_data_en.js?_=$bust")
+
+                            $m = [regex]::Match($mapDataRaw, 'var\s+fixedDungeon\s*=\s*\[')
+                            if (-not $m.Success) { throw 'fixedDungeon not found in map_data_en.js' }
+                            $start = $m.Index + $m.Length - 1
+                            $depth = 0; $end = $start
+                            for ($i = $start; $i -lt $mapDataRaw.Length; $i++) {
+                                $c = $mapDataRaw[$i]
+                                if     ($c -eq '[') { $depth++ }
+                                elseif ($c -eq ']') { $depth--; if ($depth -eq 0) { $end = $i; break } }
+                            }
+                            $fixedDungeonStr = $mapDataRaw.Substring($start, $end - $start + 1)
+
+                            # Regex extraction instead of ConvertFrom-Json: this 13.8k-entry array
+                            # mixes key casing across entries ("type" vs "Type" etc.), which trips
+                            # ConvertFrom-Json's case-insensitive property merge ("Cannot convert
+                            # the JSON string because it contains keys with different casing").
+                            # PS7's -AsHashTable dodges that but doesn't exist on PS 5.1, so pull
+                            # just the fields this route needs directly out of the raw text.
+                            $spotMatches = [regex]::Matches($fixedDungeonStr, '"type"\s*:\s*"(Fishing Spot|Rare Fishing Spot)"[\s\S]{0,120}?"pos"\s*:\s*\{\s*"X"\s*:\s*(-?[0-9.]+)\s*,\s*"Y"\s*:\s*(-?[0-9.]+)')
+                            $spots = foreach ($sm in $spotMatches) {
+                                @{ x = [double]$sm.Groups[2].Value; y = [double]$sm.Groups[3].Value; rare = ($sm.Groups[1].Value -eq 'Rare Fishing Spot') }
+                            }
+                            $script:fishingSpots = ConvertTo-Json @($spots) -Compress -Depth 4
+                            $script:fishingSpotsFetched = Get-Date
+                        }
+                        Send-Response $res 200 'application/json' $script:fishingSpots
                     } catch {
                         Send-Response $res 500 'application/json' (ConvertTo-Json @{ error = $_.Exception.Message } -Compress)
                     }
