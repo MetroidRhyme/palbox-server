@@ -791,11 +791,10 @@ function Remove-BossPrereq([string]$category, [string]$species, [string]$name, [
     return $matched
 }
 
-# Human/Syndicate boss keys (syndicate_bosses.json, e.g. BOSS_MALE_SOLDIER02) never
+# Human/Syndicate boss keys (e.g. BOSS_MALE_SOLDIER02, BOSS_FEMALE_SOLDIER03) never
 # carry a zone-number prefix, unlike Field Boss species keys (e.g.
 # "81_2_DESSERT_FBOSS_3") -- used below to tell the two apart from key shape alone
-# when a NormalBossDefeatFlag-sourced confirmed entry hasn't been added to either
-# roster yet.
+# when a NormalBossDefeatFlag-sourced confirmed entry hasn't been categorized yet.
 function Test-SyndicateKeyShape([string]$key) { return $key -match '^BOSS_' }
 
 # Towers (towers.json, 7 raid-boss tower locations scraped from paldb.cc, added
@@ -890,12 +889,6 @@ function Get-CategoryForEntry($c) {
         if (Test-Path -LiteralPath $journalFile) {
             foreach ($e in (Get-Content -LiteralPath $journalFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
                 if ($e.key -and $e.key.ToUpper() -eq $k) { return 'journal' }
-            }
-        }
-        $synFile = "$script:MapDataRoot\syndicate_bosses.json"
-        if (Test-Path -LiteralPath $synFile) {
-            foreach ($e in (Get-Content -LiteralPath $synFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key -and $e.key.ToUpper() -eq $k) { return 'fugitive' }
             }
         }
         $ftFile = "$script:MapDataRoot\fast_travel_keys.json"

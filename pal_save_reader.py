@@ -272,9 +272,9 @@ def extract_tower_boss_data(sav_path):
 
 def extract_fugitive_data(sav_path):
     """Return the raw list of ALL true NormalBossDefeatFlag keys (uppercased), unfiltered --
-    used to check whether a specific confirmed Wanted Fugitive key (syndicate_bosses.json /
-    confirmed_locations.json) has been defeated. Unlike extract_bounty_data this doesn't
-    resolve to a bounty species by suffix -- Wanted Fugitives are matched by exact key."""
+    used to check whether a specific confirmed Wanted Fugitive key (confirmed_locations.json)
+    has been defeated. Unlike extract_bounty_data this doesn't resolve to a bounty species by
+    suffix -- Wanted Fugitives are matched by exact key."""
     raw = decompress_save(sav_path)
     pos = find_property(raw, "NormalBossDefeatFlag")
     if pos == -1:

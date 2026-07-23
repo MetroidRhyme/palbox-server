@@ -91,9 +91,9 @@ $html = $html.Replace(
   '<button class="nav-tab active" data-tab="pals" onclick="switchView(''pals'')">Pal Box</button>')
 
 # (1b) Remove the Data Mine nav tab -- an admin-only raw-data view (see
-# /palbox-bounty-tracker) whose API calls (/api/syndicate-bosses,
-# /api/player-datamine) only exist in the Manager's own HttpListener, not in
-# _worker.js. Left in place it would show players a tab that always fails to
+# /palbox-bounty-tracker) whose API calls (e.g. /api/player-datamine) only
+# exist in the Manager's own HttpListener, not in _worker.js. Left in place
+# it would show players a tab that always fails to
 # load. Same treatment as #view-dashboard below: nav button + the whole view
 # block removed; switchView's line for it is already null-guarded
 # (`if(vdm)vdm.style...`) so it doesn't need stripping for safety.
@@ -208,8 +208,8 @@ $html = [System.Text.RegularExpressions.Regex]::Replace(
 # (3c) Remove the Data Mine tab's own JS (fetchDataMine/renderDataMine + their roster
 # vars) -- unlike #view-dashboard's admin JS, this isn't inside the refreshAll-to-
 # fetchPaldeck strip in step (6) below, so it survived as dead code calling
-# /api/syndicate-bosses and /api/player-datamine (routes with no public equivalent --
-# caught by the leaked-route scan further down). switchView's own call site is a
+# /api/player-datamine (a route with no public equivalent -- caught by the
+# leaked-route scan further down). switchView's own call site is a
 # typeof-guarded no-op once this is gone (see the shared source), same as the vdm null
 # guard already covers its display-toggle line. Anchored on the "-- Data Mine tab --"
 # section-header comment rather than a specific variable name -- a prior refactor

@@ -2932,27 +2932,6 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                     break
                 }
 
-                ($path -eq '/api/syndicate-bosses' -and $method -eq 'GET') {
-                    # Static roster of NPC/Syndicate "boss" defeat-flag keys (human enemies,
-                    # e.g. Syndicate Tower bosses) -- see syndicate_bosses.json. Unlike
-                    # bounty_bosses.json these carry no confirmed map location, so this is a
-                    # flat list tab, not a map overlay.
-                    try {
-                        if (-not $script:syndicateBossData) {
-                            $f = "$ServerDir\syndicate_bosses.json"
-                            if (Test-Path -LiteralPath $f) {
-                                $script:syndicateBossData = [System.IO.File]::ReadAllText($f)
-                            } else {
-                                $script:syndicateBossData = '[]'
-                            }
-                        }
-                        Send-Response $res 200 "application/json" $script:syndicateBossData
-                    } catch {
-                        Send-Response $res 500 "application/json" (ConvertTo-Json @{ error=$_.Exception.Message } -Compress)
-                    }
-                    break
-                }
-
                 ($path -eq '/api/pal-species' -and $method -eq 'GET') {
                     # Curated species-level data (type/work/skills/stats) built by
                     # build_pal_species.py. The public site bundles this as a static file;
