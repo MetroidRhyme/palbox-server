@@ -5216,6 +5216,14 @@ function maybeApplyPaldeckPrefs(){
 function initEffigyView(){
   if(effigyInited){
     populateEffigyPlayerDropdown();
+    // Re-entering the tab after visiting another one (esp. Data Mine, which unlike this
+    // tab doesn't lock scroll -- see map-locked in switchView) can leave the container's
+    // real size out of sync with what Leaflet last measured (mobile URL bar show/hide
+    // changes viewport height while scrolled elsewhere). Without this, Follow's panTo
+    // keeps computing against the stale size and visibly drifts toward a corner on every
+    // 5s poll instead of centering on the player.
+    if(typeof syncEffigyViewHeight==='function') syncEffigyViewHeight();
+    if(effigyLeaflet) requestAnimationFrame(function(){ effigyLeaflet.invalidateSize(); });
     return;
   }
   effigyInited=true;
