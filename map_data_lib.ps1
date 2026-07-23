@@ -388,19 +388,9 @@ function Find-ConfirmedRow($confirmed, [string]$category, [string]$key, [string]
         $spU = $species.ToUpper()
         $matched = $confirmed | Where-Object { $_.species -and $_.species.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
         if (-not $matched) {
-            # Self-named species (BlueDragon/FairyDragon) or one resolved only via
-            # anonymous_boss_keys.json store their identity in "key", not "species" --
-            # same fallback the old Merge-ConfirmedBounty always needed.
-            $anonMap = Get-AnonymousBossKeyMap
-            $reverseAnon = @{}
-            foreach ($ak in $anonMap.Keys) { $reverseAnon[$anonMap[$ak].ToUpper()] = $ak }
-            if ($reverseAnon.ContainsKey($spU)) {
-                $rk = $reverseAnon[$spU].ToUpper()
-                $matched = $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $rk -and $_.category -eq $category } | Select-Object -First 1
-            }
-            if (-not $matched) {
-                $matched = $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
-            }
+            # Self-named species (BlueDragon/FairyDragon) store their identity directly in
+            # "key" -- the raw save-flag key text IS the species name.
+            $matched = $confirmed | Where-Object { $_.key -and $_.key.ToUpper() -eq $spU -and $_.category -eq $category } | Select-Object -First 1
         }
         return $matched
     } elseif ($name) {
@@ -530,15 +520,6 @@ function Add-CustomMapEntry([string]$category, [string]$key, [string]$name, [str
     if ($mapVal -eq 'treemap8') { $newEntry | Add-Member -NotePropertyName map -NotePropertyValue 'treemap8' }
     $confirmed = $confirmed + $newEntry
     Save-ConfirmedLocations $confirmed
-
-    # Same parity the existing /api/datamine-mapping route gives a scraped-row key link
-    # (PalWorldServerManager.ps1's NormalBossDefeatFlag branch) -- without this, a custom
-    # bounty pin's defeat state can never resolve to "found" even after the key fires in
-    # a save, since pal_save_reader.py resolves bounty species via anonymous_boss_keys.json,
-    # not confirmed_locations.json.
-    if ($category -eq 'bounty' -and $key -and -not (Test-SyndicateKeyShape $key)) {
-        Add-AnonymousBossKey $key $species
-    }
     return $newEntry
 }
 
@@ -626,10 +607,7 @@ $script:EditableMapCategories = @('effigy', 'journal', 'bounty', 'fugitive', 'ea
 # Get-MapCategoryJson's effigy branch silently skips any row with no key at all, so blanking
 # it would make the pin vanish instead of erroring. A blank key on any other category clears
 # it (un-links the pin, e.g. to undo a bad mapping). Guards against two rows in the same
-# category sharing a key (would make Find-ConfirmedRow's key-branch match ambiguous). Bounty
-# gets the same anonymous_boss_keys.json upsert Add-CustomMapEntry already does at create
-# time (Test-SyndicateKeyShape decides whether a bounty key needs this species link at all),
-# so re-keying an existing bounty pin keeps defeat-status resolution working. Tower's "key" IS
+# category sharing a key (would make Find-ConfirmedRow's key-branch match ambiguous). Tower's "key" IS
 # its Boss Defeat link (2026-07-15 -- previously a separate "bossKey" field this generic
 # field never touched; see Get-MapCategoryJson's comment), so it's edited exactly like every
 # other category's single-key model, no special-casing needed here.
@@ -642,15 +620,13 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
     # (gx/gy is only unique within a map).
     $matched = Find-ConfirmedRow $confirmed $category $identKey $identSpecies $identName $identGx $identGy $identMap
     if (-not $matched) { throw "No matching map entry found." }
-    # Hoisted above every mutation (2026-07-15): this is a pure precondition on $fields, and it
-    # used to sit down with the gx/gy write -- i.e. AFTER the bounty branch below had already
-    # upserted anonymous_boss_keys.json. That's a separate FILE, so a half-lone gx here rolled
-    # back neither the key write nor that file. Checked first, nothing has happened yet.
+    # Hoisted above every mutation (2026-07-15): this is a pure precondition on $fields.
+    # Checked first, nothing has happened yet.
     if ($fields.ContainsKey('gx') -or $fields.ContainsKey('gy')) {
         if ($null -eq $fields['gx'] -or $null -eq $fields['gy']) { throw "Coordinates (gx/gy) are required together." }
     }
-    # Same cache-safety contract as Edit-CustomMapEntry: everything below mutates $matched (and,
-    # for bounty, anonymous_boss_keys.json) before later rules can throw, so any failure has to
+    # Same cache-safety contract as Edit-CustomMapEntry: everything below mutates $matched
+    # before later rules can throw, so any failure has to
     # drop the cache instead of leaving a rejected edit live in memory for the next save to
     # persist -- see Reset-ConfirmedLocationsCache.
     try {
@@ -678,19 +654,7 @@ function Edit-MapEntry([string]$category, [string]$identKey, [string]$identSpeci
             $dupe = $confirmed | Where-Object { $_ -ne $matched -and $_.category -eq $category -and $_.key -and $_.key.ToUpper() -eq $newKey.ToUpper() } | Select-Object -First 1
             if ($dupe) { throw "Another $category pin already uses that key." }
         }
-        $oldKey = $matched.key
         Set-EntryProp $matched 'key' $newKey
-        if ($category -eq 'bounty') {
-            # Re-keying a bounty: drop the OLD key's anonymous_boss_keys.json mapping (2026-07-13)
-            # before adding the new one, so a stale orphaned key->species pair isn't left behind.
-            if ($oldKey -and $oldKey -ne $newKey -and -not (Test-SyndicateKeyShape $oldKey)) {
-                Remove-AnonymousBossKey $oldKey
-            }
-            if ($newKey -and -not (Test-SyndicateKeyShape $newKey)) {
-                $sp = if ($matched.species) { $matched.species } else { $matched.name }
-                Add-AnonymousBossKey $newKey $sp
-            }
-        }
     }
     if ($fields.ContainsKey('gx') -or $fields.ContainsKey('gy')) {
         Set-EntryProp $matched 'gx' $fields['gx']
@@ -827,84 +791,6 @@ function Remove-BossPrereq([string]$category, [string]$species, [string]$name, [
     return $matched
 }
 
-# Resolve a confirmed key to a bounty species via anonymous_boss_keys.json (the world
-# map is fixed, so a confirmed key/species pair holds for every save -- see the
-# palbox-bounty-tracker skill) plus literal species-named keys (BlueDragon/FairyDragon,
-# the two that self-name-tag in the save). Used by Get-CategoryForEntry's bounty
-# roster-membership fallback above.
-function Get-AnonymousBossKeyMap {
-    $anonMap = @{}
-    $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
-    if (Test-Path -LiteralPath $anonFile) {
-        try {
-            foreach ($e in (Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key -and $e.species) { $anonMap[$e.key.ToUpper()] = $e.species }
-            }
-        } catch {}
-    }
-    return $anonMap
-}
-
-# Upsert one key/species pair into anonymous_boss_keys.json -- called from the Data Mine
-# tab's manual-mapping route (/api/datamine-mapping) whenever it attaches a
-# NormalBossDefeatFlag key to an already-scraped Field Boss pin whose species is already
-# known, so pal_save_reader.py's bounty/datamine resolution (which reads this file, not
-# confirmed_locations.json) picks up the mapping immediately -- without this, a manually
-# confirmed key never shows as "defeated" on the map since /api/player-bounties has no way
-# to resolve it to a species. No-ops if the exact pair is already present; overwrites the
-# species if the key exists with a different one (Anthony correcting a prior mapping).
-# Written with a temp-file + Move-Item swap, matching the atomic-write convention used
-# elsewhere for confirmed_locations.json, since this file is also read by the live server's
-# own request handlers on every /api/player-bounties and /api/player-datamine call.
-function Add-AnonymousBossKey([string]$key, [string]$species) {
-    if (-not $key -or -not $species) { return }
-    $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
-    $arr = @()
-    if (Test-Path -LiteralPath $anonFile) {
-        # Do NOT wrap the pipeline in @() here -- same PS 5.1 ConvertFrom-Json gotcha
-        # documented on Get-ConfirmedLocations above: it emits an already-parsed JSON array
-        # as a SINGLE pipeline object rather than enumerating it, so @() re-wraps that one
-        # object into a bogus 1-element array whose sole element is the real array. Confirmed
-        # the hard way (2026-07-07): wrapping it here silently nested the whole 28-entry
-        # roster under a {value:[...],Count:28} wrapper as element 0 of a 2-element array,
-        # which every reader (Python's load_anonymous_boss_keys, Get-AnonymousBossKeyMap)
-        # then silently failed to recognize as valid entries.
-        try { $arr = Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $arr = @() }
-    }
-    $arr = @($arr)
-    $existing = $arr | Where-Object { $_.key -and $_.key.ToUpper() -eq $key.ToUpper() } | Select-Object -First 1
-    if ($existing) {
-        if ($existing.species -eq $species) { return }
-        $existing.species = $species
-    } else {
-        $arr = @($arr) + [pscustomobject]@{ key = $key; species = $species }
-    }
-    $json = ConvertTo-Json -InputObject @($arr) -Depth 6
-    $tmp = "$anonFile.tmp"
-    [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
-    Move-Item -LiteralPath $tmp -Destination $anonFile -Force
-}
-
-# Remove one key's entry from anonymous_boss_keys.json (2026-07-13). Counterpart to
-# Add-AnonymousBossKey, called when a bounty pin is re-keyed via Edit-MapEntry -- without it
-# the OLD key would keep resolving to the species, leaving an orphaned mapping. No-ops if the
-# key isn't present. Same atomic temp+move + no-BOM convention as Add-AnonymousBossKey.
-function Remove-AnonymousBossKey([string]$key) {
-    if (-not $key) { return }
-    $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
-    if (-not (Test-Path -LiteralPath $anonFile)) { return }
-    # Same PS 5.1 no-@() gotcha as Add-AnonymousBossKey above.
-    try { $arr = Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $arr = @() }
-    $arr = @($arr)
-    $keyU = $key.ToUpper()
-    $kept = @($arr | Where-Object { -not ($_.key -and $_.key.ToUpper() -eq $keyU) })
-    if ($kept.Count -eq $arr.Count) { return }
-    $json = ConvertTo-Json -InputObject @($kept) -Depth 6
-    $tmp = "$anonFile.tmp"
-    [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
-    Move-Item -LiteralPath $tmp -Destination $anonFile -Force
-}
-
 # Human/Syndicate boss keys (syndicate_bosses.json, e.g. BOSS_MALE_SOLDIER02) never
 # carry a zone-number prefix, unlike Field Boss species keys (e.g.
 # "81_2_DESSERT_FBOSS_3") -- used below to tell the two apart from key shape alone
@@ -1016,12 +902,6 @@ function Get-CategoryForEntry($c) {
         if (Test-Path -LiteralPath $ftFile) {
             foreach ($e in (Get-Content -LiteralPath $ftFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
                 if ($e.key -and $e.key.ToUpper() -eq $k) { return 'eagle' }
-            }
-        }
-        $anonFile = "$script:MapDataRoot\anonymous_boss_keys.json"
-        if (Test-Path -LiteralPath $anonFile) {
-            foreach ($e in (Get-Content -LiteralPath $anonFile -Raw -Encoding UTF8 | ConvertFrom-Json)) {
-                if ($e.key -and $e.key.ToUpper() -eq $k) { return 'bounty' }
             }
         }
     }

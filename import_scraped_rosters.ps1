@@ -8,9 +8,8 @@
 # on an unverified match.
 #
 # Effigy/journal have a stable key in their own roster file, so matching is exact (no
-# fuzzy risk at all). Bounty matches by species (also exact), falling back to
-# anonymous_boss_keys.json's key->species map for a roster row a real save key already
-# resolves. Tower/fugitive/eagle have NO save-flag key in their roster at all -- matching
+# fuzzy risk at all). Bounty matches by species (also exact), using each confirmed row's
+# own "species" field. Tower/fugitive/eagle have NO save-flag key in their roster at all -- matching
 # reuses Find-ConfirmedByNameOrCoord's existing exact-name / callsign-suffix / coordinate-
 # proximity rules, restricted to already-that-category candidates, so a wrong-category
 # collision can't merge two distinct locations.
@@ -98,21 +97,16 @@ function Import-Journals {
     }
 }
 
-# ── Bounty (71 {species,name,x,y,z}; species match, falling back to anonymous_boss_keys
-# .json's key->species map so a roster row already resolved by a real save key lines up
-# with the confirmed entry that key lives on, not a duplicate) ────────────────────────
+# ── Bounty (71 {species,name,x,y,z}; species match against each confirmed row's own
+# "species" field) ──────────────────────────────────────────────────────────────────
 function Import-BountyBosses {
     $f = Join-Path $Root 'bounty_bosses.json'
     if (-not (Test-Path -LiteralPath $f)) { Write-Step 'bounty_bosses.json missing, skipping'; return }
     $arr = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($null -eq $arr) { $arr = @() }
-    $anonMap = Get-AnonymousBossKeyMap
     $bySpecies = @{}
     foreach ($c in $confirmed) {
-        $sp = $null
-        if ($c.key) { $sp = $anonMap[$c.key.ToUpper()]; if (-not $sp) { $sp = $c.key } }
-        elseif ($c.species) { $sp = $c.species }
-        if ($sp) { $bySpecies[$sp.ToUpper()] = $c }
+        if ($c.species) { $bySpecies[$c.species.ToUpper()] = $c }
     }
     foreach ($entry in $arr) {
         if (-not $entry.species) { continue }

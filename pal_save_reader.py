@@ -298,28 +298,11 @@ def load_bounty_species():
         return []
 
 
-def load_anonymous_boss_keys():
-    """Exact NormalBossDefeatFlag key -> species, for anonymous zone-numbered field-alpha
-    keys ("<zone>_<n>_<biome>_FBOSS_<n>") that carry no species suffix. The world map is
-    fixed (not per-save), so once a specific key is confirmed (manually, by correlating a
-    known spawn location to a defeat) it's a permanent match for every player/save on this
-    server. Grows one entry at a time as Anthony supplies confirmed mappings -- see the
-    palbox-bounty-tracker skill's "auto-detection limitation" section. Loaded from the file
-    next to this script, matched keys uppercased same as parse_name_bool_map's output."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "anonymous_boss_keys.json")
-    try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        return {e["key"].upper(): e["species"] for e in data if e.get("key") and e.get("species")}
-    except Exception:
-        return {}
-
-
 def load_excluded_boss_keys():
     """Exact NormalBossDefeatFlag keys to ignore entirely when matching bounty species --
-    keys that suffix-match or anonymous-match a species but turned out to be unreliable
+    keys that suffix-match or key-match a species but turned out to be unreliable
     (see excluded_boss_keys.json for the reason each was added). Checked in BOTH the
-    suffix-match and the anonymous-key lookup, so an excluded key falls through to the raw
+    suffix-match and the confirmed-key lookup, so an excluded key falls through to the raw
     "anonymous" bucket in extract_datamine_data instead of being misattributed to a
     species -- see the palbox-bounty-tracker skill's "OPEN QUESTION" note."""
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "excluded_boss_keys.json")
@@ -331,6 +314,28 @@ def load_excluded_boss_keys():
         return set()
 
 
+def load_confirmed_bounty_keys():
+    """Exact NormalBossDefeatFlag key -> species for every bounty (Field Boss) row in
+    confirmed_locations.json that has both a key and a species. This is the live
+    replacement for the old static anonymous_boss_keys.json: a key only ever appears here
+    once Anthony has actually linked it to a pin on the map, so it can't go stale the way a
+    separately hand-grown file could (zone-key numbering isn't guaranteed stable across
+    game updates -- confirmed 2026-07-23 after several anonymous_boss_keys.json entries
+    turned out to point at the wrong species). Loaded fresh every call, matched keys
+    uppercased same as parse_name_bool_map's output."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "confirmed_locations.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return {
+            e["key"].upper(): e["species"]
+            for e in data
+            if e.get("category") == "bounty" and e.get("key") and e.get("species")
+        }
+    except Exception:
+        return {}
+
+
 def _bounty_from_flags(flags):
     """Given an already-parsed NormalBossDefeatFlag list (uppercased true keys), return the
     list of bounty-boss species defeated. Split out of extract_bounty_data so playerall mode
@@ -339,11 +344,12 @@ def _bounty_from_flags(flags):
     flag_set = set(flags)
     excluded = load_excluded_boss_keys()
     defeated = []
-    # Anonymous exact-key overrides take priority over suffix-matching, since a key can carry
-    # a misleading suffix (e.g. "..._BOSS_FAIRYDRAGON" confirmed to actually be WeaselDragon) --
-    # claiming it here first stops the suffix loop below from also misattributing it.
+    # Exact-key matches against confirmed_locations.json's own bounty rows take priority
+    # over suffix-matching, since a key can carry a misleading suffix (e.g.
+    # "..._BOSS_FAIRYDRAGON" confirmed to actually be WeaselDragon) -- claiming it here
+    # first stops the suffix loop below from also misattributing it.
     claimed_keys = set()
-    for key, species in load_anonymous_boss_keys().items():
+    for key, species in load_confirmed_bounty_keys().items():
         if key not in excluded and key in flag_set:
             if species not in defeated:
                 defeated.append(species)
@@ -364,7 +370,7 @@ def extract_bounty_data(sav_path):
     flag also carries many unrelated entries (generic numbered field-alpha spawns, human
     Syndicate/bandit "boss" fights) that we don't have location data for, so we only match
     keys whose suffix identifies one of our known bounty-boss species, plus any exact key
-    confirmed in anonymous_boss_keys.json (see load_anonymous_boss_keys).
+    confirmed in confirmed_locations.json (see load_confirmed_bounty_keys).
     """
     raw = decompress_save(sav_path)
     pos = find_property(raw, "NormalBossDefeatFlag")
@@ -387,7 +393,7 @@ def extract_datamine_data(sav_path):
         prefix, no location data.
       - anonymous: everything else -- zone-numbered field-alpha spawns ("<zone>_<n>_..._F_BOSS_
         <SPECIES>"/"_FBOSS_<n>") that didn't match a known bounty species suffix or a confirmed
-        entry in anonymous_boss_keys.json. Species for these lives in the game's .pak assets,
+        entry in confirmed_locations.json. Species for these lives in the game's .pak assets,
         not the save (see the palbox-bounty-tracker skill's "auto-detection limitation"
         section) -- shown as raw keys only.
 
@@ -405,10 +411,11 @@ def extract_datamine_data(sav_path):
         flags = parse_name_bool_map(raw, p)
         excluded = load_excluded_boss_keys()
         matched_keys = set()
-        # Anonymous exact-key overrides are claimed first -- same priority reasoning as
-        # extract_bounty_data() above, so a mislabeled-suffix key (e.g. FairyDragon's suffix
-        # actually meaning WeaselDragon) can't be double-attributed to both species.
-        for key, species in load_anonymous_boss_keys().items():
+        # Exact-key matches against confirmed_locations.json's own bounty rows are claimed
+        # first -- same priority reasoning as _bounty_from_flags() above, so a
+        # mislabeled-suffix key (e.g. FairyDragon's suffix actually meaning WeaselDragon)
+        # can't be double-attributed to both species.
+        for key, species in load_confirmed_bounty_keys().items():
             if key not in excluded and key in flags and key not in matched_keys:
                 bounty.append(species)
                 matched_keys.add(key)

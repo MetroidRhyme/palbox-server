@@ -745,12 +745,13 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
     $script:readerCache = @{}
     # $StampPaths accepts either a single path (existing callers) or an array -- for readers
     # whose output depends on more than just the save file (bounty/datamine species matching
-    # also reads anonymous_boss_keys.json/excluded_boss_keys.json/bounty_bosses.json), pass all
-    # of them so editing a roster file invalidates the cache even though the .sav is unchanged.
-    # Missed this originally: a species mapping added to anonymous_boss_keys.json after a
-    # player's datamine result was already cached stayed invisible (stuck in the "anonymous"
-    # bucket) until that player's save changed again, even though the Map tab (which reads
-    # confirmed_locations.json directly, uncached) showed the new pin immediately.
+    # also reads confirmed_locations.json/excluded_boss_keys.json/bounty_bosses.json), pass
+    # all of them so editing a roster file invalidates the cache even though the .sav is
+    # unchanged. Missed this originally for the anonymous-key predecessor of this mechanism:
+    # a species mapping added after a player's datamine result was already cached stayed
+    # invisible (stuck in the "anonymous" bucket) until that player's save changed again,
+    # even though the Map tab (which reads confirmed_locations.json directly, uncached)
+    # showed the new pin immediately.
     function Get-CachedReaderOutput([string]$CacheKey, [string[]]$StampPaths, [scriptblock]$Producer) {
         $stamp = ($StampPaths | ForEach-Object {
             if (Test-Path -LiteralPath $_) { [string]([System.IO.File]::GetLastWriteTimeUtc($_).Ticks) } else { '' }
@@ -3098,7 +3099,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = Get-CachedReaderOutput "bounties:$guid" @(
                             (Join-Path $saveDir "Players\$guid.sav"),
-                            "$ServerDir\anonymous_boss_keys.json",
+                            "$ServerDir\confirmed_locations.json",
                             "$ServerDir\excluded_boss_keys.json",
                             "$ServerDir\bounty_bosses.json"
                         ) {
@@ -3197,7 +3198,7 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                         $saveDir = Join-Path $SaveGamesRoot $activeGuid
                         $rawJson = Get-CachedReaderOutput "datamine:$guid" @(
                             (Join-Path $saveDir "Players\$guid.sav"),
-                            "$ServerDir\anonymous_boss_keys.json",
+                            "$ServerDir\confirmed_locations.json",
                             "$ServerDir\excluded_boss_keys.json",
                             "$ServerDir\bounty_bosses.json"
                         ) {
@@ -3469,11 +3470,6 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                                 # the same spot.
                                 $existing = $arr | Where-Object { -not $_.key -and $_.category -eq $coordCat -and $_.gx -eq $gx -and $_.gy -eq $gy -and (Get-EntryMap $_) -eq $mapVal } | Select-Object -First 1
                             }
-                            # Species carried by a matched scraped row (bounty pins only) --
-                            # captured BEFORE the update below so we still have it for the
-                            # anonymous_boss_keys.json backfill after saving, whether this was a
-                            # key-match or the name-fallback match above.
-                            $matchedSpecies = if ($existing) { $existing.species } else { $null }
                             if ($existing) {
                                 $existing.name = $name
                                 $existing.gx = $gx
@@ -3511,17 +3507,6 @@ $DashboardJob = Start-Job -Name "PalDashboard" -ScriptBlock {
                             # the in-memory cache in sync). See its definition in map_data_lib.ps1
                             # for why the atomic write matters (concurrent poll/Python readers).
                             Save-ConfirmedLocations $arr
-                            # Bounty (Field Boss) keys resolve to a species via
-                            # anonymous_boss_keys.json, NOT confirmed_locations.json -- that's what
-                            # pal_save_reader.py's extract_bounty_data/extract_datamine_data (and
-                            # therefore /api/player-bounties' "defeated" state on the map) actually
-                            # reads. Without this, a manually-confirmed key never shows green even
-                            # though the pin itself is now correct. Only fires when we matched an
-                            # existing scraped row with a real species already on it (a brand-new
-                            # pin typed from scratch has no species to backfill).
-                            if ($property -eq 'NormalBossDefeatFlag' -and -not (Test-SyndicateKeyShape $key) -and $matchedSpecies) {
-                                Add-AnonymousBossKey $key $matchedSpecies
-                            }
                         } else {
                             $f = "$ServerDir\datamine_labels.json"
                             $arr = @(Get-DatamineLabels)
