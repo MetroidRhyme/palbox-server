@@ -9422,11 +9422,12 @@ document.addEventListener('webkitfullscreenchange',onEffigyFullscreenChange);
   };
   // Paldeck species-detail popup: the same modal shell, but SPECIES-level info only (no
   // per-pal instance data) plus a button into the spawn map. Opened from a Paldeck row.
-  // Gated on having caught at least one -- uncaught Pals stay locked (and on the public site
-  // they are already masked with no click), so this never reveals an uncaught Pal's data.
+  // Admin dashboard can open any species regardless of catch count -- the public site's
+  // masking is a separate, earlier gate (masked rows get no onclick at generation time in
+  // gen_public_site.ps1), so this never reveals an uncaught Pal's data to players.
   window.openPaldeckDetail=function(idx){
     var d=window._palRowData&&window._palRowData[idx];
-    if(!d||(d.count||0)<1)return;
+    if(!d)return;
     var sp=(palSpecies&&palSpecies[d.internal])||null;
     var elemHtml=(sp&&sp.types&&sp.types.length)?('<div class="pm-elems">'+sp.types.map(elemPill).join('')+'</div>'):'';
     // Base stats as the level-80 range (IV 0 -> IV 100), since there's no single instance.
