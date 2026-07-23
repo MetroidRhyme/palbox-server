@@ -3599,8 +3599,11 @@ var EFFIGY_MAX_RANK=353;
 // _worker.js. (Route path spelled out there, not here, so this comment doesn't itself trip
 // gen_public_site.ps1's leaked-admin-route scan.)
 var EFFIGY_CONFIRM_ENABLED=true;
-// Bigger dots on touch devices (no hover there, and a 5px dot is a tiny tap target).
-var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?9:5;
+// Feeds EFF_ACORN_SZ (the real image-icon size at zoom 3+, not the low-zoom dot LOD --
+// that's EFF_LOD_R below). Bigger on touch devices for tap targets, but halfway to the
+// desktop value (2026-07-23, Anthony: mobile icons were crowding the map) rather than the
+// original 9, which made touch icons nearly 2x desktop size.
+var EFF_DOT_R=(('ontouchstart' in window)||(navigator.maxTouchPoints>0))?7:5;
 // Custom on-screen numpad for .dm-coord gx/gy inputs (Add Icon wizard, cave-entrance
 // modal, Unmapped Keys/Confirmed Locations tables) -- admin-only fields, all stripped
 // from the public site, so this never ships there. Touch-only: the native number
